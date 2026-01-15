@@ -55,3 +55,18 @@ func (h *VesselHandler) CreateVessel(c *fiber.Ctx) error {
     // Return 201 Created with the new vessel
     return c.Status(fiber.StatusCreated).JSON(vessel)
 }
+
+// GetAllVessels handles GET /api/vessels
+func (h *VesselHandler) GetAllVessels(c *fiber.Ctx) error {
+    vessels, err := h.repo.GetAll(c.Context())
+    if err != nil {
+        return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+            "error": "Failed to fetch vessels",
+        })
+    }
+    // Return empty list instead of null if none found
+    if vessels == nil {
+        vessels = []models.Vessel{}
+    }
+    return c.JSON(vessels)
+}
