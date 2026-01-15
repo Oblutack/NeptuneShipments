@@ -38,3 +38,7 @@ func New() (*Service, error) {
 func (s *Service) Close() {
 	s.db.Close()
 }
+
+func (s *Service) GetPool() *pgxpool.Pool {
+	return s.db
+}

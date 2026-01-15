@@ -6,6 +6,8 @@ import (
 	"os"
 
 	"github.com/Oblutack/NeptuneShipments/backend/internal/database"
+	"github.com/Oblutack/NeptuneShipments/backend/internal/handlers"
+	"github.com/Oblutack/NeptuneShipments/backend/internal/repository"
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
 )
@@ -24,23 +26,35 @@ func main() {
 	}
 	defer db.Close()
 
-	// Initializer
+	// Initialize repository and handler
+	vesselRepo := repository.NewVesselRepository(db.GetPool())
+	vesselHandler := handlers.NewVesselHandler(vesselRepo)
+
+	// Initialize Fiber
 	app := fiber.New()
 
-	// Router checker
+	// Health check
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{
 			"status": "ok",
 		})
 	})
 
-	
+	// API routes
+	api := app.Group("/api")
+
+	// Vessel routes
+	vessels := api.Group("/vessels")
+	vessels.Post("/", vesselHandler.CreateVessel)
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
-	log.Fatal(app.Listen(fmt.Sprintf(":%s", port)))
+	log.Printf("Server starting on port %s", port)
+	log.Printf("Access via: http://localhost:%s or http://127.0.0.1:%s", port, port)
+	log.Fatal(app.Listen(fmt.Sprintf("0.0.0.0:%s", port)))
 }
 
 
