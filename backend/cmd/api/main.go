@@ -34,6 +34,9 @@ func main() {
 	portRepo := repository.NewPortRepository(db)
 	portHandler := handlers.NewPortHandler(portRepo)
 
+	shipmentRepo := repository.NewShipmentRepository(db) 
+	shipmentHandler := handlers.NewShipmentHandler(shipmentRepo)
+
 	// Initialize Fiber
 	app := fiber.New()
 
@@ -59,6 +62,10 @@ func main() {
 	vessels.Get("/", vesselHandler.GetAllVessels)
 
 	api.Get("/ports", portHandler.GetAllPorts)
+
+	shipments := api.Group("/shipments")
+	shipments.Post("/", shipmentHandler.CreateShipment)
+	shipments.Get("/", shipmentHandler.GetAllShipments)
 
 	port := os.Getenv("PORT")
 	if port == "" {
