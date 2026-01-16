@@ -70,3 +70,12 @@ func (h *VesselHandler) GetAllVessels(c *fiber.Ctx) error {
     }
     return c.JSON(vessels)
 }
+
+func (h *VesselHandler) GetVesselByID(c *fiber.Ctx) error {
+	id := c.Params("id")
+	vessel, err := h.repo.GetByID(c.Context(), id)
+	if err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Vessel not found"})
+	}
+	return c.JSON(vessel)
+}

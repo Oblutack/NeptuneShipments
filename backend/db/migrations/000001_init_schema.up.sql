@@ -20,4 +20,4 @@ CREATE TABLE vessels (
 );
 
 CREATE INDEX idx_vessels_location ON vessels USING GIST(location);
-CREATE INDEX idx_vessels_imo ON vessels(imo_number);
+CREATE INDEX idx_vessels_imo ON vessels(imo_number);    

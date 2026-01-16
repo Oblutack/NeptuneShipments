@@ -60,12 +60,14 @@ func main() {
 	vessels := api.Group("/vessels")
 	vessels.Post("/", vesselHandler.CreateVessel)
 	vessels.Get("/", vesselHandler.GetAllVessels)
+	vessels.Get("/:id", vesselHandler.GetVesselByID)
 
 	api.Get("/ports", portHandler.GetAllPorts)
 
 	shipments := api.Group("/shipments")
 	shipments.Post("/", shipmentHandler.CreateShipment)
 	shipments.Get("/", shipmentHandler.GetAllShipments)
+	shipments.Get("/:trackingNumber", shipmentHandler.GetShipmentByTracking)
 
 	port := os.Getenv("PORT")
 	if port == "" {

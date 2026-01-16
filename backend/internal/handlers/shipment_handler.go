@@ -37,3 +37,12 @@ func (h *ShipmentHandler) GetAllShipments(c *fiber.Ctx) error {
 	}
 	return c.JSON(shipments)
 }
+
+func (h *ShipmentHandler) GetShipmentByTracking(c *fiber.Ctx) error {
+	trackingNum := c.Params("trackingNumber")
+	shipment, err := h.repo.GetByTrackingNumber(c.Context(), trackingNum)
+	if err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Shipment not found"})
+	}
+	return c.JSON(shipment)
+}

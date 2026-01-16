@@ -110,3 +110,28 @@ func (r *VesselRepository) GetAll(ctx context.Context) ([]models.Vessel, error) 
     }
     return vessels, nil
 }
+
+// GetByID finds a vessel by its UUID
+func (r *VesselRepository) GetByID(ctx context.Context, id string) (*models.Vessel, error) {
+    // Note: We cast location to geometry to extract X/Y
+	query := `
+		SELECT id, name, imo_number, flag_country, type, status, 
+		       capacity_teu, capacity_barrels,
+		       ST_Y(location::geometry) as latitude,
+		       ST_X(location::geometry) as longitude,
+		       heading, speed_knots, last_updated, created_at
+		FROM vessels
+		WHERE id = $1
+	`
+	var v models.Vessel
+	err := r.db.QueryRow(ctx, query, id).Scan(
+		&v.ID, &v.Name, &v.IMONumber, &v.FlagCountry, &v.Type, &v.Status,
+		&v.CapacityTEU, &v.CapacityBarrels,
+		&v.Latitude, &v.Longitude,
+		&v.Heading, &v.SpeedKnots, &v.LastUpdated, &v.CreatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &v, nil
+}
