@@ -2,6 +2,7 @@ import { useGetVesselsQuery, useGetPortsQuery } from "./features/api/apiSlice";
 import { Loader2, Map as MapIcon, Ship, Anchor } from "lucide-react";
 import { GlobalMap } from "./features/map/GlobalMap";
 import { ShipmentForm } from "./features/shipments/ShipmentForm";
+import { ShipmentList } from "./features/shipments/ShipmentList";
 
 function App() {
   const { data: vessels, isLoading, error } = useGetVesselsQuery();
@@ -45,12 +46,20 @@ function App() {
           )}
         </section>
 
-        {/* NEW: SHIPMENT FORM SECTION */}
+        {/*SHIPMENT FORM SECTION */}
         <section className="bg-slate-900 border border-slate-800 rounded-xl p-6">
           <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
             📦 Create New Shipment
           </h2>
           <ShipmentForm />
+        </section>
+
+        {/*SHIPMENT MANIFEST SECTION */}
+        <section>
+          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+            📋 Active Manifest
+          </h2>
+          <ShipmentList />
         </section>
 
         {/* LIST SECTION - Fixes 'Ship' unused warning */}
