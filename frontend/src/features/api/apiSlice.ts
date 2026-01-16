@@ -34,6 +34,7 @@ export interface Shipment {
   weight_kg: number;
   status: string;
   eta?: string;
+  container_number?: string; 
 }
 
 export const apiSlice = createApi({
@@ -72,6 +73,15 @@ export const apiSlice = createApi({
       }),
       invalidatesTags: ["Vessels"],
     }),
+    // 1. Find Shipment by Tracking Number
+    getShipmentByTracking: builder.query<Shipment, string>({
+      query: (trackingNumber) => `/shipments/${trackingNumber}`,
+    }),
+
+    // 2. Find specific Vessel by ID
+    getVesselById: builder.query<Vessel, string>({
+      query: (id) => `/vessels/${id}`,
+    }),
   }),
 });
 
@@ -81,4 +91,7 @@ export const {
   useGetPortsQuery,
   useGetShipmentsQuery,
   useCreateShipmentMutation,
+
+  useLazyGetShipmentByTrackingQuery, // Lazy (Trigger manually)
+  useGetVesselByIdQuery 
 } = apiSlice;

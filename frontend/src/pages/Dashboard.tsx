@@ -98,5 +98,4 @@ export const Dashboard = () => {
       </main>
     </div>
   );
-}
-
+};
