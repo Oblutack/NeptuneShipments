@@ -14,15 +14,29 @@ export interface Vessel {
   created_at: string;
 }
 
+export interface Port {
+  id: string;
+  un_locode: string;
+  name: string;
+  country: string;
+  latitude: number;
+  longitude: number;
+}
+
 export const apiSlice = createApi({
   reducerPath: 'api', 
   baseQuery: fetchBaseQuery({ baseUrl: 'http://127.0.0.1:8080/api' }),
-  tagTypes: ['Vessels'], 
+  tagTypes: ['Vessels', 'Ports'], 
   endpoints: (builder) => ({
     
     getVessels: builder.query<Vessel[], void>({
       query: () => '/vessels',
       providesTags: ['Vessels'], 
+    }),
+
+    getPorts: builder.query<Port[], void>({
+        query: () => '/ports',
+        providesTags: ['Ports'],
     }),
 
     createVessel: builder.mutation<Vessel, Partial<Vessel>>({
@@ -36,4 +50,4 @@ export const apiSlice = createApi({
   }),
 });
 
-export const { useGetVesselsQuery, useCreateVesselMutation } = apiSlice;
+export const { useGetVesselsQuery, useCreateVesselMutation, useGetPortsQuery } = apiSlice;

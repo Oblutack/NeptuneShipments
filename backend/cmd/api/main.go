@@ -31,6 +31,9 @@ func main() {
 	vesselRepo := repository.NewVesselRepository(db.GetPool())
 	vesselHandler := handlers.NewVesselHandler(vesselRepo)
 
+	portRepo := repository.NewPortRepository(db)
+	portHandler := handlers.NewPortHandler(portRepo)
+
 	// Initialize Fiber
 	app := fiber.New()
 
@@ -54,6 +57,8 @@ func main() {
 	vessels := api.Group("/vessels")
 	vessels.Post("/", vesselHandler.CreateVessel)
 	vessels.Get("/", vesselHandler.GetAllVessels)
+
+	api.Get("/ports", portHandler.GetAllPorts)
 
 	port := os.Getenv("PORT")
 	if port == "" {

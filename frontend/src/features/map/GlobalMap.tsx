@@ -1,17 +1,19 @@
 import Map, { Marker, NavigationControl } from 'react-map-gl';
 import mapboxgl from 'mapbox-gl'; // <--- 1. Import the raw engine
 import 'mapbox-gl/dist/mapbox-gl.css';
-import type { Vessel } from '../api/apiSlice';
-import { Ship } from 'lucide-react';
+import type { Vessel, Port } from '../api/apiSlice';
+import { Ship, Anchor } from 'lucide-react';
+
 
 // Get token from .env
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 
 interface GlobalMapProps {
   vessels: Vessel[] | undefined;
+  ports: Port[] | undefined;
 }
 
-export const GlobalMap = ({ vessels }: GlobalMapProps) => {
+export const GlobalMap = ({ vessels, ports }: GlobalMapProps) => {
   // Console log to debug if token is missing
   if (!TOKEN) {
     console.error("Mapbox Token is missing! Check your .env file.");
@@ -38,6 +40,18 @@ export const GlobalMap = ({ vessels }: GlobalMapProps) => {
         }}
       >
         <NavigationControl position="top-right" />
+
+        {ports?.map((port) => (
+            <Marker key={port.id} longitude={port.longitude} latitude={port.latitude} anchor="bottom">
+                <div className="group relative flex flex-col items-center cursor-pointer">
+                    <Anchor size={20} className="text-orange-500 hover:text-orange-300 transition-colors" />
+                    <div className="absolute bottom-full mb-1 hidden group-hover:block bg-black/80 text-white text-xs p-2 rounded whitespace-nowrap border border-orange-500/30">
+                        <p className="font-bold">{port.name}</p>
+                        <p className="text-orange-300">{port.un_locode}</p>
+                    </div>
+                </div>
+            </Marker>
+        ))}
 
         {vessels?.map((ship) => (
           <Marker 

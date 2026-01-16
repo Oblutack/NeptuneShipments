@@ -1,9 +1,11 @@
-import { useGetVesselsQuery } from "./features/api/apiSlice";
-import { Loader2, Map as MapIcon, Ship } from "lucide-react";
+import { useGetVesselsQuery, useGetPortsQuery } from "./features/api/apiSlice";
+import { Loader2, Map as MapIcon, Ship, Anchor } from "lucide-react";
 import { GlobalMap } from "./features/map/GlobalMap";
 
 function App() {
   const { data: vessels, isLoading, error } = useGetVesselsQuery();
+
+  const { data: ports } = useGetPortsQuery();
 
   return (
     <div className="min-h-screen bg-slate-950 text-white p-6">
@@ -15,6 +17,10 @@ function App() {
         <div className="flex gap-4 text-sm text-slate-400">
           <span>
             Active Fleet: <b className="text-white">{vessels?.length || 0}</b>
+          </span>
+          <span className="flex items-center gap-2">
+            <Anchor size={16} />
+            Ports: <b className="text-white">{ports?.length || 0}</b>
           </span>
         </div>
       </header>
@@ -34,7 +40,7 @@ function App() {
               <Loader2 className="animate-spin text-slate-600" size={40} />
             </div>
           ) : (
-            <GlobalMap vessels={vessels} />
+            <GlobalMap vessels={vessels} ports={ports} />
           )}
         </section>
 
@@ -55,7 +61,7 @@ function App() {
                   {ship.imo_number}
                 </span>
               </div>
-              <div className="text-sm text-slate-400 flex justify-between">
+              <div className="text-sm text-slate-400 flex justify-between items-center">
                 <span>{ship.type}</span>
                 {/* Add 'ml-2' (margin left) or rely on justify-between working */}
                 <span
