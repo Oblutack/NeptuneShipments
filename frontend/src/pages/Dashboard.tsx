@@ -5,7 +5,13 @@ import { ShipmentForm } from "../features/shipments/ShipmentForm";
 import { ShipmentList } from "../features/shipments/ShipmentList";
 
 export const Dashboard = () => {
-  const { data: vessels, isLoading, error } = useGetVesselsQuery();
+  const {
+    data: vessels,
+    isLoading,
+    error,
+  } = useGetVesselsQuery(undefined, {
+    pollingInterval: 2000,
+  });
 
   const { data: ports } = useGetPortsQuery();
 

@@ -135,3 +135,16 @@ func (r *VesselRepository) GetByID(ctx context.Context, id string) (*models.Vess
 	}
 	return &v, nil
 }
+
+// UpdatePosition updates just the location of a vessel
+func (r *VesselRepository) UpdatePosition(ctx context.Context, id string, lat, lon float64) error {
+	query := `
+		UPDATE vessels 
+		SET location = ST_SetSRID(ST_MakePoint($1, $2), 4326),
+		    last_updated = NOW()
+		WHERE id = $3
+	`
+    // Use Exec() for updates that don't return data
+	_, err := r.db.Exec(ctx, query, lon, lat, id)
+	return err
+}

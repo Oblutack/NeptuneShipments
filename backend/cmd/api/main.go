@@ -8,9 +8,10 @@ import (
 	"github.com/Oblutack/NeptuneShipments/backend/internal/database"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/handlers"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/repository"
+	"github.com/Oblutack/NeptuneShipments/backend/internal/simulator"
 	"github.com/gofiber/fiber/v2"
-	"github.com/joho/godotenv"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -69,11 +70,14 @@ func main() {
 	shipments.Get("/", shipmentHandler.GetAllShipments)
 	shipments.Get("/:trackingNumber", shipmentHandler.GetShipmentByTracking)
 
+	simEngine := simulator.NewEngine(vesselRepo)
+	simEngine.Start()
+
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
-
+	
 	log.Printf("Server starting on port %s", port)
 	log.Printf("Access via: http://localhost:%s or http://127.0.0.1:%s", port, port)
 	log.Fatal(app.Listen(fmt.Sprintf("0.0.0.0:%s", port)))
