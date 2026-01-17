@@ -34,7 +34,9 @@ export interface Shipment {
   weight_kg: number;
   status: string;
   eta?: string;
-  container_number?: string; 
+  container_number?: string;
+  origin_port_name?: string;
+  destination_port_name?: string; 
 }
 
 export const apiSlice = createApi({

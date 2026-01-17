@@ -20,4 +20,6 @@ type Shipment struct {
 	ETA             *time.Time `json:"eta,omitempty"`
 	CreatedAt       time.Time  `json:"created_at"`
 	UpdatedAt       time.Time  `json:"updated_at"`
+	OriginPortName      string `json:"origin_port_name,omitempty"`
+	DestinationPortName string `json:"destination_port_name,omitempty"`
 }
