@@ -175,3 +175,10 @@ func (r *VesselRepository) UpdateProgress(ctx context.Context, vesselID string, 
     _, err := r.db.Exec(ctx, query, vesselID, progress)
     return err
 }
+
+// SetDocked stops the ship and updates its status
+func (r *VesselRepository) SetDocked(ctx context.Context, id string) error {
+	query := `UPDATE vessels SET status = 'DOCKED', speed_knots = 0 WHERE id = $1`
+	_, err := r.db.Exec(ctx, query, id)
+	return err
+}

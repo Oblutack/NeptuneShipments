@@ -100,3 +100,26 @@ func (r *ShipmentRepository) GetByTrackingNumber(ctx context.Context, trackingNu
 	}
 	return &s, nil
 }
+
+// UpdateETAForVessel calculates arrival time based on ship speed and route progress
+func (r *ShipmentRepository) UpdateETAForVessel(ctx context.Context, vesselID string, routeID string, progress float64, speedKnots float64) error {
+	// Formula: Remaining Distance / Speed = Time Remaining
+	// 1 Knot = 0.514444 Meters per Second
+	query := `
+		WITH route_metric AS (
+			-- Get total length of the route in meters
+			SELECT ST_Length(path) as total_meters 
+			FROM routes WHERE id = $1
+		)
+		UPDATE shipments
+		SET eta = NOW() + make_interval(secs := (
+			(SELECT total_meters FROM route_metric) * (1.0 - $2) -- Remaining Meters
+			/ 
+			GREATEST(($3 * 0.514444), 1.0) -- Speed in m/s (avoid divide by zero)
+		))
+		WHERE vessel_id = $4 
+		AND (status = 'IN_TRANSIT' OR status = 'PENDING')
+	`
+	_, err := r.db.GetPool().Exec(ctx, query, routeID, progress, speedKnots, vesselID)
+	return err
+}

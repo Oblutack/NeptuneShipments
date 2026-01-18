@@ -167,7 +167,12 @@ export const TrackingPage = () => {
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                   <Calendar size={16} />
-                  <span>ETA: Updating...</span>
+                  <span>
+                    ETA:{" "}
+                    {shipment.eta
+                      ? new Date(shipment.eta).toLocaleString()
+                      : "Calculating..."}
+                  </span>
                 </div>
               </div>
             )}

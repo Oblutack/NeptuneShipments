@@ -11,11 +11,15 @@ import (
 )
 
 type Engine struct {
-	repo *repository.VesselRepository
+	vesselRepo    *repository.VesselRepository
+	shipmentRepo *repository.ShipmentRepository
 }
 
-func NewEngine(repo *repository.VesselRepository) *Engine {
-	return &Engine{repo: repo}
+func NewEngine(vRepo *repository.VesselRepository, sRepo *repository.ShipmentRepository) *Engine {
+    return &Engine{
+        vesselRepo:   vRepo, 
+        shipmentRepo: sRepo,
+    }
 }
 
 // Start begins the simulation loop in a background goroutine
@@ -37,7 +41,7 @@ func (e *Engine) tick() {
 	
 	// 1. Get all ships
 	// (In a real huge app, we would cache this in Redis)
-	vessels, err := e.repo.GetAll(ctx)
+	vessels, err := e.vesselRepo.GetAll(ctx)
 	if err != nil {
 		log.Printf("Sim Error: Failed to fetch vessels: %v", err)
 		return
@@ -52,27 +56,47 @@ func (e *Engine) tick() {
 }
 
 func (e *Engine) moveVessel(ctx context.Context, v models.Vessel) {
-    // Strategy A: If on a route, follow the line
-    if v.CurrentRouteID != nil && v.RouteProgress < 1.0 {
-        // Simple logic: Add 0.5% progress every tick (for demo)
-        // In real life: Calculate (Speed * Time) / TotalLength
-        increment := 0.005 // 0.5% per tick
-        newProgress := v.RouteProgress + increment
-        
-        if newProgress > 1.0 {
-            newProgress = 1.0 // Stop at end
-        }
+	// Check if ship has a route
+	if v.CurrentRouteID != nil {
+		
+		// Case 1: Route is finished (Arrived)
+		if v.RouteProgress >= 1.0 {
+			// Stop the ship if it hasn't been stopped yet
+			if v.Status == "AT_SEA" {
+				log.Printf("🚢 Ship %s has arrived at destination!", v.Name)
+				err := e.vesselRepo.SetDocked(ctx, v.ID)
+				if err != nil {
+					log.Printf("Sim Error: Failed to dock ship: %v", err)
+				}
+			}
+			return // Do nothing else
+		}
 
-        err := e.repo.UpdateProgress(ctx, v.ID, newProgress)
-        if err != nil {
-            log.Printf("Sim Error: Failed to update progress for %s: %v", v.Name, err)
-        }
-        return
-    }
+		// Case 2: Moving along the route
+		// Simple logic: Add 0.5% progress every tick (for demo)
+		increment := 0.005 
+		newProgress := v.RouteProgress + increment
 
-    // Strategy B: If no route, use old Physics (Heading/Speed)
-    newLat, newLon := navigation.CalculateNextPosition(
-        v.Latitude, v.Longitude, v.SpeedKnots, v.Heading, 5.0,
-    )
-    e.repo.UpdatePosition(ctx, v.ID, newLat, newLon)
+		if newProgress > 1.0 {
+			newProgress = 1.0
+		}
+
+		// Update DB Position
+		err := e.vesselRepo.UpdateProgress(ctx, v.ID, newProgress)
+		if err != nil {
+			log.Printf("Sim Error: Failed to update progress: %v", err)
+		}
+
+		// Update ETA
+		e.shipmentRepo.UpdateETAForVessel(ctx, v.ID, *v.CurrentRouteID, newProgress, v.SpeedKnots)
+		
+		return // Crucial: Return so we don't run Strategy B
+	}
+
+	// Strategy B: Free Roam (Only if NO route assigned)
+	newLat, newLon := navigation.CalculateNextPosition(
+		v.Latitude, v.Longitude, v.SpeedKnots, v.Heading, 5.0,
+	)
+	e.vesselRepo.UpdatePosition(ctx, v.ID, newLat, newLon)
 }
+

@@ -76,7 +76,7 @@ func main() {
 	routesGroup := api.Group("/routes")
     routesGroup.Get("/:id", routeHandler.GetRoute)
 
-	simEngine := simulator.NewEngine(vesselRepo)
+	simEngine := simulator.NewEngine(vesselRepo, shipmentRepo)
 	simEngine.Start()
 
 	port := os.Getenv("PORT")
