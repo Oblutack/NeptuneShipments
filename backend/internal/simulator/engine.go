@@ -52,18 +52,27 @@ func (e *Engine) tick() {
 }
 
 func (e *Engine) moveVessel(ctx context.Context, v models.Vessel) {
-	// Calculate new position based on 5 seconds of travel
-	newLat, newLon := navigation.CalculateNextPosition(
-		v.Latitude, 
-		v.Longitude, 
-		v.SpeedKnots, 
-		v.Heading, 
-		5.0, // Duration in seconds
-	)
+    // Strategy A: If on a route, follow the line
+    if v.CurrentRouteID != nil && v.RouteProgress < 1.0 {
+        // Simple logic: Add 0.5% progress every tick (for demo)
+        // In real life: Calculate (Speed * Time) / TotalLength
+        increment := 0.005 // 0.5% per tick
+        newProgress := v.RouteProgress + increment
+        
+        if newProgress > 1.0 {
+            newProgress = 1.0 // Stop at end
+        }
 
-	// Update DB
-	err := e.repo.UpdatePosition(ctx, v.ID, newLat, newLon)
-	if err != nil {
-		log.Printf("Sim Error: Failed to move ship %s: %v", v.Name, err)
-	}
+        err := e.repo.UpdateProgress(ctx, v.ID, newProgress)
+        if err != nil {
+            log.Printf("Sim Error: Failed to update progress for %s: %v", v.Name, err)
+        }
+        return
+    }
+
+    // Strategy B: If no route, use old Physics (Heading/Speed)
+    newLat, newLon := navigation.CalculateNextPosition(
+        v.Latitude, v.Longitude, v.SpeedKnots, v.Heading, 5.0,
+    )
+    e.repo.UpdatePosition(ctx, v.ID, newLat, newLon)
 }

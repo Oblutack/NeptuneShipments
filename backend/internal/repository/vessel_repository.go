@@ -75,19 +75,18 @@ func (r *VesselRepository) Create(ctx context.Context, vessel *models.Vessel) er
     return nil
 }
 
-// GetAll vessels
+// GetAll retrieves all vessels
 func (r *VesselRepository) GetAll(ctx context.Context) ([]models.Vessel, error) {
-    // Note: ST_X is Longitude, ST_Y is Latitude
+    // --- UPDATED QUERY to include route columns ---
     query := `
-        SELECT 
-            id, name, imo_number, flag_country, type, status, 
-            capacity_teu, capacity_barrels,
-            ST_Y(location::geometry) as latitude,
-            ST_X(location::geometry) as longitude,
-            heading, speed_knots, last_updated, created_at
+        SELECT id, name, imo_number, flag_country, type, status, 
+               capacity_teu, capacity_barrels,
+               ST_Y(location::geometry) as lat, 
+               ST_X(location::geometry) as lon, 
+               heading, speed_knots, last_updated, created_at,
+               current_route_id, route_progress
         FROM vessels
     `
-
     rows, err := r.db.Query(ctx, query)
     if err != nil {
         return nil, err
@@ -97,11 +96,13 @@ func (r *VesselRepository) GetAll(ctx context.Context) ([]models.Vessel, error) 
     var vessels []models.Vessel
     for rows.Next() {
         var v models.Vessel
+        // --- UPDATED SCAN to match query ---
         err := rows.Scan(
             &v.ID, &v.Name, &v.IMONumber, &v.FlagCountry, &v.Type, &v.Status,
             &v.CapacityTEU, &v.CapacityBarrels,
             &v.Latitude, &v.Longitude,
             &v.Heading, &v.SpeedKnots, &v.LastUpdated, &v.CreatedAt,
+            &v.CurrentRouteID, &v.RouteProgress, // <--- Added these!
         )
         if err != nil {
             return nil, err
@@ -147,4 +148,30 @@ func (r *VesselRepository) UpdatePosition(ctx context.Context, id string, lat, l
     // Use Exec() for updates that don't return data
 	_, err := r.db.Exec(ctx, query, lon, lat, id)
 	return err
+}
+
+// UpdateProgress moves the ship along the pre-defined route
+// progress is a value between 0.0 and 1.0
+func (r *VesselRepository) UpdateProgress(ctx context.Context, vesselID string, progress float64) error {
+    // 1. Calculate new point on the line (Interpolate)
+    // 2. Update the vessel's location column AND the progress column
+    query := `
+        WITH route_info AS (
+            SELECT r.path FROM routes r
+            JOIN vessels v ON v.current_route_id = r.id
+            WHERE v.id = $1
+        )
+        UPDATE vessels
+        SET 
+            route_progress = $2,
+            -- Magic PostGIS function: Find point at X percent along line
+            location = (
+                SELECT ST_LineInterpolatePoint(path::geometry, $2)::geography 
+                FROM route_info
+            ),
+            last_updated = NOW()
+        WHERE id = $1
+    `
+    _, err := r.db.Exec(ctx, query, vesselID, progress)
+    return err
 }
