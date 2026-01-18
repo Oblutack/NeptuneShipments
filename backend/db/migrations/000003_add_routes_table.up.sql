@@ -1,7 +1,7 @@
 -- 1. Create Routes Table
 CREATE TABLE routes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(255) NOT NULL, -- e.g. "Suez to Rotterdam"
+    name VARCHAR(255) UNIQUE NOT NULL, -- e.g. "Suez to Rotterdam"
     origin_port_id UUID REFERENCES ports(id),
     destination_port_id UUID REFERENCES ports(id),
     

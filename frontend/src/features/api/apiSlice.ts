@@ -12,6 +12,8 @@ export interface Vessel {
   heading: number;
   speed_knots: number;
   created_at: string;
+  current_route_id?: string; // Optional because not all ships have routes
+  route_progress?: number;
 }
 
 export interface Port {
@@ -36,7 +38,16 @@ export interface Shipment {
   eta?: string;
   container_number?: string;
   origin_port_name?: string;
-  destination_port_name?: string; 
+  destination_port_name?: string;
+}
+
+export interface Route {
+  id: string;
+  name: string;
+  path: {
+    type: "LineString";
+    coordinates: number[][];
+  };
 }
 
 export const apiSlice = createApi({
@@ -84,6 +95,9 @@ export const apiSlice = createApi({
     getVesselById: builder.query<Vessel, string>({
       query: (id) => `/vessels/${id}`,
     }),
+    getRouteById: builder.query<Route, string>({
+      query: (id) => `/routes/${id}`,
+    }),
   }),
 });
 
@@ -95,5 +109,6 @@ export const {
   useCreateShipmentMutation,
 
   useLazyGetShipmentByTrackingQuery, // Lazy (Trigger manually)
-  useGetVesselByIdQuery 
+  useGetVesselByIdQuery,
+  useGetRouteByIdQuery,
 } = apiSlice;

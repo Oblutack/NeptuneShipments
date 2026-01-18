@@ -1,11 +1,9 @@
-import Map, { Marker, NavigationControl } from 'react-map-gl';
-import mapboxgl from 'mapbox-gl'; // <--- 1. Import the raw engine
-import 'mapbox-gl/dist/mapbox-gl.css';
-import type { Vessel, Port } from '../api/apiSlice';
-import { Ship, Anchor } from 'lucide-react';
+import Map, { Marker, NavigationControl, Source, Layer } from "react-map-gl"; // <--- Import Source/Layer
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
+import { useGetRouteByIdQuery, type Vessel, type Port } from "../api/apiSlice"; // <--- Import Hook
+import { Ship, Anchor } from "lucide-react";
 
-
-// Get token from .env
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 
 interface GlobalMapProps {
@@ -14,68 +12,91 @@ interface GlobalMapProps {
 }
 
 export const GlobalMap = ({ vessels, ports }: GlobalMapProps) => {
-  // Console log to debug if token is missing
-  if (!TOKEN) {
-    console.error("Mapbox Token is missing! Check your .env file.");
-  }
+  // 1. Logic to find the active route ID
+  // For this demo, we just grab the route from the first ship (Ever Given)
+  // In a real app, you might select a ship to see its specific route
+  const activeRouteId = vessels?.[0]?.current_route_id;
+
+  // 2. Fetch the route data (skip if no ID)
+  const { data: routeData } = useGetRouteByIdQuery(activeRouteId || "", {
+    skip: !activeRouteId,
+  });
 
   return (
-    <div className="w-full rounded-xl overflow-hidden shadow-2xl border border-slate-700 relative bg-gray-900" style={{ height: '600px' }}>
+    <div className="w-full rounded-xl overflow-hidden shadow-2xl border border-slate-700 relative bg-gray-900 h-[600px]">
       <Map
-        // 2. Explicitly tell React which map library to use
-        mapLib={mapboxgl} 
-        
+        mapLib={mapboxgl}
         initialViewState={{
-          longitude: 32.5,
-          latitude: 30.0,
-          zoom: 4
+          longitude: 20.0, // Center on Mediterranean
+          latitude: 35.0,
+          zoom: 3.5,
         }}
         mapStyle="mapbox://styles/mapbox/dark-v11"
         mapboxAccessToken={TOKEN}
-        projection={{ name: 'globe' }} 
+        projection={{ name: "globe" }}
         fog={{
-            color: 'rgb(20, 30, 40)',
-            'high-color': 'rgb(200, 200, 250)', 
-            'horizon-blend': 0.2
+          color: "rgb(20, 30, 40)",
+          "high-color": "rgb(200, 200, 250)",
+          "horizon-blend": 0.2,
         }}
       >
         <NavigationControl position="top-right" />
 
+        {/* --- RENDER ROUTE LINE --- */}
+        {routeData && (
+          <Source id="route-source" type="geojson" data={routeData.path}>
+            <Layer
+              id="route-layer"
+              type="line"
+              paint={{
+                "line-color": "#3b82f6", // Tailwind Blue-500
+                "line-width": 3,
+                "line-opacity": 0.8,
+                "line-dasharray": [2, 1], // Dashed line effect
+              }}
+            />
+          </Source>
+        )}
+
+        {/* --- RENDER PORTS --- */}
         {ports?.map((port) => (
-            <Marker key={port.id} longitude={port.longitude} latitude={port.latitude} anchor="bottom">
-                <div className="group relative flex flex-col items-center cursor-pointer">
-                    <Anchor size={20} className="text-orange-500 hover:text-orange-300 transition-colors" />
-                    <div className="absolute bottom-full mb-1 hidden group-hover:block bg-black/80 text-white text-xs p-2 rounded whitespace-nowrap border border-orange-500/30">
-                        <p className="font-bold">{port.name}</p>
-                        <p className="text-orange-300">{port.un_locode}</p>
-                    </div>
-                </div>
-            </Marker>
+          <Marker
+            key={port.id}
+            longitude={port.longitude}
+            latitude={port.latitude}
+            anchor="bottom"
+          >
+            <div className="group relative flex flex-col items-center cursor-pointer">
+              <Anchor
+                size={20}
+                className="text-orange-500 hover:text-orange-300 transition-colors"
+              />
+              {/* Tooltip */}
+              <div className="absolute bottom-full mb-1 hidden group-hover:block bg-black/80 text-white text-xs p-2 rounded whitespace-nowrap border border-orange-500/30 z-50">
+                <p className="font-bold">{port.name}</p>
+              </div>
+            </div>
+          </Marker>
         ))}
 
+        {/* --- RENDER VESSELS --- */}
         {vessels?.map((ship) => (
-          <Marker 
-            key={ship.id} 
-            longitude={ship.longitude} 
+          <Marker
+            key={ship.id}
+            longitude={ship.longitude}
             latitude={ship.latitude}
             anchor="center"
           >
             <div className="group relative cursor-pointer">
-              <div 
+              <div
                 style={{ transform: `rotate(${ship.heading}deg)` }}
                 className="transition-transform duration-500"
               >
-                <Ship 
-                    size={24} 
-                    className={`${ship.status === 'AT_SEA' ? 'text-green-400' : 'text-yellow-400'} drop-shadow-lg`} 
-                    fill="currentColor"
+                <Ship
+                  size={24}
+                  className={`${ship.status === "AT_SEA" ? "text-green-400" : "text-yellow-400"} drop-shadow-lg`}
+                  fill="currentColor"
                 />
-              </div>
-              
-              <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-32 bg-black/90 text-white text-xs p-2 rounded hidden group-hover:block z-50 border border-slate-600">
-                <p className="font-bold">{ship.name}</p>
-                <p className="text-slate-400">{ship.type}</p>
-                <p>{ship.speed_knots} knots</p>
               </div>
             </div>
           </Marker>

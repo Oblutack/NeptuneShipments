@@ -24,7 +24,7 @@ func main() {
 
 	log.Println("🌱 Seeding Database...")
 
-	// 1. SEED PORTS (Same as before)
+	// 1. SEED PORTS
 	ports := []struct {
 		Name, Locode, Country string
 		Lat, Lon float64
@@ -46,39 +46,55 @@ func main() {
 	}
 	log.Println("✅ Ports Seeded")
 
-	// 2. CREATE ROUTE (Suez -> Rotterdam)
-	// Points: Suez -> South of Crete -> Malta -> Gibraltar -> Portugal Coast -> English Channel -> Rotterdam
-	routeQuery := `
+	// 2. UPSERT ROUTE (Split logic for safety)
+	// Step A: Insert or Update the Path
+	_, err = pool.Exec(ctx, `
 		INSERT INTO routes (name, path)
 		VALUES (
 			'Suez to Rotterdam',
-			ST_GeogFromText('LINESTRING(32.54 29.9, 25.0 34.0, 14.0 35.5, -5.5 36.0, -10.0 40.0, -5.0 49.0, 4.0 52.0)')
+			ST_GeogFromText('LINESTRING(
+                32.56 29.93, 
+                32.56 30.50, 
+                32.35 31.26, 
+                31.00 32.00, 
+                14.00 35.50, 
+                -5.50 36.00, 
+                -10.0 40.00, 
+                -5.00 48.00, 
+                4.00 52.00
+            )')
 		)
-		RETURNING id
-	`
-	var routeID string
-	err = pool.QueryRow(ctx, routeQuery).Scan(&routeID)
+		ON CONFLICT (name) 
+		DO UPDATE SET path = EXCLUDED.path
+	`)
 	if err != nil {
-		// If it fails, maybe it exists, let's just grab the existing one (simple logic for now)
-		pool.QueryRow(ctx, "SELECT id FROM routes WHERE name = 'Suez to Rotterdam' LIMIT 1").Scan(&routeID)
+		log.Fatal("Failed to upsert route:", err)
 	}
-	log.Printf("✅ Route Created: %s", routeID)
 
-	// 3. SEED VESSEL (Assigned to Route)
-	// We use ON CONFLICT to update the existing ship to use the new route
+	// Step B: Get the ID explicitly (Foolproof)
+	var routeID string
+	err = pool.QueryRow(ctx, "SELECT id FROM routes WHERE name = 'Suez to Rotterdam'").Scan(&routeID)
+	if err != nil {
+		log.Fatal("Failed to fetch route ID:", err)
+	}
+	log.Printf("✅ Route ID Found: %s", routeID)
+
+	// 3. SEED VESSEL
 	_, err = pool.Exec(ctx, `
 		INSERT INTO vessels (name, imo_number, flag_country, type, status, capacity_teu, location, heading, speed_knots, current_route_id, route_progress)
-		VALUES ('Ever Given', 'IMO9811000', 'PA', 'CONTAINER', 'AT_SEA', 20124, ST_SetSRID(ST_MakePoint(32.54, 29.9), 4326), 0, 2000.0, $1, 0.0)
+		VALUES ('Ever Given', 'IMO9811000', 'PA', 'CONTAINER', 'AT_SEA', 20124, ST_SetSRID(ST_MakePoint(32.54, 29.9), 4326), 0, 5000.0, $1, 0.0)
 		ON CONFLICT (imo_number) 
 		DO UPDATE SET 
 			current_route_id = $1, 
-			route_progress = 0.05, -- Start 5% in
-			speed_knots = 50000.0, -- Super fast for demo purposes
-			status = 'AT_SEA'
+			route_progress = 0.0,
+			speed_knots = 5000.0, 
+			status = 'AT_SEA',
+            location = ST_SetSRID(ST_MakePoint(32.54, 29.9), 4326)
 	`, routeID)
 	
 	if err != nil {
 		log.Fatal("Failed to seed vessel:", err)
 	}
 	log.Println("✅ Vessel Assigned to Route")
+	log.Println("🌱 Database Seeding Complete!")
 }
