@@ -38,6 +38,9 @@ func main() {
 	shipmentRepo := repository.NewShipmentRepository(db) 
 	shipmentHandler := handlers.NewShipmentHandler(shipmentRepo)
 
+	routeRepo := repository.NewRouteRepository(db) // <--- NEW
+    routeHandler := handlers.NewRouteHandler(routeRepo)
+
 	// Initialize Fiber
 	app := fiber.New()
 
@@ -69,6 +72,9 @@ func main() {
 	shipments.Post("/", shipmentHandler.CreateShipment)
 	shipments.Get("/", shipmentHandler.GetAllShipments)
 	shipments.Get("/:trackingNumber", shipmentHandler.GetShipmentByTracking)
+
+	routesGroup := api.Group("/routes")
+    routesGroup.Get("/:id", routeHandler.GetRoute)
 
 	simEngine := simulator.NewEngine(vesselRepo)
 	simEngine.Start()
