@@ -113,14 +113,16 @@ func (r *VesselRepository) GetAll(ctx context.Context) ([]models.Vessel, error) 
 }
 
 // GetByID finds a vessel by its UUID
+// GetByID finds a vessel by its UUID
 func (r *VesselRepository) GetByID(ctx context.Context, id string) (*models.Vessel, error) {
-    // Note: We cast location to geometry to extract X/Y
 	query := `
 		SELECT id, name, imo_number, flag_country, type, status, 
 		       capacity_teu, capacity_barrels,
 		       ST_Y(location::geometry) as latitude,
 		       ST_X(location::geometry) as longitude,
-		       heading, speed_knots, last_updated, created_at
+		       heading, speed_knots, last_updated, created_at,
+               -- Added these two:
+               current_route_id, route_progress
 		FROM vessels
 		WHERE id = $1
 	`
@@ -130,6 +132,8 @@ func (r *VesselRepository) GetByID(ctx context.Context, id string) (*models.Vess
 		&v.CapacityTEU, &v.CapacityBarrels,
 		&v.Latitude, &v.Longitude,
 		&v.Heading, &v.SpeedKnots, &v.LastUpdated, &v.CreatedAt,
+        // Added these two:
+        &v.CurrentRouteID, &v.RouteProgress,
 	)
 	if err != nil {
 		return nil, err

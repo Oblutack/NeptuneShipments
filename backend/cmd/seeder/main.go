@@ -95,6 +95,30 @@ func main() {
 	if err != nil {
 		log.Fatal("Failed to seed vessel:", err)
 	}
+
+	_, err = pool.Exec(ctx, `
+		INSERT INTO shipments (
+			tracking_number, customer_name, origin_port_id, destination_port_id, 
+			vessel_id, description, container_number, weight_kg, status
+		)
+		VALUES (
+			'TRK-TEST-01', 
+			'SpaceX', 
+			(SELECT id FROM ports WHERE un_locode = 'USLAX'), -- Los Angeles
+			(SELECT id FROM ports WHERE un_locode = 'NLRTM'), -- Rotterdam
+			(SELECT id FROM vessels WHERE imo_number = 'IMO9811000'), -- Ever Given
+			'Starlink Satellites', 
+			'MSKU1234567', 
+			5000.0, 
+			'IN_TRANSIT'
+		)
+		ON CONFLICT (tracking_number) DO NOTHING
+	`)
+	if err != nil {
+		log.Printf("Failed to seed shipment: %v", err)
+	}
+	log.Println("✅ Shipment 'TRK-TEST-01' Seeded")
+
 	log.Println("✅ Vessel Assigned to Route")
 	log.Println("🌱 Database Seeding Complete!")
 }
