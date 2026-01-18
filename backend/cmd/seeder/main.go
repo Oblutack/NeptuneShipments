@@ -87,7 +87,7 @@ func main() {
 		DO UPDATE SET 
 			current_route_id = $1, 
 			route_progress = 0.0,
-			speed_knots = 5000.0, 
+			speed_knots = 80000.0, 
 			status = 'AT_SEA',
             location = ST_SetSRID(ST_MakePoint(32.54, 29.9), 4326)
 	`, routeID)

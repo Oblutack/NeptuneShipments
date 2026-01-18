@@ -180,9 +180,22 @@ func (r *VesselRepository) UpdateProgress(ctx context.Context, vesselID string, 
     return err
 }
 
-// SetDocked stops the ship and updates its status
+// SetDocked stops the ship AND updates all its cargo to 'DELIVERED'
 func (r *VesselRepository) SetDocked(ctx context.Context, id string) error {
-	query := `UPDATE vessels SET status = 'DOCKED', speed_knots = 0 WHERE id = $1`
-	_, err := r.db.Exec(ctx, query, id)
+	// 1. Stop the Ship
+	queryVessel := `UPDATE vessels SET status = 'DOCKED', speed_knots = 0 WHERE id = $1`
+	_, err := r.db.Exec(ctx, queryVessel, id)
+	if err != nil {
+		return err
+	}
+
+	// 2. Update Cargo Status
+	// CHANGE 'ARRIVED' TO 'DELIVERED' to match your Database Enum
+	queryShipment := `
+		UPDATE shipments 
+		SET status = 'DELIVERED', updated_at = NOW() 
+		WHERE vessel_id = $1 AND status = 'IN_TRANSIT'
+	`
+	_, err = r.db.Exec(ctx, queryShipment, id)
 	return err
 }
