@@ -6,6 +6,7 @@ import { RequireAuth } from "./features/auth/RequireAuth";
 import { LayoutDashboard, Search, LogOut } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { logout, selectCurrentUser } from "./features/auth/authSlice";
+import { LandingPage } from "./pages/LandingPage";
 
 function App() {
   const user = useSelector(selectCurrentUser);
@@ -45,6 +46,7 @@ function App() {
 
       <Routes>
         {/* PUBLIC */}
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/track" element={<TrackingPage />} />
 

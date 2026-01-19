@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
   Globe,
@@ -15,9 +15,11 @@ import {
   useGetVesselByIdQuery,
 } from "../features/api/apiSlice";
 import { GlobalMap } from "../features/map/GlobalMap";
+import { useSearchParams } from "react-router-dom";
 
 export const TrackingPage = () => {
-  const [trackId, setTrackId] = useState("");
+  const [searchParams] = useSearchParams();
+  const [trackId, setTrackId] = useState(searchParams.get("id") || "");
 
   // 1. The Search Trigger
   const [
@@ -29,6 +31,13 @@ export const TrackingPage = () => {
   const { data: vessel } = useGetVesselByIdQuery(shipment?.vessel_id || "", {
     skip: !shipment?.vessel_id, // Don't run if no shipment found yet
   });
+
+  useEffect(() => {
+    const idFromUrl = searchParams.get("id");
+    if (idFromUrl) {
+      triggerSearch(idFromUrl);
+    }
+  }, [searchParams, triggerSearch]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -146,7 +155,7 @@ export const TrackingPage = () => {
           <div className="lg:col-span-2 space-y-4">
             <div className="bg-slate-900/90 backdrop-blur border border-slate-800 rounded-xl p-1 shadow-xl overflow-hidden h-[400px]">
               {/* Reuse GlobalMap but pass only THIS vessel */}
-              {vessel ? (
+              {vessel && vessel.latitude ? (
                 <GlobalMap vessels={[vessel]} ports={[]} />
               ) : (
                 <div className="h-full flex items-center justify-center text-slate-500 flex-col gap-2">
