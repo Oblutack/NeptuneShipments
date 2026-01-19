@@ -62,9 +62,23 @@ export interface AuthResponse {
   user: User;
 }
 
+type RootState = {
+  auth: { token: string | null };
+};
+
 export const apiSlice = createApi({
   reducerPath: "api",
-  baseQuery: fetchBaseQuery({ baseUrl: "http://127.0.0.1:8080/api" }),
+  baseQuery: fetchBaseQuery({
+    baseUrl: "http://127.0.0.1:8080/api",
+    prepareHeaders: (headers, { getState }) => {
+      const token = (getState() as RootState).auth.token;
+
+      if (token) {
+        headers.set("authorization", `Bearer ${token}`);
+      }
+      return headers;
+    },
+  }),
   tagTypes: ["Vessels", "Ports", "Shipments"],
   endpoints: (builder) => ({
     getVessels: builder.query<Vessel[], void>({

@@ -42,7 +42,7 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	// Generate JWT
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
-		secret = "super-secret-key" 
+		secret = "neptune_secret_key_12345" 
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
