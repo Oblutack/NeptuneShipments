@@ -1,7 +1,6 @@
--- 1. Create Routes Table
 CREATE TABLE routes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(255) UNIQUE NOT NULL, -- e.g. "Suez to Rotterdam"
+    name VARCHAR(255) UNIQUE NOT NULL, 
     origin_port_id UUID REFERENCES ports(id),
     destination_port_id UUID REFERENCES ports(id),
     
@@ -11,8 +10,7 @@ CREATE TABLE routes (
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
--- 2. Link Vessels to Routes
 -- A ship is currently "On" a specific route
 ALTER TABLE vessels ADD COLUMN current_route_id UUID REFERENCES routes(id);
 -- How far along the route is the ship? (0.0 = Start, 1.0 = Finish)
-ALTER TABLE vessels ADD COLUMN route_progress FLOAT DEFAULT 0.0;
+ALTER TABLE vessels ADD COLUMN route_progress FLOAT DEFAULT 0.0

@@ -1,0 +1,3 @@
+ALTER TABLE shipments DROP COLUMN client_id;
+DROP TABLE IF EXISTS users;
+DROP TYPE IF EXISTS user_role;

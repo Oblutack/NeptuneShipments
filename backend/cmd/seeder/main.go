@@ -6,6 +6,7 @@ import (
 
 	"github.com/Oblutack/NeptuneShipments/backend/internal/database"
 	"github.com/joho/godotenv"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func main() {
@@ -121,4 +122,58 @@ func main() {
 
 	log.Println("✅ Vessel Assigned to Route")
 	log.Println("🌱 Database Seeding Complete!")
+
+	// 4. SEED USERS
+	adminPassword, _ := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
+	var adminID string
+
+	err = pool.QueryRow(ctx, `
+		INSERT INTO users (email, password_hash, full_name, company_name, role)
+		VALUES ('admin@neptune.com', $1, 'Admin User', 'Neptune HQ', 'ADMIN')
+		ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email
+		RETURNING id
+	`, string(adminPassword)).Scan(&adminID)
+
+	if err != nil {
+		// If conflict update didn't return ID (because nothing changed), fetch it
+		pool.QueryRow(ctx, "SELECT id FROM users WHERE email = 'admin@neptune.com'").Scan(&adminID)
+	}
+	log.Println("✅ Admin User Seeded")
+
+	// Create a Client 
+	clientPassword, _ := bcrypt.GenerateFromPassword([]byte("client123"), bcrypt.DefaultCost)
+	var clientID string
+
+	err = pool.QueryRow(ctx, `
+		INSERT INTO users (email, password_hash, full_name, company_name, role)
+		VALUES ('elon@spacex.com', $1, 'Elon Musk', 'SpaceX', 'CLIENT')
+		ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email
+		RETURNING id
+	`, string(clientPassword)).Scan(&clientID)
+
+	if err != nil {
+		pool.QueryRow(ctx, "SELECT id FROM users WHERE email = 'elon@spacex.com'").Scan(&clientID)
+	}
+	log.Println("✅ Client User Seeded")
+
+	// 5. SEED SHIPMENT
+	_, err = pool.Exec(ctx, `
+		INSERT INTO shipments (
+			tracking_number, customer_name, origin_port_id, destination_port_id, 
+			vessel_id, description, container_number, weight_kg, status, client_id
+		)
+		VALUES (
+			'TRK-TEST-01', 
+			'SpaceX', 
+			(SELECT id FROM ports WHERE un_locode = 'USLAX'),
+			(SELECT id FROM ports WHERE un_locode = 'NLRTM'),
+			(SELECT id FROM vessels WHERE imo_number = 'IMO9811000'),
+			'Starlink Satellites', 
+			'MSKU1234567', 
+			5000.0, 
+			'IN_TRANSIT',
+			$1 -- Pass the clientID here
+		)
+		ON CONFLICT (tracking_number) DO NOTHING
+	`, clientID) 
 }
