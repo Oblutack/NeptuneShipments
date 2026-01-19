@@ -52,7 +52,7 @@ function App() {
 
         {/* PROTECTED */}
         <Route element={<RequireAuth />}>
-          <Route path="/" element={<Dashboard />} />
+          <Route path="/dashboard" element={<Dashboard />} />
         </Route>
       </Routes>
     </BrowserRouter>

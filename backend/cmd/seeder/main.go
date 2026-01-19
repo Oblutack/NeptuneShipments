@@ -88,7 +88,7 @@ func main() {
 		DO UPDATE SET 
 			current_route_id = $1, 
 			route_progress = 0.0,
-			speed_knots = 80000.0, 
+			speed_knots = 15.0,
 			status = 'AT_SEA',
             location = ST_SetSRID(ST_MakePoint(32.54, 29.9), 4326)
 	`, routeID)
@@ -175,5 +175,51 @@ func main() {
 			$1 -- Pass the clientID here
 		)
 		ON CONFLICT (tracking_number) DO NOTHING
-	`, clientID) 
+	`, clientID)
+	
+	// 6. SEED TANKER VESSEL ("Seawise Giant")
+	// Using the same route for now, but different stats
+	var tankerID string
+	err = pool.QueryRow(ctx, `
+		INSERT INTO vessels (name, imo_number, flag_country, type, status, capacity_barrels, location, heading, speed_knots, current_route_id, route_progress)
+		VALUES ('Seawise Giant', 'IMO9999999', 'LR', 'TANKER', 'AT_SEA', 4000000, ST_SetSRID(ST_MakePoint(32.54, 29.9), 4326), 0, 3000.0, $1, 0.1)
+		ON CONFLICT (imo_number) 
+		DO UPDATE SET 
+			speed_knots = 15.0, 
+			status = 'AT_SEA',
+            capacity_barrels = 4000000
+		RETURNING id
+	`, routeID).Scan(&tankerID)
+	
+	if err != nil {
+		// If upsert didn't return ID (because no change), fetch it
+		pool.QueryRow(ctx, "SELECT id FROM vessels WHERE imo_number = 'IMO9999999'").Scan(&tankerID)
+	}
+	log.Println("✅ Tanker 'Seawise Giant' Seeded")
+
+	// 7. SEED TANKS FOR TANKER
+	// Real tankers have multiple compartments. Let's add 3.
+	tanks := []struct {
+		Name     string
+		Capacity float64
+		Level    float64
+		Type     string
+	}{
+		{"Tank 1 (Port)", 50000.0, 45000.0, "Crude Oil"},      // 90% Full
+		{"Tank 1 (Stbd)", 50000.0, 10000.0, "Crude Oil"},      // 20% Full
+		{"Tank 2 (Center)", 100000.0, 0.0, "Empty"},           // Empty
+	}
+
+	for _, t := range tanks {
+		_, err = pool.Exec(ctx, `
+			INSERT INTO tanks (vessel_id, name, capacity_barrels, current_level, cargo_type)
+			VALUES ($1, $2, $3, $4, $5)
+			ON CONFLICT (vessel_id, name) DO NOTHING -- <--- Logic Fix
+		`, tankerID, t.Name, t.Capacity, t.Level, t.Type)
+        
+        if err != nil {
+            log.Printf("Error seeding tank %s: %v", t.Name, err)
+        }
+	}
+	log.Println("✅ Tanks Installed on Seawise Giant")
 }

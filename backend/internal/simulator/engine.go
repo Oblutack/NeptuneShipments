@@ -74,7 +74,7 @@ func (e *Engine) moveVessel(ctx context.Context, v models.Vessel) {
 
 		// Case 2: Moving along the route
 		// Simple logic: Add 0.5% progress every tick (for demo)
-		increment := 0.1 
+		increment := 0.002 
 		newProgress := v.RouteProgress + increment
 
 		if newProgress > 1.0 {

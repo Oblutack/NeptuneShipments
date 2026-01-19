@@ -23,7 +23,7 @@ export const LoginPage = () => {
       dispatch(setCredentials(userData));
 
       // Redirect based on role (For now, just go to Dashboard)
-      navigate("/");
+      navigate("/dashboard");
     } catch (err) {
       console.error("Login Error:", err);
       alert("Login Failed: Check your credentials");
