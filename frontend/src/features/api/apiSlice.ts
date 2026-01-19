@@ -50,6 +50,18 @@ export interface Route {
   };
 }
 
+export interface User {
+  id: string;
+  email: string;
+  full_name: string;
+  role: "ADMIN" | "CLIENT";
+}
+
+export interface AuthResponse {
+  token: string;
+  user: User;
+}
+
 export const apiSlice = createApi({
   reducerPath: "api",
   baseQuery: fetchBaseQuery({ baseUrl: "http://127.0.0.1:8080/api" }),
@@ -86,17 +98,25 @@ export const apiSlice = createApi({
       }),
       invalidatesTags: ["Vessels"],
     }),
-    // 1. Find Shipment by Tracking Number
+    // Find Shipment by Tracking Number
     getShipmentByTracking: builder.query<Shipment, string>({
       query: (trackingNumber) => `/shipments/${trackingNumber}`,
     }),
 
-    // 2. Find specific Vessel by ID
+    // Find specific Vessel by ID
     getVesselById: builder.query<Vessel, string>({
       query: (id) => `/vessels/${id}`,
     }),
     getRouteById: builder.query<Route, string>({
       query: (id) => `/routes/${id}`,
+    }),
+    // Login
+    login: builder.mutation<AuthResponse, { email: string; password: string }>({
+      query: (credentials) => ({
+        url: "/auth/login",
+        method: "POST",
+        body: credentials,
+      }),
     }),
   }),
 });
@@ -111,4 +131,5 @@ export const {
   useLazyGetShipmentByTrackingQuery, // Lazy (Trigger manually)
   useGetVesselByIdQuery,
   useGetRouteByIdQuery,
+  useLoginMutation,
 } = apiSlice;

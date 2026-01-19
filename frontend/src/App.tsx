@@ -2,11 +2,11 @@ import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import { Dashboard } from "./pages/Dashboard";
 import { TrackingPage } from "./pages/TrackingPage";
 import { LayoutDashboard, Search } from "lucide-react";
+import { LoginPage } from "./pages/LoginPage";
 
 function App() {
   return (
     <BrowserRouter>
-      {/* Optional: A tiny nav bar to switch views for development */}
       <nav className="fixed top-4 right-4 z-50 flex gap-2">
         <Link
           to="/"
@@ -25,10 +25,8 @@ function App() {
       </nav>
 
       <Routes>
-        {/* Route 1: Admin Dashboard (Home) */}
+        <Route path="/login" element={<LoginPage />} />
         <Route path="/" element={<Dashboard />} />
-
-        {/* Route 2: Customer Tracking Page */}
         <Route path="/track" element={<TrackingPage />} />
       </Routes>
     </BrowserRouter>
