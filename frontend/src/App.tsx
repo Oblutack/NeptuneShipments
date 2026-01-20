@@ -8,6 +8,7 @@ import { FleetPage } from './pages/dashboard/FleetPage';
 import { CargoPage } from './pages/dashboard/CargoPage';
 import { GlobalMap } from './features/map/GlobalMap'; // We can use this directly for map page
 import { useGetVesselsQuery, useGetPortsQuery } from './features/api/apiSlice'; // Need for map wrapper
+import { StatsPage } from './pages/dashboard/StatsPage';
 
 // Wrapper for Map Page to handle data fetching
 const MapPage = () => {
@@ -28,7 +29,7 @@ function App() {
         {/* ADMIN PORTAL */}
         <Route element={<RequireAuth />}>
             <Route path="/dashboard" element={<DashboardLayout />}>
-                <Route index element={<div className="text-2xl text-slate-400">Overview Stats Coming Soon...</div>} />
+                <Route index element={<StatsPage />} />
                 <Route path="fleet" element={<FleetPage />} />
                 <Route path="cargo" element={<CargoPage />} />
                 <Route path="map" element={<MapPage />} />
