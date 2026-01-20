@@ -3,8 +3,31 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useGetRouteByIdQuery, type Vessel, type Port } from "../api/apiSlice"; // <--- Import Hook
 import { Ship, Anchor } from "lucide-react";
+import { useState } from "react";
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
+
+const STORM_DATA: GeoJSON.FeatureCollection = {
+  type: "FeatureCollection",
+  features: [
+    {
+      type: "Feature",
+      properties: { name: "Typhoon Cobra", severity: "High" },
+      geometry: {
+        type: "Polygon",
+        coordinates: [
+          [
+            [-40.0, 35.0],
+            [-30.0, 35.0],
+            [-25.0, 25.0],
+            [-45.0, 25.0],
+            [-40.0, 35.0],
+          ],
+        ],
+      },
+    },
+  ],
+};
 
 interface GlobalMapProps {
   vessels: Vessel[] | undefined;
@@ -17,7 +40,7 @@ export const GlobalMap = ({ vessels, ports, onShipClick }: GlobalMapProps) => {
   // For this demo, we just grab the route from the first ship (Ever Given)
   // In a real app, you might select a ship to see its specific route
   const activeRouteId = vessels?.[0]?.current_route_id;
-
+  const [showWeather, setShowWeather] = useState(true);
   // 2. Fetch the route data (skip if no ID)
   const { data: routeData } = useGetRouteByIdQuery(activeRouteId || "", {
     skip: !activeRouteId,
@@ -42,6 +65,30 @@ export const GlobalMap = ({ vessels, ports, onShipClick }: GlobalMapProps) => {
         }}
       >
         <NavigationControl position="top-right" />
+
+        {/* --- WEATHER / HAZARD LAYER --- */}
+        {showWeather && (
+          <Source id="storm-source" type="geojson" data={STORM_DATA}>
+            {/* The Red Fill */}
+            <Layer
+              id="storm-fill"
+              type="fill"
+              paint={{
+                "fill-color": "#ef4444", // Tailwind Red-500
+                "fill-opacity": 0.3,
+              }}
+            />
+            {/* The Red Outline */}
+            <Layer
+              id="storm-outline"
+              type="line"
+              paint={{
+                "line-color": "#b91c1c", // Tailwind Red-700
+                "line-width": 2,
+              }}
+            />
+          </Source>
+        )}
 
         {/* --- RENDER ROUTE LINE --- */}
         {routeData && (
@@ -105,6 +152,22 @@ export const GlobalMap = ({ vessels, ports, onShipClick }: GlobalMapProps) => {
             </div>
           </Marker>
         ))}
+        {/* WEATHER CONTROL BUTTON */}
+        <div className="absolute top-4 left-4 z-10">
+          <button
+            onClick={() => setShowWeather(!showWeather)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold shadow-xl transition-all ${
+              showWeather
+                ? "bg-red-500/80 text-white hover:bg-red-600"
+                : "bg-slate-800/80 text-slate-400 hover:bg-slate-700 hover:text-white"
+            }`}
+          >
+            <div
+              className={`w-2 h-2 rounded-full ${showWeather ? "bg-white animate-pulse" : "bg-slate-500"}`}
+            ></div>
+            STORM WARNING
+          </button>
+        </div>
       </Map>
     </div>
   );
