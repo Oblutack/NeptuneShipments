@@ -45,6 +45,9 @@ func main() {
 	userRepo := repository.NewUserRepository(db)
 	authHandler := handlers.NewAuthHandler(userRepo)
 
+	tankRepo := repository.NewTankRepository(db)
+	tankHandler := handlers.NewTankHandler(tankRepo)
+
 	// Initialize Fiber
 	app := fiber.New()
 
@@ -88,7 +91,9 @@ func main() {
 	// Vessels
 	vessels := api.Group("/vessels")
 	vessels.Post("/", vesselHandler.CreateVessel) 
-	vessels.Get("/", vesselHandler.GetAllVessels) 
+	vessels.Get("/", vesselHandler.GetAllVessels)
+	
+	vessels.Get("/:vesselId/tanks", tankHandler.GetTanks)
 
 	// Ports
 	api.Get("/ports", portHandler.GetAllPorts)   

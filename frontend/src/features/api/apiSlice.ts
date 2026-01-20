@@ -62,6 +62,15 @@ export interface AuthResponse {
   user: User;
 }
 
+export interface Tank {
+  id: string;
+  name: string;
+  capacity_barrels: number;
+  current_level: number;
+  cargo_type: string;
+  is_filling: boolean;
+}
+
 type RootState = {
   auth: { token: string | null };
 };
@@ -132,6 +141,9 @@ export const apiSlice = createApi({
         body: credentials,
       }),
     }),
+    getTanks: builder.query<Tank[], string>({
+      query: (vesselId) => `/vessels/${vesselId}/tanks`,
+    }),
   }),
 });
 
@@ -146,4 +158,5 @@ export const {
   useGetVesselByIdQuery,
   useGetRouteByIdQuery,
   useLoginMutation,
+  useGetTanksQuery,
 } = apiSlice;

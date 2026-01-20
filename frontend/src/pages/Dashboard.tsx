@@ -3,6 +3,8 @@ import { Loader2, Map as MapIcon, Ship, Anchor } from "lucide-react";
 import { GlobalMap } from "../features/map/GlobalMap";
 import { ShipmentForm } from "../features/shipments/ShipmentForm";
 import { ShipmentList } from "../features/shipments/ShipmentList";
+import { useState } from "react";
+import { TankMonitor } from "../features/fleet/TankMonitor";
 
 export const Dashboard = () => {
   const {
@@ -12,6 +14,7 @@ export const Dashboard = () => {
   } = useGetVesselsQuery(undefined, {
     pollingInterval: 2000,
   });
+  const [selectedShipId, setSelectedShipId] = useState<string | null>(null);
 
   const { data: ports } = useGetPortsQuery();
 
@@ -41,6 +44,26 @@ export const Dashboard = () => {
       )}
 
       <main className="max-w-7xl mx-auto space-y-8">
+        {/* --- VESSEL INSPECTOR PANEL --- */}
+        {selectedShipId && (
+          <section className="bg-slate-900 border border-blue-500/30 rounded-xl p-6 shadow-2xl relative overflow-hidden">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <Ship className="text-blue-400" />
+                Vessel Telemetry
+              </h2>
+              <button
+                onClick={() => setSelectedShipId(null)}
+                className="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded text-slate-300 transition"
+              >
+                Close Inspector
+              </button>
+            </div>
+
+            {/* The Tank Monitor Component */}
+            <TankMonitor vesselId={selectedShipId} />
+          </section>
+        )}
         {/* MAP SECTION */}
         <section>
           {isLoading ? (
@@ -48,7 +71,11 @@ export const Dashboard = () => {
               <Loader2 className="animate-spin text-slate-600" size={40} />
             </div>
           ) : (
-            <GlobalMap vessels={vessels} ports={ports} />
+            <GlobalMap
+              vessels={vessels}
+              ports={ports}
+              onShipClick={setSelectedShipId}
+            />
           )}
         </section>
 
@@ -73,7 +100,12 @@ export const Dashboard = () => {
           {vessels?.map((ship) => (
             <div
               key={ship.id}
-              className="bg-slate-900/50 border border-slate-800 p-4 rounded hover:border-blue-500/50 transition"
+              onClick={() => setSelectedShipId(ship.id)} // <--- CLICK HANDLER
+              className={`p-4 rounded border cursor-pointer transition-all ${
+                selectedShipId === ship.id
+                  ? "bg-blue-900/20 border-blue-500 ring-1 ring-blue-500"
+                  : "bg-slate-900/50 border-slate-800 hover:border-blue-500/50"
+              }`}
             >
               <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2">

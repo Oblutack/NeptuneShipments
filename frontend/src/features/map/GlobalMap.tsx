@@ -9,9 +9,10 @@ const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 interface GlobalMapProps {
   vessels: Vessel[] | undefined;
   ports: Port[] | undefined;
+  onShipClick: (id: string) => void;
 }
 
-export const GlobalMap = ({ vessels, ports }: GlobalMapProps) => {
+export const GlobalMap = ({ vessels, ports, onShipClick }: GlobalMapProps) => {
   // 1. Logic to find the active route ID
   // For this demo, we just grab the route from the first ship (Ever Given)
   // In a real app, you might select a ship to see its specific route
@@ -87,7 +88,10 @@ export const GlobalMap = ({ vessels, ports }: GlobalMapProps) => {
             latitude={ship.latitude}
             anchor="center"
           >
-            <div className="group relative cursor-pointer">
+            <div
+              className="group relative cursor-pointer"
+              onClick={() => onShipClick(ship.id)}
+            >
               <div
                 style={{ transform: `rotate(${ship.heading}deg)` }}
                 className="transition-transform duration-500"
