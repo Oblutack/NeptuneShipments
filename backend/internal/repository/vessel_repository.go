@@ -84,7 +84,8 @@ func (r *VesselRepository) GetAll(ctx context.Context) ([]models.Vessel, error) 
                ST_Y(location::geometry) as lat, 
                ST_X(location::geometry) as lon, 
                heading, speed_knots, last_updated, created_at,
-               current_route_id, route_progress
+               current_route_id, route_progress,
+               fuel_level, fuel_capacity
         FROM vessels
     `
     rows, err := r.db.Query(ctx, query)
@@ -96,13 +97,14 @@ func (r *VesselRepository) GetAll(ctx context.Context) ([]models.Vessel, error) 
     var vessels []models.Vessel
     for rows.Next() {
         var v models.Vessel
-        // --- UPDATED SCAN to match query ---
+        
         err := rows.Scan(
             &v.ID, &v.Name, &v.IMONumber, &v.FlagCountry, &v.Type, &v.Status,
             &v.CapacityTEU, &v.CapacityBarrels,
             &v.Latitude, &v.Longitude,
             &v.Heading, &v.SpeedKnots, &v.LastUpdated, &v.CreatedAt,
-            &v.CurrentRouteID, &v.RouteProgress, // <--- Added these!
+            &v.CurrentRouteID, &v.RouteProgress,
+            &v.FuelLevel, &v.FuelCapacity, 
         )
         if err != nil {
             return nil, err
@@ -156,7 +158,7 @@ func (r *VesselRepository) UpdatePosition(ctx context.Context, id string, lat, l
 
 // UpdateProgress moves the ship along the pre-defined route
 // progress is a value between 0.0 and 1.0
-func (r *VesselRepository) UpdateProgress(ctx context.Context, vesselID string, progress float64) error {
+func (r *VesselRepository) UpdateProgress(ctx context.Context, vesselID string, progress float64, fuelLevel float64) error {
     // 1. Calculate new point on the line (Interpolate)
     // 2. Update the vessel's location column AND the progress column
     query := `
@@ -168,6 +170,7 @@ func (r *VesselRepository) UpdateProgress(ctx context.Context, vesselID string, 
         UPDATE vessels
         SET 
             route_progress = $2,
+            fuel_level = $3,
             -- Magic PostGIS function: Find point at X percent along line
             location = (
                 SELECT ST_LineInterpolatePoint(path::geometry, $2)::geography 
@@ -176,7 +179,7 @@ func (r *VesselRepository) UpdateProgress(ctx context.Context, vesselID string, 
             last_updated = NOW()
         WHERE id = $1
     `
-    _, err := r.db.Exec(ctx, query, vesselID, progress)
+    _, err := r.db.Exec(ctx, query, vesselID, progress, fuelLevel)
     return err
 }
 
@@ -197,5 +200,12 @@ func (r *VesselRepository) SetDocked(ctx context.Context, id string) error {
 		WHERE vessel_id = $1 AND status = 'IN_TRANSIT'
 	`
 	_, err = r.db.Exec(ctx, queryShipment, id)
+	return err
+}
+
+// SetDistress stops the ship due to empty fuel
+func (r *VesselRepository) SetDistress(ctx context.Context, id string) error {
+	query := `UPDATE vessels SET status = 'DISTRESS', speed_knots = 0 WHERE id = $1`
+	_, err := r.db.Exec(ctx, query, id)
 	return err
 }

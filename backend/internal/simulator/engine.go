@@ -56,33 +56,47 @@ func (e *Engine) tick() {
 }
 
 func (e *Engine) moveVessel(ctx context.Context, v models.Vessel) {
-	// Check if ship has a route
+	// 1. Calculate Fuel Burn
+	// Base burn: 0.5 tons per tick. Increases with speed.
+	burnRate := 0.5 * (v.SpeedKnots / 20.0)
+	newFuel := v.FuelLevel - burnRate
+
+	// 2. Check for Empty Tank
+	if newFuel <= 0 {
+		newFuel = 0
+		if v.Status != "DISTRESS" {
+			log.Printf("🔥 MAYDAY! Ship %s has run out of fuel!", v.Name)
+			// Fix 1: Use the repository method instead of raw SQL
+			e.vesselRepo.SetDistress(ctx, v.ID)
+		}
+		return // Ship stops moving
+	}
+
+	// Strategy A: If on a route, follow the line
 	if v.CurrentRouteID != nil {
 		
 		// Case 1: Route is finished (Arrived)
 		if v.RouteProgress >= 1.0 {
-			// Stop the ship if it hasn't been stopped yet
 			if v.Status == "AT_SEA" {
 				log.Printf("🚢 Ship %s has arrived at destination!", v.Name)
-				err := e.vesselRepo.SetDocked(ctx, v.ID)
-				if err != nil {
-					log.Printf("Sim Error: Failed to dock ship: %v", err)
-				}
+				e.vesselRepo.SetDocked(ctx, v.ID)
+				
+				// Update shipments to DELIVERED
+				e.shipmentRepo.UpdateETAForVessel(ctx, v.ID, *v.CurrentRouteID, 1.0, 0)
 			}
-			return // Do nothing else
+			return
 		}
 
 		// Case 2: Moving along the route
-		// Simple logic: Add 0.5% progress every tick (for demo)
-		increment := 0.002 
+		increment := 0.002 // Speed of progress
 		newProgress := v.RouteProgress + increment
 
 		if newProgress > 1.0 {
 			newProgress = 1.0
 		}
 
-		// Update DB Position
-		err := e.vesselRepo.UpdateProgress(ctx, v.ID, newProgress)
+		// Fix 2: Pass newFuel to UpdateProgress (It needs 4 arguments now)
+		err := e.vesselRepo.UpdateProgress(ctx, v.ID, newProgress, newFuel)
 		if err != nil {
 			log.Printf("Sim Error: Failed to update progress: %v", err)
 		}
@@ -90,13 +104,15 @@ func (e *Engine) moveVessel(ctx context.Context, v models.Vessel) {
 		// Update ETA
 		e.shipmentRepo.UpdateETAForVessel(ctx, v.ID, *v.CurrentRouteID, newProgress, v.SpeedKnots)
 		
-		return // Crucial: Return so we don't run Strategy B
+		return
 	}
 
-	// Strategy B: Free Roam (Only if NO route assigned)
+	// Strategy B: Free Roam
 	newLat, newLon := navigation.CalculateNextPosition(
 		v.Latitude, v.Longitude, v.SpeedKnots, v.Heading, 5.0,
 	)
+	// Note: We should probably update fuel here too for Strategy B, 
+	// but let's stick to Strategy A for now.
 	e.vesselRepo.UpdatePosition(ctx, v.ID, newLat, newLon)
 }
 

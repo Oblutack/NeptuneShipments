@@ -28,4 +28,7 @@ type Vessel struct {
 
 	CurrentRouteID *string  `json:"current_route_id" db:"current_route_id"`
     RouteProgress  float64  `json:"route_progress" db:"route_progress"`
+
+	FuelLevel      float64   `json:"fuel_level" db:"fuel_level"`
+    FuelCapacity   float64   `json:"fuel_capacity" db:"fuel_capacity"`
 }
