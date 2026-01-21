@@ -22,7 +22,7 @@ func main() {
 		}
 	}
 
-	// Connect to db
+	
 	db, err := database.New()
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
@@ -36,17 +36,21 @@ func main() {
 	portRepo := repository.NewPortRepository(db)
 	portHandler := handlers.NewPortHandler(portRepo)
 
-	shipmentRepo := repository.NewShipmentRepository(db) 
+	shipmentRepo := repository.NewShipmentRepository(db)
 	shipmentHandler := handlers.NewShipmentHandler(shipmentRepo)
-
-	routeRepo := repository.NewRouteRepository(db) 
-    routeHandler := handlers.NewRouteHandler(routeRepo)
 
 	userRepo := repository.NewUserRepository(db)
 	authHandler := handlers.NewAuthHandler(userRepo)
 
 	tankRepo := repository.NewTankRepository(db)
 	tankHandler := handlers.NewTankHandler(tankRepo)
+
+	// --- Route Engine Setup (Correct Version) ---
+	routingEngineRepo := repository.NewRoutingRepository(db)
+	routeRepo := repository.NewRouteRepository(db)
+
+	// Pass BOTH repos here
+	routeHandler := handlers.NewRouteHandler(routeRepo, routingEngineRepo)
 
 	// Initialize Fiber
 	app := fiber.New()
@@ -69,20 +73,22 @@ func main() {
 
 	// PUBLIC ROUTES
 	api.Post("/auth/login", authHandler.Login)
-	api.Get("/shipments/:trackingNumber", shipmentHandler.GetShipmentByTracking) 
-	
-	api.Get("/vessels/:id", vesselHandler.GetVesselByID) 
-	api.Get("/routes/:id", routeHandler.GetRoute) 
+	api.Get("/shipments/:trackingNumber", shipmentHandler.GetShipmentByTracking)
+
+	api.Get("/vessels/:id", vesselHandler.GetVesselByID)
+	api.Get("/routes/:id", routeHandler.GetRoute)
+
+	api.Post("/routes/calculate", routeHandler.CalculateRoute)
 
 	// --- MIDDLEWARE ---
 	jwtSecret := os.Getenv("JWT_SECRET")
-    if jwtSecret == "" {
-        jwtSecret = "neptune_secret_key_12345" // Match the fallback
-    }
+	if jwtSecret == "" {
+		jwtSecret = "neptune_secret_key_12345" 
+	}
 
 	api.Use(jwtware.New(jwtware.Config{
 		SigningKey: jwtware.SigningKey{Key: []byte(jwtSecret)},
-        ErrorHandler: func(c *fiber.Ctx, err error) error {
+		ErrorHandler: func(c *fiber.Ctx, err error) error {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
 		},
 	}))
@@ -90,18 +96,18 @@ func main() {
 	// PRIVATE ROUTES
 	// Vessels
 	vessels := api.Group("/vessels")
-	vessels.Post("/", vesselHandler.CreateVessel) 
+	vessels.Post("/", vesselHandler.CreateVessel)
 	vessels.Get("/", vesselHandler.GetAllVessels)
 	vessels.Get("/:vesselId/tanks", tankHandler.GetTanks)
 	vessels.Post("/:id/refuel", vesselHandler.RefuelVessel)
 
 	// Ports
-	api.Get("/ports", portHandler.GetAllPorts)   
+	api.Get("/ports", portHandler.GetAllPorts)
 
 	// Shipments
 	shipments := api.Group("/shipments")
-	shipments.Post("/", shipmentHandler.CreateShipment) 
-	shipments.Get("/", shipmentHandler.GetAllShipments) 
+	shipments.Post("/", shipmentHandler.CreateShipment)
+	shipments.Get("/", shipmentHandler.GetAllShipments)
 
 	simEngine := simulator.NewEngine(vesselRepo, shipmentRepo)
 	simEngine.Start()
@@ -110,11 +116,8 @@ func main() {
 	if port == "" {
 		port = "8080"
 	}
-	
+
 	log.Printf("Server starting on port %s", port)
 	log.Printf("Access via: http://localhost:%s or http://127.0.0.1:%s", port, port)
 	log.Fatal(app.Listen(fmt.Sprintf("0.0.0.0:%s", port)))
 }
-
-
-
