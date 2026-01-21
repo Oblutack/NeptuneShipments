@@ -14,6 +14,8 @@ export interface Vessel {
   created_at: string;
   current_route_id?: string; // Optional because not all ships have routes
   route_progress?: number;
+  fuel_level: number;
+  fuel_capacity: number;
 }
 
 export interface Port {

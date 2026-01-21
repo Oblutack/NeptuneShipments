@@ -145,7 +145,12 @@ export const GlobalMap = ({ vessels, ports, onShipClick }: GlobalMapProps) => {
               >
                 <Ship
                   size={24}
-                  className={`${ship.status === "AT_SEA" ? "text-green-400" : "text-yellow-400"} drop-shadow-lg`}
+                  className={`
+                    ${ship.status === "AT_SEA" ? "text-green-400" : ""}
+                    ${ship.status === "DOCKED" ? "text-yellow-400" : ""}
+                    ${ship.status === "DISTRESS" ? "text-red-600 animate-pulse drop-shadow-[0_0_10px_rgba(220,38,38,0.8)]" : ""} 
+                    drop-shadow-lg
+                  `}
                   fill="currentColor"
                 />
               </div>
