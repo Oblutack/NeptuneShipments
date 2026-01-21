@@ -1,6 +1,9 @@
 import { useState } from "react";
-import { useGetVesselsQuery } from "../../features/api/apiSlice";
-import { Ship, Loader2, Fuel, AlertTriangle } from "lucide-react"; // <--- Import Fuel, AlertTriangle
+import {
+  useGetVesselsQuery,
+  useRefuelVesselMutation,
+} from "../../features/api/apiSlice";
+import { Ship, Loader2, Fuel, AlertTriangle, Zap } from "lucide-react";
 import { TankMonitor } from "../../features/fleet/TankMonitor";
 
 export const FleetPage = () => {
@@ -8,6 +11,7 @@ export const FleetPage = () => {
     pollingInterval: 2000,
   });
   const [selectedShipId, setSelectedShipId] = useState<string | null>(null);
+  const [refuelVessel, { isLoading: isRefueling }] = useRefuelVesselMutation();
 
   // Helper to find the currently selected ship object
   const selectedShip = vessels?.find((v) => v.id === selectedShipId);
@@ -59,9 +63,27 @@ export const FleetPage = () => {
                 <div className="text-xs text-slate-500">
                   / {selectedShip.fuel_capacity} Tons
                 </div>
+
+                {/* --- DISTRESS WARNING --- */}
                 {selectedShip.status === "DISTRESS" && (
-                  <div className="mt-2 text-red-500 text-xs font-bold flex items-center justify-center gap-1">
-                    <AlertTriangle size={12} /> CRITICAL
+                  <div className="mt-2 text-red-500 text-xs font-bold flex flex-col items-center gap-2">
+                    <span className="flex items-center gap-1">
+                      <AlertTriangle size={12} /> CRITICAL
+                    </span>
+
+                    {/* --- REFUEL BUTTON --- */}
+                    <button
+                      onClick={() => refuelVessel(selectedShip.id)}
+                      disabled={isRefueling}
+                      className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded shadow-lg flex items-center gap-2 transition-all hover:scale-105 active:scale-95 w-full justify-center"
+                    >
+                      {isRefueling ? (
+                        <Loader2 className="animate-spin" size={14} />
+                      ) : (
+                        <Zap size={14} />
+                      )}
+                      Emergency Refuel
+                    </button>
                   </div>
                 )}
               </div>

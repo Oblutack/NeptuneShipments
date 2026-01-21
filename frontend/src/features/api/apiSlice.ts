@@ -146,6 +146,13 @@ export const apiSlice = createApi({
     getTanks: builder.query<Tank[], string>({
       query: (vesselId) => `/vessels/${vesselId}/tanks`,
     }),
+    refuelVessel: builder.mutation<void, string>({
+      query: (id) => ({
+        url: `/vessels/${id}/refuel`,
+        method: "POST",
+      }),
+      invalidatesTags: ["Vessels"],
+    }),
   }),
 });
 
@@ -161,4 +168,5 @@ export const {
   useGetRouteByIdQuery,
   useLoginMutation,
   useGetTanksQuery,
+  useRefuelVesselMutation,
 } = apiSlice;

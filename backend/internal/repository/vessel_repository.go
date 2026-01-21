@@ -209,3 +209,17 @@ func (r *VesselRepository) SetDistress(ctx context.Context, id string) error {
 	_, err := r.db.Exec(ctx, query, id)
 	return err
 }
+
+// RefuelVessel resets fuel to capacity and restarts the engine
+func (r *VesselRepository) RefuelVessel(ctx context.Context, id string) error {
+	query := `
+		UPDATE vessels 
+		SET 
+			fuel_level = fuel_capacity, -- Fill it up
+			status = 'AT_SEA',          -- Clear DISTRESS status
+			speed_knots = 5000.0        -- Restart engine (Fast speed for demo)
+		WHERE id = $1
+	`
+	_, err := r.db.Exec(ctx, query, id)
+	return err
+}

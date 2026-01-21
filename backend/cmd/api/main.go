@@ -92,8 +92,8 @@ func main() {
 	vessels := api.Group("/vessels")
 	vessels.Post("/", vesselHandler.CreateVessel) 
 	vessels.Get("/", vesselHandler.GetAllVessels)
-	
 	vessels.Get("/:vesselId/tanks", tankHandler.GetTanks)
+	vessels.Post("/:id/refuel", vesselHandler.RefuelVessel)
 
 	// Ports
 	api.Get("/ports", portHandler.GetAllPorts)   

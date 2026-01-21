@@ -79,3 +79,11 @@ func (h *VesselHandler) GetVesselByID(c *fiber.Ctx) error {
 	}
 	return c.JSON(vessel)
 }
+
+func (h *VesselHandler) RefuelVessel(c *fiber.Ctx) error {
+	id := c.Params("id")
+	if err := h.repo.RefuelVessel(c.Context(), id); err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to refuel vessel"})
+	}
+	return c.JSON(fiber.Map{"status": "refueled", "message": "Vessel is back online"})
+}
