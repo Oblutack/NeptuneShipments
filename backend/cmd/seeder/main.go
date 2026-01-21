@@ -81,14 +81,16 @@ func main() {
 	log.Printf("✅ Route ID Found: %s", routeID)
 
 	// 3. SEED VESSEL
-	_, err = pool.Exec(ctx, `
-		INSERT INTO vessels (name, imo_number, flag_country, type, status, capacity_teu, location, heading, speed_knots, current_route_id, route_progress)
-		VALUES ('Ever Given', 'IMO9811000', 'PA', 'CONTAINER', 'AT_SEA', 20124, ST_SetSRID(ST_MakePoint(32.54, 29.9), 4326), 0, 5000.0, $1, 0.0)
+_, err = pool.Exec(ctx, `
+		INSERT INTO vessels (name, imo_number, flag_country, type, status, capacity_teu, location, heading, speed_knots, current_route_id, route_progress, fuel_capacity, fuel_level)
+		VALUES ('Ever Given', 'IMO9811000', 'PA', 'CONTAINER', 'AT_SEA', 20124, ST_SetSRID(ST_MakePoint(32.54, 29.9), 4326), 0, 5000.0, $1, 0.0, 3000.0, 2800.0)
 		ON CONFLICT (imo_number) 
 		DO UPDATE SET 
+			fuel_level = 2800.0, -- Reset fuel
+            fuel_capacity = 3000.0,
 			current_route_id = $1, 
 			route_progress = 0.0,
-			speed_knots = 15.0,
+			speed_knots = 5000.0, 
 			status = 'AT_SEA',
             location = ST_SetSRID(ST_MakePoint(32.54, 29.9), 4326)
 	`, routeID)
@@ -181,13 +183,14 @@ func main() {
 	// Using the same route for now, but different stats
 	var tankerID string
 	err = pool.QueryRow(ctx, `
-		INSERT INTO vessels (name, imo_number, flag_country, type, status, capacity_barrels, location, heading, speed_knots, current_route_id, route_progress)
-		VALUES ('Seawise Giant', 'IMO9999999', 'LR', 'TANKER', 'AT_SEA', 4000000, ST_SetSRID(ST_MakePoint(32.54, 29.9), 4326), 0, 3000.0, $1, 0.1)
+		INSERT INTO vessels (name, imo_number, flag_country, type, status, capacity_barrels, location, heading, speed_knots, current_route_id, route_progress, fuel_capacity, fuel_level)
+		VALUES ('Seawise Giant', 'IMO9999999', 'LR', 'TANKER', 'AT_SEA', 4000000, ST_SetSRID(ST_MakePoint(32.54, 29.9), 4326), 0, 3000.0, $1, 0.1, 5000.0, 1500.0)
 		ON CONFLICT (imo_number) 
 		DO UPDATE SET 
-			speed_knots = 15.0, 
-			status = 'AT_SEA',
-            capacity_barrels = 4000000
+            fuel_level = 1500.0, -- Start with Low Fuel (to test logic!)
+            fuel_capacity = 5000.0,
+			speed_knots = 3000.0, 
+			status = 'AT_SEA'
 		RETURNING id
 	`, routeID).Scan(&tankerID)
 	
