@@ -123,3 +123,9 @@ func (r *ShipmentRepository) UpdateETAForVessel(ctx context.Context, vesselID st
 	_, err := r.db.GetPool().Exec(ctx, query, routeID, progress, speedKnots, vesselID)
 	return err
 }
+
+func (r *ShipmentRepository) UpdateStatus(ctx context.Context, id string, status string) error {
+	query := `UPDATE shipments SET status = $1, updated_at = NOW() WHERE id = $2`
+	_, err := r.db.GetPool().Exec(ctx, query, status, id)
+	return err
+}

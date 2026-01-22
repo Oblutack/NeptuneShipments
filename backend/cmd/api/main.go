@@ -29,27 +29,28 @@ func main() {
 	}
 	defer db.Close()
 
-	// Initialize repository and handler
 	vesselRepo := repository.NewVesselRepository(db.GetPool())
-	vesselHandler := handlers.NewVesselHandler(vesselRepo)
-
 	portRepo := repository.NewPortRepository(db)
-	portHandler := handlers.NewPortHandler(portRepo)
-
 	shipmentRepo := repository.NewShipmentRepository(db)
-	shipmentHandler := handlers.NewShipmentHandler(shipmentRepo)
-
 	userRepo := repository.NewUserRepository(db)
-	authHandler := handlers.NewAuthHandler(userRepo)
-
 	tankRepo := repository.NewTankRepository(db)
-	tankHandler := handlers.NewTankHandler(tankRepo)
-
-	// --- Route Engine Setup (Correct Version) ---
+	
 	routingEngineRepo := repository.NewRoutingRepository(db)
 	routeRepo := repository.NewRouteRepository(db)
 
-	// Pass BOTH repos here
+	vesselHandler := handlers.NewVesselHandler(vesselRepo)
+	portHandler := handlers.NewPortHandler(portRepo)
+	
+	shipmentHandler := handlers.NewShipmentHandler(
+		shipmentRepo,
+		portRepo,
+		routingEngineRepo,
+		routeRepo,
+		vesselRepo,
+	)
+
+	authHandler := handlers.NewAuthHandler(userRepo)
+	tankHandler := handlers.NewTankHandler(tankRepo)
 	routeHandler := handlers.NewRouteHandler(routeRepo, routingEngineRepo)
 
 	// Initialize Fiber

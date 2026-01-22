@@ -1,17 +1,35 @@
 package handlers
 
 import (
+	"fmt"
+
 	"github.com/Oblutack/NeptuneShipments/backend/internal/models"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/repository"
 	"github.com/gofiber/fiber/v2"
 )
 
 type ShipmentHandler struct {
-	repo *repository.ShipmentRepository
+	repo        *repository.ShipmentRepository
+	portRepo    *repository.PortRepository    // <--- NEW
+	routingRepo *repository.RoutingRepository // <--- NEW
+	routeRepo   *repository.RouteRepository   // <--- NEW
+	vesselRepo  *repository.VesselRepository  // <--- NEW
 }
 
-func NewShipmentHandler(repo *repository.ShipmentRepository) *ShipmentHandler {
-	return &ShipmentHandler{repo: repo}
+func NewShipmentHandler(
+	repo *repository.ShipmentRepository,
+	portRepo *repository.PortRepository,
+	routingRepo *repository.RoutingRepository,
+	routeRepo *repository.RouteRepository,
+	vesselRepo *repository.VesselRepository,
+) *ShipmentHandler {
+	return &ShipmentHandler{
+		repo:        repo,
+		portRepo:    portRepo,
+		routingRepo: routingRepo,
+		routeRepo:   routeRepo,
+		vesselRepo:  vesselRepo,
+	}
 }
 
 func (h *ShipmentHandler) CreateShipment(c *fiber.Ctx) error {
@@ -20,11 +38,57 @@ func (h *ShipmentHandler) CreateShipment(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid request"})
 	}
 
+	// 1. Create the Shipment Record
 	if err := h.repo.Create(c.Context(), &shipment); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 
+	// 2. AUTOMATIC ROUTING LOGIC
+	// If a vessel is assigned, we calculate the route for that vessel
+	if shipment.VesselID != nil {
+		// A. Get Port Coordinates
+		origin, err := h.portRepo.GetByID(c.Context(), shipment.OriginPortID)
+		if err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": "Origin port not found"})
+		}
+		dest, err := h.portRepo.GetByID(c.Context(), shipment.DestinationPortID)
+		if err != nil {
+			return c.Status(500).JSON(fiber.Map{"error": "Destination port not found"})
+		}
+
+		// B. Calculate Path using pgRouting
+		pathJSON, err := h.routingRepo.CalculatePath(c.Context(), origin.Latitude, origin.Longitude, dest.Latitude, dest.Longitude)
+		if err != nil {
+			fmt.Printf("Routing Error: %v\n", err)
+			// Don't fail the request, just warn
+		} else {
+			// C. Save the new Route
+			routeName := fmt.Sprintf("%s to %s (Auto)", origin.Name, dest.Name)
+			routeID, err := h.routeRepo.Create(c.Context(), routeName, pathJSON)
+			if err == nil {
+				// D. Assign Route to Vessel (This now refuels it too)
+				h.vesselRepo.AssignRoute(c.Context(), *shipment.VesselID, routeID)
+				
+				// E. UPDATE SHIPMENT STATUS to IN_TRANSIT
+				// Ensure this line is present and uncommented!
+				h.repo.UpdateStatus(c.Context(), shipment.ID, "IN_TRANSIT")
+                
+                // Update the local struct so the JSON response is correct immediately
+                shipment.Status = "IN_TRANSIT" 
+			}
+		}
+	}
+
 	return c.Status(201).JSON(shipment)
+}
+
+func (h *ShipmentHandler) GetShipmentByTracking(c *fiber.Ctx) error {
+	trackingNum := c.Params("trackingNumber")
+	shipment, err := h.repo.GetByTrackingNumber(c.Context(), trackingNum)
+	if err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Shipment not found"})
+	}
+	return c.JSON(shipment)
 }
 
 func (h *ShipmentHandler) GetAllShipments(c *fiber.Ctx) error {
@@ -36,13 +100,4 @@ func (h *ShipmentHandler) GetAllShipments(c *fiber.Ctx) error {
 		shipments = []models.Shipment{}
 	}
 	return c.JSON(shipments)
-}
-
-func (h *ShipmentHandler) GetShipmentByTracking(c *fiber.Ctx) error {
-	trackingNum := c.Params("trackingNumber")
-	shipment, err := h.repo.GetByTrackingNumber(c.Context(), trackingNum)
-	if err != nil {
-		return c.Status(404).JSON(fiber.Map{"error": "Shipment not found"})
-	}
-	return c.JSON(shipment)
 }

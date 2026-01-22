@@ -223,3 +223,20 @@ func (r *VesselRepository) RefuelVessel(ctx context.Context, id string) error {
 	_, err := r.db.Exec(ctx, query, id)
 	return err
 }
+
+// AssignRoute sets the ship's current route and resets progress to 0
+func (r *VesselRepository) AssignRoute(ctx context.Context, vesselID, routeID string) error {
+	query := `
+		UPDATE vessels 
+		SET 
+			current_route_id = $1, 
+			route_progress = 0.0, 
+			status = 'AT_SEA', 
+			speed_knots = 1500.0, -- Fast for demo
+			fuel_level = fuel_capacity, -- <--- REFUEL HERE!
+			location = (SELECT ST_StartPoint(path::geometry)::geography FROM routes WHERE id = $1)
+		WHERE id = $2
+	`
+	_, err := r.db.Exec(ctx, query, routeID, vesselID)
+	return err
+}

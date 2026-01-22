@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+
 	"github.com/Oblutack/NeptuneShipments/backend/internal/database"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/models"
 )
@@ -34,4 +35,16 @@ func (r *RouteRepository) GetByID(ctx context.Context, id string) (*models.Route
 	
 	route.Path = pathJSON
 	return &route, nil
+}
+
+// Create saves a new route geometry and returns its ID
+func (r *RouteRepository) Create(ctx context.Context, name string, geoJSON []byte) (string, error) {
+	query := `
+		INSERT INTO routes (name, path)
+		VALUES ($1, ST_GeomFromGeoJSON($2))
+		RETURNING id
+	`
+	var id string
+	err := r.db.GetPool().QueryRow(ctx, query, name, geoJSON).Scan(&id)
+	return id, err
 }
