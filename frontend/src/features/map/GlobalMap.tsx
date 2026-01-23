@@ -1,8 +1,13 @@
 import Map, { Marker, NavigationControl, Source, Layer } from "react-map-gl"; // <--- Import Source/Layer
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { useGetRouteByIdQuery, type Vessel, type Port } from "../api/apiSlice"; // <--- Import Hook
-import { Ship, Anchor } from "lucide-react";
+import {
+  useGetRouteByIdQuery,
+  useGetNetworkMeshQuery,
+  type Vessel,
+  type Port,
+} from "../api/apiSlice"; // <--- Import Hook
+import { Ship, Anchor, Network } from "lucide-react";
 import { useState } from "react";
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
@@ -41,6 +46,10 @@ export const GlobalMap = ({ vessels, ports, onShipClick }: GlobalMapProps) => {
   // In a real app, you might select a ship to see its specific route
   const activeRouteId = vessels?.[0]?.current_route_id;
   const [showWeather, setShowWeather] = useState(true);
+  const [showNetwork, setShowNetwork] = useState(false);
+  const { data: networkData } = useGetNetworkMeshQuery(undefined, {
+    skip: !showNetwork,
+  });
   // 2. Fetch the route data (skip if no ID)
   const { data: routeData } = useGetRouteByIdQuery(activeRouteId || "", {
     skip: !activeRouteId,
@@ -101,6 +110,21 @@ export const GlobalMap = ({ vessels, ports, onShipClick }: GlobalMapProps) => {
                 "line-width": 3,
                 "line-opacity": 0.8,
                 "line-dasharray": [2, 1], // Dashed line effect
+              }}
+            />
+          </Source>
+        )}
+
+        {/* --- NETWORK GRAPH LAYER --- */}
+        {showNetwork && networkData && (
+          <Source id="network-source" type="geojson" data={networkData}>
+            <Layer
+              id="network-lines"
+              type="line"
+              paint={{
+                "line-color": "#475569", // Slate-600 (Subtle Grey)
+                "line-width": 1,
+                "line-opacity": 0.5,
               }}
             />
           </Source>
@@ -171,6 +195,18 @@ export const GlobalMap = ({ vessels, ports, onShipClick }: GlobalMapProps) => {
               className={`w-2 h-2 rounded-full ${showWeather ? "bg-white animate-pulse" : "bg-slate-500"}`}
             ></div>
             STORM WARNING
+          </button>
+          {/* NEW: Network Button */}
+          <button
+            onClick={() => setShowNetwork(!showNetwork)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold shadow-xl transition-all ${
+              showNetwork
+                ? "bg-blue-600/90 text-white hover:bg-blue-500"
+                : "bg-slate-800/80 text-slate-400 hover:bg-slate-700 hover:text-white"
+            }`}
+          >
+            <Network size={14} />
+            SHIPPING LANES
           </button>
         </div>
       </Map>

@@ -73,6 +73,15 @@ export interface Tank {
   is_filling: boolean;
 }
 
+export interface GeoJSONFeature {
+  type: string;
+  geometry: {
+    type: string;
+    coordinates: number[][][];
+  };
+  properties?: Record<string, unknown>;
+}
+
 type RootState = {
   auth: { token: string | null };
 };
@@ -153,6 +162,9 @@ export const apiSlice = createApi({
       }),
       invalidatesTags: ["Vessels"],
     }),
+    getNetworkMesh: builder.query<GeoJSONFeature, void>({
+      query: () => "/routes/network",
+    }),
   }),
 });
 
@@ -169,4 +181,5 @@ export const {
   useLoginMutation,
   useGetTanksQuery,
   useRefuelVesselMutation,
+  useGetNetworkMeshQuery,
 } = apiSlice;

@@ -78,13 +78,14 @@ func main() {
 
 	// PUBLIC ROUTES
 	api.Post("/auth/login", authHandler.Login)
-	api.Get("/shipments/:trackingNumber", shipmentHandler.GetShipmentByTracking)
-
-	api.Get("/vessels/:id", vesselHandler.GetVesselByID)
-	api.Get("/routes/:id", routeHandler.GetRoute)
-
-	api.Post("/routes/calculate", routeHandler.CalculateRoute)
-	api.Get("/routes/network", routeHandler.GetNetworkMesh)
+	api.Get("/shipments/:trackingNumber", shipmentHandler.GetShipmentByTracking) 
+	api.Get("/vessels/:id", vesselHandler.GetVesselByID) 
+	
+    // --- ROUTING ENGINE ---
+    api.Get("/routes/network", routeHandler.GetNetworkMesh)      
+	api.Post("/routes/calculate", routeHandler.CalculateRoute)   
+	
+	api.Get("/routes/:id", routeHandler.GetRoute)                
 
 	// --- MIDDLEWARE ---
 	jwtSecret := os.Getenv("JWT_SECRET")
