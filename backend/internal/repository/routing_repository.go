@@ -56,3 +56,15 @@ func (r *RoutingRepository) CalculatePath(ctx context.Context, startLat, startLo
 
 	return json.RawMessage(geoJSON), nil
 }
+
+// GetAllEdges returns the entire routing network as a GeoJSON MultiLineString
+func (r *RoutingRepository) GetAllEdges(ctx context.Context) ([]byte, error) {
+	// ST_Collect merges all lines into one big geometry collection
+	query := `
+		SELECT ST_AsGeoJSON(ST_Collect(geom))
+		FROM ocean_network
+	`
+	var geoJSON []byte
+	err := r.db.GetPool().QueryRow(ctx, query).Scan(&geoJSON)
+	return geoJSON, err
+}

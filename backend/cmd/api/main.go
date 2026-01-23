@@ -84,6 +84,7 @@ func main() {
 	api.Get("/routes/:id", routeHandler.GetRoute)
 
 	api.Post("/routes/calculate", routeHandler.CalculateRoute)
+	api.Get("/routes/network", routeHandler.GetNetworkMesh)
 
 	// --- MIDDLEWARE ---
 	jwtSecret := os.Getenv("JWT_SECRET")
@@ -105,6 +106,9 @@ func main() {
 	vessels.Get("/", vesselHandler.GetAllVessels)
 	vessels.Get("/:vesselId/tanks", tankHandler.GetTanks)
 	vessels.Post("/:id/refuel", vesselHandler.RefuelVessel)
+
+	// Route lines
+	api.Get("/routes/network", routeHandler.GetNetworkMesh)
 
 	// Ports
 	api.Get("/ports", portHandler.GetAllPorts)

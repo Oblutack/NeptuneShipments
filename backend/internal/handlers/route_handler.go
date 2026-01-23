@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"encoding/json"
+
 	"github.com/Oblutack/NeptuneShipments/backend/internal/repository"
 	"github.com/gofiber/fiber/v2"
 )
@@ -49,4 +51,17 @@ func (h *RouteHandler) GetRoute(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"error": "Route not found"})
 	}
 	return c.JSON(route)
+}
+
+func (h *RouteHandler) GetNetworkMesh(c *fiber.Ctx) error {
+	meshJSON, err := h.routingRepo.GetAllEdges(c.Context())
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to load network"})
+	}
+	
+    // We wrap it so the frontend receives a valid GeoJSON Feature
+	return c.JSON(fiber.Map{
+		"type": "Feature",
+		"geometry": json.RawMessage(meshJSON),
+	})
 }

@@ -58,3 +58,4 @@ func (r *RouteRepository) CreateFromWKT(ctx context.Context, name, wkt string) e
     _, err := r.db.GetPool().Exec(ctx, query, name, wkt)
     return err
 }
+
