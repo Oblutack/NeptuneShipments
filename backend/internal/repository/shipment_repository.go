@@ -129,3 +129,21 @@ func (r *ShipmentRepository) UpdateStatus(ctx context.Context, id string, status
 	_, err := r.db.GetPool().Exec(ctx, query, status, id)
 	return err
 }
+
+func (r *ShipmentRepository) CreateOrUpdate(ctx context.Context, s *models.Shipment) error {
+	query := `
+		INSERT INTO shipments (
+			tracking_number, customer_name, origin_port_id, destination_port_id, 
+			vessel_id, description, container_number, weight_kg, status
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'PENDING')
+		ON CONFLICT (tracking_number) DO UPDATE 
+		SET status = EXCLUDED.status -- Just touch it to ensure it exists
+		RETURNING id
+	`
+	err := r.db.GetPool().QueryRow(
+		ctx, query,
+		s.TrackingNumber, s.CustomerName, s.OriginPortID, s.DestinationPortID,
+		s.VesselID, s.Description, s.ContainerNumber, s.WeightKG,
+	).Scan(&s.ID)
+	return err
+}

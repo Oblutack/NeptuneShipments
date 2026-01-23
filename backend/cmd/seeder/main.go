@@ -10,9 +10,7 @@ import (
 )
 
 func main() {
-    // 1. Setup
 	if err := godotenv.Load("../../.env"); err != nil { 
-        // Adjust path if running from root or backend folder
         godotenv.Load() 
     }
 	dbService, err := database.New()
@@ -21,14 +19,39 @@ func main() {
 	}
 	defer dbService.Close()
 
-    // 2. Init Services
+    // 1. Init Repos
 	portRepo := repository.NewPortRepository(dbService)
-	importer := services.NewImporterService(portRepo)
+	userRepo := repository.NewUserRepository(dbService)
+	vesselRepo := repository.NewVesselRepository(dbService.GetPool())
+	routeRepo := repository.NewRouteRepository(dbService)
+	shipmentRepo := repository.NewShipmentRepository(dbService) 
 
-    // 3. Run Import
-    // We assume the command is run from 'backend/' folder
-	err = importer.ImportPorts("../data/ports.csv")
-	if err != nil {
-		log.Fatal("Import failed:", err)
+    // 2. Init Importer
+	importer := services.NewImporterService(portRepo, userRepo, vesselRepo, routeRepo, shipmentRepo)
+
+    log.Println("🌱 Starting Data Ingestion...")
+
+    // 3. Run Imports (Order matters!)
+    // Users first
+	if err := importer.ImportUsers("../data/users.csv"); err != nil {
+		log.Fatal(err)
 	}
+    // Ports
+	if err := importer.ImportPorts("../data/ports.csv"); err != nil {
+		log.Fatal(err)
+	}
+    // Routes
+	if err := importer.ImportRoutes("../data/routes.csv"); err != nil {
+		log.Fatal(err)
+	}
+    // Vessels
+	if err := importer.ImportVessels("../data/vessels.csv"); err != nil {
+		log.Fatal(err)
+	}
+	// Shipments
+	if err := importer.ImportShipments("../data/shipments.csv"); err != nil {
+		log.Fatal(err)
+	}
+
+    log.Println("🌱 Data Ingestion Complete!")
 }

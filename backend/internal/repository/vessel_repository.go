@@ -240,3 +240,23 @@ func (r *VesselRepository) AssignRoute(ctx context.Context, vesselID, routeID st
 	_, err := r.db.Exec(ctx, query, routeID, vesselID)
 	return err
 }
+
+func (r *VesselRepository) CreateOrUpdate(ctx context.Context, v *models.Vessel) error {
+    query := `
+        INSERT INTO vessels (name, imo_number, flag_country, type, status, capacity_teu, capacity_barrels, location, heading, speed_knots, fuel_capacity, fuel_level)
+        VALUES ($1, $2, $3, $4, 'AT_SEA', $5, $6, ST_SetSRID(ST_MakePoint($8, $7), 4326), 0, $9, $10, $11)
+        ON CONFLICT (imo_number) DO UPDATE 
+        SET name = EXCLUDED.name, fuel_level = EXCLUDED.fuel_level -- Update fuel on reset
+        RETURNING id
+    `
+    err := r.db.QueryRow(ctx, query, 
+        v.Name, v.IMONumber, v.FlagCountry, v.Type, v.CapacityTEU, v.CapacityBarrels, v.Latitude, v.Longitude, v.SpeedKnots, v.FuelCapacity, v.FuelLevel,
+    ).Scan(&v.ID)
+    return err
+}
+
+func (r *VesselRepository) GetIDByIMO(ctx context.Context, imo string) (string, error) {
+	var id string
+	err := r.db.QueryRow(ctx, "SELECT id FROM vessels WHERE imo_number = $1", imo).Scan(&id)
+	return id, err
+}

@@ -1,0 +1,3 @@
+tracking_number,customer,origin_code,dest_code,vessel_imo,description,weight_kg,container_num
+TRK-001,SpaceX,USLAX,NLRTM,IMO9811000,Starlink Satellites,5000,MSKU123456
+TRK-002,Tesla,CNSHA,USNYC,IMO9999999,Model Y Batch,8000,TSLA998877

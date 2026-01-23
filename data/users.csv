@@ -1,0 +1,4 @@
+email,password,full_name,company_name,role
+admin@neptune.com,admin123,System Admin,Neptune HQ,ADMIN
+elon@spacex.com,client123,Elon Musk,SpaceX,CLIENT
+maersk@shipping.com,client123,Soren Skou,Maersk Line,CLIENT

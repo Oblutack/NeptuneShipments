@@ -48,3 +48,13 @@ func (r *RouteRepository) Create(ctx context.Context, name string, geoJSON []byt
 	err := r.db.GetPool().QueryRow(ctx, query, name, geoJSON).Scan(&id)
 	return id, err
 }
+
+func (r *RouteRepository) CreateFromWKT(ctx context.Context, name, wkt string) error {
+    query := `
+        INSERT INTO routes (name, path)
+        VALUES ($1, ST_GeogFromText($2))
+        ON CONFLICT (name) DO UPDATE SET path = EXCLUDED.path
+    `
+    _, err := r.db.GetPool().Exec(ctx, query, name, wkt)
+    return err
+}

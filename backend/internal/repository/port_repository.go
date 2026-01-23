@@ -58,3 +58,9 @@ func (r *PortRepository) CreateOrUpdate(ctx context.Context, name, locode, count
 	_, err := r.db.GetPool().Exec(ctx, query, name, locode, country, lat, lon)
 	return err
 }
+
+func (r *PortRepository) GetIDByLocode(ctx context.Context, locode string) (string, error) {
+	var id string
+	err := r.db.GetPool().QueryRow(ctx, "SELECT id FROM ports WHERE un_locode = $1", locode).Scan(&id)
+	return id, err
+}
