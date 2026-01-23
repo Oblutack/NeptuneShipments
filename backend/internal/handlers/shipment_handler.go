@@ -5,15 +5,17 @@ import (
 
 	"github.com/Oblutack/NeptuneShipments/backend/internal/models"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/repository"
+	"github.com/Oblutack/NeptuneShipments/backend/internal/services"
 	"github.com/gofiber/fiber/v2"
 )
 
 type ShipmentHandler struct {
 	repo        *repository.ShipmentRepository
-	portRepo    *repository.PortRepository    // <--- NEW
-	routingRepo *repository.RoutingRepository // <--- NEW
-	routeRepo   *repository.RouteRepository   // <--- NEW
-	vesselRepo  *repository.VesselRepository  // <--- NEW
+	portRepo    *repository.PortRepository    
+	routingRepo *repository.RoutingRepository 
+	routeRepo   *repository.RouteRepository   
+	vesselRepo  *repository.VesselRepository
+	pdfService  *services.PDFService 
 }
 
 func NewShipmentHandler(
@@ -22,6 +24,7 @@ func NewShipmentHandler(
 	routingRepo *repository.RoutingRepository,
 	routeRepo *repository.RouteRepository,
 	vesselRepo *repository.VesselRepository,
+	pdfService *services.PDFService,
 ) *ShipmentHandler {
 	return &ShipmentHandler{
 		repo:        repo,
@@ -29,6 +32,7 @@ func NewShipmentHandler(
 		routingRepo: routingRepo,
 		routeRepo:   routeRepo,
 		vesselRepo:  vesselRepo,
+		pdfService: pdfService,
 	}
 }
 
@@ -100,4 +104,34 @@ func (h *ShipmentHandler) GetAllShipments(c *fiber.Ctx) error {
 		shipments = []models.Shipment{}
 	}
 	return c.JSON(shipments)
+}
+
+func (h *ShipmentHandler) DownloadBOL(c *fiber.Ctx) error {
+    trackingNum := c.Params("trackingNumber")
+    
+    // 1. Get Data
+    shipment, err := h.repo.GetByTrackingNumber(c.Context(), trackingNum)
+    if err != nil {
+        return c.Status(404).JSON(fiber.Map{"error": "Shipment not found"})
+    }
+
+    // 2. Get Vessel Name (Optional check)
+    vesselName := "Unassigned"
+    if shipment.VesselID != nil {
+        vessel, _ := h.vesselRepo.GetByID(c.Context(), *shipment.VesselID)
+        if vessel != nil {
+            vesselName = vessel.Name
+        }
+    }
+
+    // 3. Generate PDF
+    pdfBytes, err := h.pdfService.GenerateBillOfLading(shipment, vesselName)
+    if err != nil {
+        return c.Status(500).JSON(fiber.Map{"error": "Failed to generate PDF"})
+    }
+
+    // 4. Send File
+    c.Set("Content-Type", "application/pdf")
+    c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=BOL-%s.pdf", trackingNum))
+    return c.Send(pdfBytes)
 }

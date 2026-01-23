@@ -8,6 +8,7 @@ import (
 	"github.com/Oblutack/NeptuneShipments/backend/internal/database"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/handlers"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/repository"
+	"github.com/Oblutack/NeptuneShipments/backend/internal/services"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/simulator"
 	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v2"
@@ -29,6 +30,8 @@ func main() {
 	}
 	defer db.Close()
 
+	pdfService := services.NewPDFService()
+
 	vesselRepo := repository.NewVesselRepository(db.GetPool())
 	portRepo := repository.NewPortRepository(db)
 	shipmentRepo := repository.NewShipmentRepository(db)
@@ -47,6 +50,7 @@ func main() {
 		routingEngineRepo,
 		routeRepo,
 		vesselRepo,
+		pdfService,
 	)
 
 	authHandler := handlers.NewAuthHandler(userRepo)
@@ -109,6 +113,7 @@ func main() {
 	shipments := api.Group("/shipments")
 	shipments.Post("/", shipmentHandler.CreateShipment)
 	shipments.Get("/", shipmentHandler.GetAllShipments)
+	shipments.Get("/:trackingNumber/bol", shipmentHandler.DownloadBOL)
 
 	simEngine := simulator.NewEngine(vesselRepo, shipmentRepo)
 	simEngine.Start()
