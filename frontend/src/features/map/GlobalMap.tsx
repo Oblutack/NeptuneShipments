@@ -1,4 +1,4 @@
-import Map, { Marker, NavigationControl, Source, Layer } from "react-map-gl"; // <--- Import Source/Layer
+import Map, { Marker, NavigationControl, Source, Layer } from "react-map-gl";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import {
@@ -6,7 +6,7 @@ import {
   useGetNetworkMeshQuery,
   type Vessel,
   type Port,
-} from "../api/apiSlice"; // <--- Import Hook
+} from "../api/apiSlice";
 import { Ship, Anchor, Network } from "lucide-react";
 import { useState } from "react";
 
@@ -34,25 +34,46 @@ const STORM_DATA: GeoJSON.FeatureCollection = {
   ],
 };
 
+const stringToColor = (str: string) => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const c = (hash & 0x00ffffff).toString(16).toUpperCase();
+  return "#" + "00000".substring(0, 6 - c.length) + c;
+};
+
 interface GlobalMapProps {
   vessels: Vessel[] | undefined;
   ports: Port[] | undefined;
-  onShipClick: (id: string) => void;
+  onShipClick?: (id: string) => void; // Optional for tracking page
 }
 
 export const GlobalMap = ({ vessels, ports, onShipClick }: GlobalMapProps) => {
-  // 1. Logic to find the active route ID
-  // For this demo, we just grab the route from the first ship (Ever Given)
-  // In a real app, you might select a ship to see its specific route
+  // 1. Logic to find the active route ID (Demo logic)
   const activeRouteId = vessels?.[0]?.current_route_id;
+
+  // State
   const [showWeather, setShowWeather] = useState(true);
   const [showNetwork, setShowNetwork] = useState(false);
+  const [filterType, setFilterType] = useState<"ALL" | "TANKER" | "CONTAINER">(
+    "ALL",
+  );
+  const [hideDocked, setHideDocked] = useState(false);
+
+  // Queries
   const { data: networkData } = useGetNetworkMeshQuery(undefined, {
     skip: !showNetwork,
   });
-  // 2. Fetch the route data (skip if no ID)
   const { data: routeData } = useGetRouteByIdQuery(activeRouteId || "", {
     skip: !activeRouteId,
+  });
+
+  // Filtering Logic
+  const filteredVessels = vessels?.filter((ship) => {
+    if (hideDocked && ship.status === "DOCKED") return false;
+    if (filterType !== "ALL" && ship.type !== filterType) return false;
+    return true;
   });
 
   return (
@@ -60,7 +81,7 @@ export const GlobalMap = ({ vessels, ports, onShipClick }: GlobalMapProps) => {
       <Map
         mapLib={mapboxgl}
         initialViewState={{
-          longitude: 20.0, // Center on Mediterranean
+          longitude: 20.0,
           latitude: 35.0,
           zoom: 3.5,
         }}
@@ -75,54 +96,30 @@ export const GlobalMap = ({ vessels, ports, onShipClick }: GlobalMapProps) => {
       >
         <NavigationControl position="top-right" />
 
-        {/* --- WEATHER / HAZARD LAYER --- */}
+        {/* --- 1. WEATHER LAYER (Added back) --- */}
         {showWeather && (
           <Source id="storm-source" type="geojson" data={STORM_DATA}>
-            {/* The Red Fill */}
             <Layer
               id="storm-fill"
               type="fill"
-              paint={{
-                "fill-color": "#ef4444", // Tailwind Red-500
-                "fill-opacity": 0.3,
-              }}
+              paint={{ "fill-color": "#ef4444", "fill-opacity": 0.3 }}
             />
-            {/* The Red Outline */}
             <Layer
               id="storm-outline"
               type="line"
-              paint={{
-                "line-color": "#b91c1c", // Tailwind Red-700
-                "line-width": 2,
-              }}
+              paint={{ "line-color": "#b91c1c", "line-width": 2 }}
             />
           </Source>
         )}
 
-        {/* --- RENDER ROUTE LINE --- */}
-        {routeData && (
-          <Source id="route-source" type="geojson" data={routeData.path}>
-            <Layer
-              id="route-layer"
-              type="line"
-              paint={{
-                "line-color": "#3b82f6", // Tailwind Blue-500
-                "line-width": 3,
-                "line-opacity": 0.8,
-                "line-dasharray": [2, 1], // Dashed line effect
-              }}
-            />
-          </Source>
-        )}
-
-        {/* --- NETWORK GRAPH LAYER --- */}
+        {/* --- 2. NETWORK LAYER (Added back) --- */}
         {showNetwork && networkData && (
           <Source id="network-source" type="geojson" data={networkData}>
             <Layer
               id="network-lines"
               type="line"
               paint={{
-                "line-color": "#475569", // Slate-600 (Subtle Grey)
+                "line-color": "#475569",
                 "line-width": 1,
                 "line-opacity": 0.5,
               }}
@@ -130,7 +127,25 @@ export const GlobalMap = ({ vessels, ports, onShipClick }: GlobalMapProps) => {
           </Source>
         )}
 
-        {/* --- RENDER PORTS --- */}
+        {/* --- 3. ACTIVE ROUTE LAYER --- */}
+        {routeData && (
+          <Source id="route-source" type="geojson" data={routeData.path}>
+            <Layer
+              id="route-layer"
+              type="line"
+              paint={{
+                "line-color": routeData.id
+                  ? stringToColor(routeData.id)
+                  : "#3b82f6",
+                "line-width": 3,
+                "line-opacity": 0.8,
+                "line-dasharray": [2, 1],
+              }}
+            />
+          </Source>
+        )}
+
+        {/* --- 4. PORTS --- */}
         {ports?.map((port) => (
           <Marker
             key={port.id}
@@ -143,7 +158,6 @@ export const GlobalMap = ({ vessels, ports, onShipClick }: GlobalMapProps) => {
                 size={20}
                 className="text-orange-500 hover:text-orange-300 transition-colors"
               />
-              {/* Tooltip */}
               <div className="absolute bottom-full mb-1 hidden group-hover:block bg-black/80 text-white text-xs p-2 rounded whitespace-nowrap border border-orange-500/30 z-50">
                 <p className="font-bold">{port.name}</p>
               </div>
@@ -151,8 +165,8 @@ export const GlobalMap = ({ vessels, ports, onShipClick }: GlobalMapProps) => {
           </Marker>
         ))}
 
-        {/* --- RENDER VESSELS --- */}
-        {vessels?.map((ship) => (
+        {/* --- 5. VESSELS (Using Filtered List) --- */}
+        {filteredVessels?.map((ship) => (
           <Marker
             key={ship.id}
             longitude={ship.longitude}
@@ -161,7 +175,7 @@ export const GlobalMap = ({ vessels, ports, onShipClick }: GlobalMapProps) => {
           >
             <div
               className="group relative cursor-pointer"
-              onClick={() => onShipClick(ship.id)}
+              onClick={() => onShipClick && onShipClick(ship.id)}
             >
               <div
                 style={{ transform: `rotate(${ship.heading}deg)` }}
@@ -170,43 +184,87 @@ export const GlobalMap = ({ vessels, ports, onShipClick }: GlobalMapProps) => {
                 <Ship
                   size={24}
                   className={`
-                    ${ship.status === "AT_SEA" ? "text-green-400" : ""}
-                    ${ship.status === "DOCKED" ? "text-yellow-400" : ""}
-                    ${ship.status === "DISTRESS" ? "text-red-600 animate-pulse drop-shadow-[0_0_10px_rgba(220,38,38,0.8)]" : ""} 
-                    drop-shadow-lg
-                  `}
+                        ${ship.status === "AT_SEA" ? "text-green-400" : ""}
+                        ${ship.status === "DOCKED" ? "text-yellow-400" : ""}
+                        ${ship.status === "DISTRESS" ? "text-red-600 animate-pulse drop-shadow-[0_0_10px_rgba(220,38,38,0.8)]" : ""} 
+                        drop-shadow-lg
+                    `}
                   fill="currentColor"
                 />
               </div>
             </div>
           </Marker>
         ))}
-        {/* WEATHER CONTROL BUTTON */}
-        <div className="absolute top-4 left-4 z-10">
+
+        {/* --- CONTROL PANEL (Cleaned up) --- */}
+        <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 bg-slate-900/90 p-3 rounded-xl border border-slate-700 shadow-xl backdrop-blur-md">
+          <span className="text-xs font-bold text-slate-400 uppercase mb-1">
+            Layers
+          </span>
+
           <button
             onClick={() => setShowWeather(!showWeather)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold shadow-xl transition-all ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
               showWeather
-                ? "bg-red-500/80 text-white hover:bg-red-600"
-                : "bg-slate-800/80 text-slate-400 hover:bg-slate-700 hover:text-white"
+                ? "bg-red-500/20 text-red-400 border border-red-500/50"
+                : "bg-slate-800 text-slate-500"
             }`}
           >
             <div
-              className={`w-2 h-2 rounded-full ${showWeather ? "bg-white animate-pulse" : "bg-slate-500"}`}
+              className={`w-2 h-2 rounded-full ${showWeather ? "bg-red-500 animate-pulse" : "bg-slate-600"}`}
             ></div>
-            STORM WARNING
+            Storms
           </button>
-          {/* NEW: Network Button */}
+
           <button
             onClick={() => setShowNetwork(!showNetwork)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold shadow-xl transition-all ${
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
               showNetwork
-                ? "bg-blue-600/90 text-white hover:bg-blue-500"
-                : "bg-slate-800/80 text-slate-400 hover:bg-slate-700 hover:text-white"
+                ? "bg-blue-500/20 text-blue-400 border border-blue-500/50"
+                : "bg-slate-800 text-slate-500"
             }`}
           >
-            <Network size={14} />
-            SHIPPING LANES
+            <Network size={12} /> Lanes
+          </button>
+
+          <div className="h-px bg-slate-700 my-1"></div>
+          <span className="text-xs font-bold text-slate-400 uppercase mb-1">
+            Filters
+          </span>
+
+          <div className="flex gap-1">
+            <button
+              onClick={() => setFilterType("ALL")}
+              className={`px-2 py-1 rounded text-[10px] font-bold ${filterType === "ALL" ? "bg-white text-black" : "bg-slate-800 text-slate-400"}`}
+            >
+              ALL
+            </button>
+            <button
+              onClick={() => setFilterType("TANKER")}
+              className={`px-2 py-1 rounded text-[10px] font-bold ${filterType === "TANKER" ? "bg-yellow-600 text-white" : "bg-slate-800 text-slate-400"}`}
+            >
+              OIL
+            </button>
+            <button
+              onClick={() => setFilterType("CONTAINER")}
+              className={`px-2 py-1 rounded text-[10px] font-bold ${filterType === "CONTAINER" ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400"}`}
+            >
+              BOX
+            </button>
+          </div>
+
+          <button
+            onClick={() => setHideDocked(!hideDocked)}
+            className={`mt-1 flex items-center justify-between px-2 py-1 rounded text-[10px] font-bold ${
+              hideDocked
+                ? "bg-slate-700 text-white"
+                : "text-slate-500 hover:bg-slate-800"
+            }`}
+          >
+            <span>Hide Docked</span>
+            {hideDocked && (
+              <div className="w-1.5 h-1.5 bg-green-400 rounded-full"></div>
+            )}
           </button>
         </div>
       </Map>
