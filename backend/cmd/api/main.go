@@ -83,7 +83,10 @@ func main() {
 	
     // --- ROUTING ENGINE ---
     api.Get("/routes/network", routeHandler.GetNetworkMesh)      
-	api.Post("/routes/calculate", routeHandler.CalculateRoute)   
+	api.Post("/routes/calculate", routeHandler.CalculateRoute)
+	
+	// Active Fleet Routes
+	api.Get("/routes/active", routeHandler.GetActiveRoutes) 
 	
 	api.Get("/routes/:id", routeHandler.GetRoute)                
 

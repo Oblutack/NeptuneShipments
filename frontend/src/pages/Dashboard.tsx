@@ -7,6 +7,7 @@ import { useState } from "react";
 import { TankMonitor } from "../features/fleet/TankMonitor";
 
 export const Dashboard = () => {
+  // 1. Data Fetching
   const {
     data: vessels,
     isLoading,
@@ -14,12 +15,10 @@ export const Dashboard = () => {
   } = useGetVesselsQuery(undefined, {
     pollingInterval: 2000,
   });
-  const [selectedShipId, setSelectedShipId] = useState<string | null>(null);
-  const [selectedMapShipId, setSelectedMapShipId] = useState<string | null>(
-    null,
-  );
-
   const { data: ports } = useGetPortsQuery();
+
+  // 2. Single Source of Truth for Selection
+  const [selectedShipId, setSelectedShipId] = useState<string | null>(null);
 
   return (
     <div className="min-h-screen bg-slate-950 text-white p-6">
@@ -39,7 +38,6 @@ export const Dashboard = () => {
         </div>
       </header>
 
-      {/* Error Message Section - Fixes 'error' unused warning */}
       {error && (
         <div className="max-w-7xl mx-auto mb-6 bg-red-900/20 border border-red-500 text-red-200 p-4 rounded">
           Error loading fleet data. Is the Backend running?
@@ -47,9 +45,9 @@ export const Dashboard = () => {
       )}
 
       <main className="max-w-7xl mx-auto space-y-8">
-        {/* --- VESSEL INSPECTOR PANEL --- */}
+        {/* INSPECTOR PANEL (Only shows if ship selected) */}
         {selectedShipId && (
-          <section className="bg-slate-900 border border-blue-500/30 rounded-xl p-6 shadow-2xl relative overflow-hidden">
+          <section className="bg-slate-900 border border-blue-500/30 rounded-xl p-6 shadow-2xl relative overflow-hidden animate-in slide-in-from-top-2">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold flex items-center gap-2">
                 <Ship className="text-blue-400" />
@@ -62,11 +60,10 @@ export const Dashboard = () => {
                 Close Inspector
               </button>
             </div>
-
-            {/* The Tank Monitor Component */}
             <TankMonitor vesselId={selectedShipId} />
           </section>
         )}
+
         {/* MAP SECTION */}
         <section>
           {isLoading ? (
@@ -77,13 +74,15 @@ export const Dashboard = () => {
             <GlobalMap
               vessels={vessels}
               ports={ports}
-              selectedVesselId={selectedMapShipId}
-              onShipClick={setSelectedMapShipId}
+              // --- CRITICAL CONNECTION ---
+              selectedVesselId={selectedShipId}
+              onShipClick={setSelectedShipId}
+              // ---------------------------
             />
           )}
         </section>
 
-        {/*SHIPMENT FORM SECTION */}
+        {/* FORMS & LISTS */}
         <section className="bg-slate-900 border border-slate-800 rounded-xl p-6">
           <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
             📦 Create New Shipment
@@ -91,7 +90,6 @@ export const Dashboard = () => {
           <ShipmentForm />
         </section>
 
-        {/*SHIPMENT MANIFEST SECTION */}
         <section>
           <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
             📋 Active Manifest
@@ -99,12 +97,12 @@ export const Dashboard = () => {
           <ShipmentList />
         </section>
 
-        {/* LIST SECTION - Fixes 'Ship' unused warning */}
+        {/* FLEET GRID */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {vessels?.map((ship) => (
             <div
               key={ship.id}
-              onClick={() => setSelectedShipId(ship.id)} // <--- CLICK HANDLER
+              onClick={() => setSelectedShipId(ship.id)}
               className={`p-4 rounded border cursor-pointer transition-all ${
                 selectedShipId === ship.id
                   ? "bg-blue-900/20 border-blue-500 ring-1 ring-blue-500"
@@ -113,7 +111,6 @@ export const Dashboard = () => {
             >
               <div className="flex justify-between items-center mb-2">
                 <div className="flex items-center gap-2">
-                  {/* We use the Ship icon here */}
                   <Ship size={16} className="text-blue-400" />
                   <h3 className="font-bold text-lg">{ship.name}</h3>
                 </div>
@@ -123,12 +120,13 @@ export const Dashboard = () => {
               </div>
               <div className="text-sm text-slate-400 flex justify-between items-center">
                 <span>{ship.type}</span>
-                {/* Add 'ml-2' (margin left) or rely on justify-between working */}
                 <span
                   className={
                     ship.status === "AT_SEA"
                       ? "text-green-400"
-                      : "text-yellow-400"
+                      : ship.status === "DISTRESS"
+                        ? "text-red-500 animate-pulse"
+                        : "text-yellow-400"
                   }
                 >
                   {ship.status}

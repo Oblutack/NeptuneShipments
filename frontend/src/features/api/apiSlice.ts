@@ -99,7 +99,7 @@ export const apiSlice = createApi({
       return headers;
     },
   }),
-  tagTypes: ["Vessels", "Ports", "Shipments"],
+  tagTypes: ["Vessels", "Ports", "Shipments", "Routes"],
   endpoints: (builder) => ({
     getVessels: builder.query<Vessel[], void>({
       query: () => "/vessels",
@@ -165,6 +165,10 @@ export const apiSlice = createApi({
     getNetworkMesh: builder.query<GeoJSONFeature, void>({
       query: () => "/routes/network",
     }),
+    getActiveRoutes: builder.query<GeoJSONFeature, void>({
+      query: () => "/routes/active",
+      providesTags: ["Routes"], // We can invalidate this later if needed
+    }),
   }),
 });
 
@@ -182,4 +186,5 @@ export const {
   useGetTanksQuery,
   useRefuelVesselMutation,
   useGetNetworkMeshQuery,
+  useGetActiveRoutesQuery,
 } = apiSlice;

@@ -59,3 +59,35 @@ func (r *RouteRepository) CreateFromWKT(ctx context.Context, name, wkt string) e
     return err
 }
 
+// GetActiveRoutes returns paths for all vessels currently AT_SEA
+func (r *RouteRepository) GetActiveRoutes(ctx context.Context) ([]byte, error) {
+	// We build a GeoJSON FeatureCollection directly in SQL
+	query := `
+		SELECT json_build_object(
+			'type', 'FeatureCollection',
+			'features', json_agg(
+				json_build_object(
+					'type', 'Feature',
+					'properties', json_build_object(
+						'vessel_id', v.id,
+						'route_name', r.name
+					),
+					'geometry', ST_AsGeoJSON(r.path)::json
+				)
+			)
+		)
+		FROM routes r
+		JOIN vessels v ON v.current_route_id = r.id
+		WHERE v.status = 'AT_SEA'
+	`
+	var geoJSON []byte
+	err := r.db.GetPool().QueryRow(ctx, query).Scan(&geoJSON)
+	
+	// Handle empty result (NULL) -> Return empty collection
+	if len(geoJSON) == 0 {
+		return []byte(`{"type": "FeatureCollection", "features": []}`), nil
+	}
+	
+	return geoJSON, err
+}
+

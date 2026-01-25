@@ -65,3 +65,13 @@ func (h *RouteHandler) GetNetworkMesh(c *fiber.Ctx) error {
 		"geometry": json.RawMessage(meshJSON),
 	})
 }
+
+func (h *RouteHandler) GetActiveRoutes(c *fiber.Ctx) error {
+	routesJSON, err := h.repo.GetActiveRoutes(c.Context())
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to load active routes"})
+	}
+	// Return raw bytes since it's already JSON
+	c.Set("Content-Type", "application/json")
+	return c.Send(routesJSON)
+}
