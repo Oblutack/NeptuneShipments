@@ -46,13 +46,16 @@ const stringToColor = (str: string) => {
 interface GlobalMapProps {
   vessels: Vessel[] | undefined;
   ports: Port[] | undefined;
-  onShipClick?: (id: string) => void; // Optional for tracking page
+  onShipClick?: (id: string) => void;
+  selectedVesselId?: string | null;
 }
 
-export const GlobalMap = ({ vessels, ports, onShipClick }: GlobalMapProps) => {
-  // 1. Logic to find the active route ID (Demo logic)
-  const activeRouteId = vessels?.[0]?.current_route_id;
-
+export const GlobalMap = ({
+  vessels,
+  ports,
+  onShipClick,
+  selectedVesselId,
+}: GlobalMapProps) => {
   // State
   const [showWeather, setShowWeather] = useState(true);
   const [showNetwork, setShowNetwork] = useState(false);
@@ -60,6 +63,12 @@ export const GlobalMap = ({ vessels, ports, onShipClick }: GlobalMapProps) => {
     "ALL",
   );
   const [hideDocked, setHideDocked] = useState(false);
+  const activeShip =
+    vessels?.find((v) => v.id === selectedVesselId) || vessels?.[0];
+  const activeRouteId = activeShip?.current_route_id;
+
+  console.log("Active Ship:", activeShip?.name);
+  console.log("Route ID:", activeRouteId);
 
   // Queries
   const { data: networkData } = useGetNetworkMeshQuery(undefined, {
@@ -175,7 +184,13 @@ export const GlobalMap = ({ vessels, ports, onShipClick }: GlobalMapProps) => {
           >
             <div
               className="group relative cursor-pointer"
-              onClick={() => onShipClick && onShipClick(ship.id)}
+              onClick={(e) => {
+                e.stopPropagation(); // Prevent map click interference
+                console.log("Clicked ship:", ship.name); // <--- DEBUG LOG
+                if (onShipClick) {
+                  onShipClick(ship.id);
+                }
+              }}
             >
               <div
                 style={{ transform: `rotate(${ship.heading}deg)` }}

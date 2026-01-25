@@ -18,7 +18,7 @@ func main() {
 		log.Fatal(err)
 	}
 	defer dbService.Close()
-
+	
     // 1. Init Repos
 	portRepo := repository.NewPortRepository(dbService)
 	userRepo := repository.NewUserRepository(dbService)
@@ -26,8 +26,10 @@ func main() {
 	routeRepo := repository.NewRouteRepository(dbService)
 	shipmentRepo := repository.NewShipmentRepository(dbService) 
 
+	routingEngineRepo := repository.NewRoutingRepository(dbService)
+
     // 2. Init Importer
-	importer := services.NewImporterService(portRepo, userRepo, vesselRepo, routeRepo, shipmentRepo)
+	importer := services.NewImporterService(portRepo, userRepo, vesselRepo, routeRepo, shipmentRepo, routingEngineRepo)
 
     log.Println("🌱 Starting Data Ingestion...")
 

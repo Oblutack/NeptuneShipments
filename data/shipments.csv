@@ -1,3 +1,4 @@
 tracking_number,customer,origin_code,dest_code,vessel_imo,description,weight_kg,container_num
-TRK-001,SpaceX,USLAX,NLRTM,IMO9811000,Starlink Satellites,5000,MSKU123456
-TRK-002,Tesla,CNSHA,USNYC,IMO9999999,Model Y Batch,8000,TSLA998877
+TRK-NYC-ROT,Tesla,USNYC,NLRTM,IMO9811000,Model Y Batch (Atlantic),5000,TSLA887766
+TRK-ALG-DUB,Saudi Aramco,ESALG,AEDXB,IMO9999999,Crude Oil (Med to Gulf),80000,OIL998877
+TRK-TOK-ROT,Sony,JPTYO,NLRTM,IMO9703291,PlayStations (Pacific),12000,SONY445566

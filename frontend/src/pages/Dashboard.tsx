@@ -15,6 +15,9 @@ export const Dashboard = () => {
     pollingInterval: 2000,
   });
   const [selectedShipId, setSelectedShipId] = useState<string | null>(null);
+  const [selectedMapShipId, setSelectedMapShipId] = useState<string | null>(
+    null,
+  );
 
   const { data: ports } = useGetPortsQuery();
 
@@ -74,7 +77,8 @@ export const Dashboard = () => {
             <GlobalMap
               vessels={vessels}
               ports={ports}
-              onShipClick={setSelectedShipId}
+              selectedVesselId={selectedMapShipId}
+              onShipClick={setSelectedMapShipId}
             />
           )}
         </section>

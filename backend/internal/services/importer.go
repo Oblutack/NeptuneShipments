@@ -13,22 +13,30 @@ import (
 )
 
 type ImporterService struct {
-	portRepo   *repository.PortRepository
-	userRepo   *repository.UserRepository
-	vesselRepo *repository.VesselRepository
-	routeRepo  *repository.RouteRepository
-	shipmentRepo *repository.ShipmentRepository 
+	portRepo     *repository.PortRepository
+	userRepo     *repository.UserRepository
+	vesselRepo   *repository.VesselRepository
+	routeRepo    *repository.RouteRepository
+	shipmentRepo *repository.ShipmentRepository
+	routingRepo  *repository.RoutingRepository 
 }
 
-// Update Constructor to accept all repos
 func NewImporterService(
-	p *repository.PortRepository, 
-	u *repository.UserRepository, 
-	v *repository.VesselRepository, 
+	p *repository.PortRepository,
+	u *repository.UserRepository,
+	v *repository.VesselRepository,
 	r *repository.RouteRepository,
 	s *repository.ShipmentRepository,
+	rt *repository.RoutingRepository,
 ) *ImporterService {
-	return &ImporterService{portRepo: p, userRepo: u, vesselRepo: v, routeRepo: r,shipmentRepo: s,}
+	return &ImporterService{
+		portRepo:     p,
+		userRepo:     u,
+		vesselRepo:   v,
+		routeRepo:    r,
+		shipmentRepo: s,
+		routingRepo:  rt, 
+	}
 }
 
 func (s *ImporterService) ImportPorts(filePath string) error {
@@ -163,26 +171,16 @@ func (s *ImporterService) ImportShipments(filePath string) error {
 
 	for i := 1; i < len(records); i++ {
 		row := records[i]
-		// CSV Columns: 
-		// 0:tracking, 1:customer, 2:origin_code, 3:dest_code, 4:vessel_imo, 5:desc, 6:weight, 7:container
-
 		// 1. Resolve IDs
 		originID, err := s.portRepo.GetIDByLocode(ctx, row[2])
-		if err != nil {
-			fmt.Printf("⚠️ Skip Shipment %s: Origin %s not found\n", row[0], row[2]); continue
-		}
+		if err != nil { fmt.Printf("⚠️ Skip Origin %s\n", row[2]); continue }
 		destID, err := s.portRepo.GetIDByLocode(ctx, row[3])
-		if err != nil {
-			fmt.Printf("⚠️ Skip Shipment %s: Dest %s not found\n", row[0], row[3]); continue
-		}
+		if err != nil { fmt.Printf("⚠️ Skip Dest %s\n", row[3]); continue }
 		
-		// Vessel is optional in CSV logic, but we look it up if provided
 		var vesselIDPtr *string
 		if row[4] != "" {
 			vID, err := s.vesselRepo.GetIDByIMO(ctx, row[4])
-			if err == nil {
-				vesselIDPtr = &vID
-			}
+			if err == nil { vesselIDPtr = &vID }
 		}
 
 		weight, _ := strconv.ParseFloat(row[6], 64)
@@ -196,14 +194,38 @@ func (s *ImporterService) ImportShipments(filePath string) error {
 			Description:       row[5],
 			WeightKG:          weight,
 			ContainerNumber:   row[7],
+            Status:            "PENDING", // Default
 		}
 
 		if err := s.shipmentRepo.CreateOrUpdate(ctx, shipment); err != nil {
-			fmt.Printf("❌ Shipment Import Error (%s): %v\n", row[0], err)
+			fmt.Printf("❌ Error %s: %v\n", row[0], err)
 		} else {
+            // --- NEW: AUTO-ROUTE LOGIC ---
+            // If we have a vessel, calculate the path immediately!
+            if vesselIDPtr != nil {
+                // A. Get Coords
+                origin, _ := s.portRepo.GetByID(ctx, originID)
+                dest, _ := s.portRepo.GetByID(ctx, destID)
+                
+                // B. Calc Path
+                pathJSON, err := s.routingRepo.CalculatePath(ctx, origin.Latitude, origin.Longitude, dest.Latitude, dest.Longitude)
+                if err == nil {
+                    // C. Create Route
+                    routeName := fmt.Sprintf("%s -> %s (Imported)", row[2], row[3])
+                    routeID, _ := s.routeRepo.Create(ctx, routeName, pathJSON)
+                    
+                    // D. Assign to Vessel
+                    s.vesselRepo.AssignRoute(ctx, *vesselIDPtr, routeID)
+                    
+                    // E. Set Status to IN_TRANSIT
+                    s.shipmentRepo.UpdateStatus(ctx, shipment.ID, "IN_TRANSIT")
+                } else {
+                    fmt.Printf("⚠️ Routing failed for %s: %v\n", row[0], err)
+                }
+            }
 			count++
 		}
 	}
-	fmt.Printf("✅ Imported %d Shipments\n", count)
+	fmt.Printf("✅ Imported %d Shipments (With Routing)\n", count)
 	return nil
 }
