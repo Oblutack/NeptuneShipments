@@ -135,3 +135,25 @@ func (h *ShipmentHandler) DownloadBOL(c *fiber.Ctx) error {
     c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=BOL-%s.pdf", trackingNum))
     return c.Send(pdfBytes)
 }
+
+// GetShipmentsByVessel handles GET /api/vessels/:vesselId/shipments
+func (h *ShipmentHandler) GetShipmentsByVessel(c *fiber.Ctx) error {
+    vesselID := c.Params("vesselId")
+    
+    // Validate UUID format (optional but recommended)
+    if vesselID == "" {
+        return c.Status(400).JSON(fiber.Map{"error": "Vessel ID is required"})
+    }
+
+    shipments, err := h.repo.GetByVesselID(c.Context(), vesselID)
+    if err != nil {
+        return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch vessel manifest"})
+    }
+
+    // Return metadata with results
+    return c.JSON(fiber.Map{
+        "vessel_id": vesselID,
+        "count":     len(shipments),
+        "shipments": shipments,
+    })
+}

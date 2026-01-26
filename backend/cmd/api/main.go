@@ -109,6 +109,7 @@ func main() {
 	vessels.Post("/", vesselHandler.CreateVessel)
 	vessels.Get("/", vesselHandler.GetAllVessels)
 	vessels.Get("/:vesselId/tanks", tankHandler.GetTanks)
+	vessels.Get("/:vesselId/shipments", shipmentHandler.GetShipmentsByVessel)
 	vessels.Post("/:id/refuel", vesselHandler.RefuelVessel)
 
 	// Route lines

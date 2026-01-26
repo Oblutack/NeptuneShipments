@@ -129,13 +129,18 @@ export const RevenueChart = () => {
 };
 
 // Custom Tooltip Component
-const CustomTooltip = ({
-  active,
-  payload,
-}: {
+interface TooltipProps {
   active?: boolean;
-  payload?: any[];
-}) => {
+  payload?: Array<{
+    payload: {
+      day: string;
+      revenue: number;
+      shipments: number;
+    };
+  }>;
+}
+
+const CustomTooltip = ({ active, payload }: TooltipProps) => {
   if (!active || !payload || !payload.length) return null;
 
   const data = payload[0].payload;

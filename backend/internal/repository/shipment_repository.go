@@ -147,3 +147,51 @@ func (r *ShipmentRepository) CreateOrUpdate(ctx context.Context, s *models.Shipm
 	).Scan(&s.ID)
 	return err
 }
+
+// GetByVesselID retrieves all shipments for a specific vessel with port names
+func (r *ShipmentRepository) GetByVesselID(ctx context.Context, vesselID string) ([]models.Shipment, error) {
+    query := `
+        SELECT 
+            s.id, s.tracking_number, s.customer_name, 
+            s.origin_port_id, s.destination_port_id, 
+            s.vessel_id, s.description, s.container_number, 
+            s.weight_kg, s.status, s.eta, s.created_at, s.updated_at,
+            p1.name as origin_name,
+            p2.name as dest_name
+        FROM shipments s
+        JOIN ports p1 ON s.origin_port_id = p1.id
+        JOIN ports p2 ON s.destination_port_id = p2.id
+        WHERE s.vessel_id = $1
+        ORDER BY s.created_at DESC
+    `
+    
+    rows, err := r.db.GetPool().Query(ctx, query, vesselID)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    var shipments []models.Shipment
+    for rows.Next() {
+        var s models.Shipment
+        err := rows.Scan(
+            &s.ID, &s.TrackingNumber, &s.CustomerName,
+            &s.OriginPortID, &s.DestinationPortID,
+            &s.VesselID, &s.Description, &s.ContainerNumber,
+            &s.WeightKG, &s.Status, &s.ETA, &s.CreatedAt, &s.UpdatedAt,
+            &s.OriginPortName,
+            &s.DestinationPortName,
+        )
+        if err != nil {
+            return nil, err
+        }
+        shipments = append(shipments, s)
+    }
+
+    // Return empty array instead of nil if no shipments found
+    if shipments == nil {
+        shipments = []models.Shipment{}
+    }
+
+    return shipments, nil
+}
