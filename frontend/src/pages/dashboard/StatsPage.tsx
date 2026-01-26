@@ -10,6 +10,8 @@ import {
   TrendingUp,
   Activity,
 } from "lucide-react";
+import { RevenueChart } from "../../features/analytics/RevenueChart";
+import { AlertFeed } from "../../features/analytics/AlertFeed";
 
 export const StatsPage = () => {
   const { data: vessels, isLoading: loadingVessels } = useGetVesselsQuery();
@@ -133,13 +135,29 @@ export const StatsPage = () => {
         </div>
       </div>
 
-      {/* QUICK ACTIONS SECTION (Placeholder for future features) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 h-64 flex items-center justify-center text-slate-500 border-dashed">
-          Revenue Graph Coming Soon (Recharts)
+      {/* ANALYTICS & LOGS SECTION */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-20">
+        {/* Revenue Graph */}
+        <div className="border-slate-800 p-6 rounded-xl shadow-lg">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-lg font-bold text-white">Revenue Trend</h3>
+            <select className="bg-slate-800 text-xs text-slate-300 border border-slate-700 rounded px-2 py-1 outline-none">
+              <option>Last 7 Days</option>
+              <option>Last 30 Days</option>
+            </select>
+          </div>
+          <div className="h-[300px] w-full">
+            <RevenueChart />
+          </div>
         </div>
-        <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-6 h-64 flex items-center justify-center text-slate-500 border-dashed">
-          Recent Alerts Log
+
+        {/* Live Alert Feed */}
+        <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-lg flex flex-col">
+          <h3 className="text-lg font-bold text-white mb-6">System Alerts</h3>
+          <div className="flex-1 overflow-hidden">
+            {/* Pass the live vessel data to the feed */}
+            <AlertFeed vessels={vessels || []} />
+          </div>
         </div>
       </div>
     </div>
