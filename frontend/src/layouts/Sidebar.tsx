@@ -7,6 +7,9 @@ import {
   Settings,
   LogOut,
   Globe,
+  Users,
+  Receipt,
+  Wrench,
 } from "lucide-react";
 import { useDispatch } from "react-redux";
 import { logout } from "../features/auth/authSlice";
@@ -15,10 +18,20 @@ export const Sidebar = () => {
   const dispatch = useDispatch();
 
   const navItems = [
+    // --- OPERATIONS ---
     { icon: LayoutDashboard, label: "Overview", path: "/dashboard" },
     { icon: MapIcon, label: "Live Map", path: "/dashboard/map" },
+
+    // --- ASSETS ---
     { icon: Ship, label: "Fleet Manager", path: "/dashboard/fleet" },
+    { icon: Wrench, label: "Maintenance", path: "/dashboard/maintenance" },
+
+    // --- LOGISTICS ---
     { icon: Package, label: "Cargo Manifests", path: "/dashboard/cargo" },
+
+    // --- BUSINESS ---
+    { icon: Users, label: "Crew Management", path: "/dashboard/crew" },
+    { icon: Receipt, label: "Financials", path: "/dashboard/finance" },
   ];
 
   return (
