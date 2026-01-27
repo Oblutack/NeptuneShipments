@@ -8,6 +8,7 @@ import { Ship, Loader2, Fuel, Zap } from "lucide-react";
 import { TankMonitor } from "../../features/fleet/TankMonitor";
 import { DataTable } from "../../components/ui/DataTable";
 import type { ColumnDef } from "@tanstack/react-table";
+import { CargoManifest } from "../../features/fleet/CargoManifest";
 
 export const FleetPage = () => {
   const { data: vessels, isLoading } = useGetVesselsQuery(undefined, {
@@ -166,6 +167,8 @@ export const FleetPage = () => {
               <TankMonitor vesselId={selectedShip.id} />
             </div>
           </div>
+          {/* Cargo Manifest Section */}
+          <CargoManifest vesselId={selectedShip.id} />
         </section>
       )}
 

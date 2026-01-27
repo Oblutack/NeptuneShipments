@@ -82,6 +82,12 @@ export interface GeoJSONFeature {
   properties?: Record<string, unknown>;
 }
 
+export interface VesselManifest {
+  vessel_id: string;
+  count: number;
+  shipments: Shipment[];
+}
+
 type RootState = {
   auth: { token: string | null };
 };
@@ -169,6 +175,13 @@ export const apiSlice = createApi({
       query: () => "/routes/active",
       providesTags: ["Routes"], // We can invalidate this later if needed
     }),
+    getShipmentsByVessel: builder.query<VesselManifest, string>({
+      query: (vesselId) => `/vessels/${vesselId}/shipments`,
+      providesTags: (result, error, vesselId) => [
+        { type: "Shipments", id: vesselId },
+        "Shipments",
+      ],
+    }),
   }),
 });
 
@@ -187,4 +200,5 @@ export const {
   useRefuelVesselMutation,
   useGetNetworkMeshQuery,
   useGetActiveRoutesQuery,
+  useGetShipmentsByVesselQuery,
 } = apiSlice;
