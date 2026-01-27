@@ -20,3 +20,18 @@ func (h *PortHandler) GetAllPorts(c *fiber.Ctx) error {
     }
     return c.JSON(ports)
 }
+
+// GetPortStats handles GET /api/ports/stats
+func (h *PortHandler) GetPortStats(c *fiber.Ctx) error {
+    stats, err := h.repo.GetPortStats(c.Context())
+    if err != nil {
+        return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+            "error": "Failed to fetch port statistics",
+        })
+    }
+
+    return c.JSON(fiber.Map{
+        "total_ports": len(stats),
+        "ports":       stats,
+    })
+}

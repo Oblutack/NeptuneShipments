@@ -116,7 +116,9 @@ func main() {
 	api.Get("/routes/network", routeHandler.GetNetworkMesh)
 
 	// Ports
-	api.Get("/ports", portHandler.GetAllPorts)
+	ports := api.Group("/ports")
+	ports.Get("/", portHandler.GetAllPorts)
+	ports.Get("/stats", portHandler.GetPortStats)
 
 	// Shipments
 	shipments := api.Group("/shipments")

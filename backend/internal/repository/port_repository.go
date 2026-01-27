@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Oblutack/NeptuneShipments/backend/internal/database"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/models"
@@ -13,6 +14,62 @@ type PortRepository struct {
 
 func NewPortRepository(db *database.Service) *PortRepository {
     return &PortRepository{db: db}
+}
+
+// PortStat represents port statistics with docked vessel count
+type PortStat struct {
+    ID        string  `json:"id"`
+    Name      string  `json:"name"`
+    Locode    string  `json:"locode"`
+    Latitude  float64 `json:"latitude"`
+    Longitude float64 `json:"longitude"`
+    ShipCount int     `json:"ship_count"`
+}
+
+// GetPortStats retrieves all ports with count of docked vessels within 10km
+func (r *PortRepository) GetPortStats(ctx context.Context) ([]PortStat, error) {
+    query := `
+        SELECT 
+            p.id,
+            p.name,
+            p.un_locode as locode,
+            ST_Y(p.location::geometry) as latitude,
+            ST_X(p.location::geometry) as longitude,
+            COUNT(v.id) FILTER (WHERE v.status = 'DOCKED') as ship_count
+        FROM ports p
+        LEFT JOIN vessels v ON ST_DWithin(v.location, p.location, 10000)
+        GROUP BY p.id, p.name, p.un_locode, p.location
+        ORDER BY ship_count DESC, p.name ASC
+    `
+
+    rows, err := r.db.GetPool().Query(ctx, query)
+    if err != nil {
+        return nil, fmt.Errorf("failed to fetch port stats: %w", err)
+    }
+    defer rows.Close()
+
+    var stats []PortStat
+    for rows.Next() {
+        var stat PortStat
+        err := rows.Scan(
+            &stat.ID,
+            &stat.Name,
+            &stat.Locode,
+            &stat.Latitude,
+            &stat.Longitude,
+            &stat.ShipCount,
+        )
+        if err != nil {
+            return nil, fmt.Errorf("failed to scan port stat: %w", err)
+        }
+        stats = append(stats, stat)
+    }
+
+    if stats == nil {
+        stats = []PortStat{}
+    }
+
+    return stats, nil
 }
 
 func (r *PortRepository) GetAll(ctx context.Context) ([]models.Port, error) {
