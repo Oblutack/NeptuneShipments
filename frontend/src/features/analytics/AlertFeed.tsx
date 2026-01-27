@@ -50,6 +50,10 @@ export const AlertFeed = ({ vessels }: AlertFeedProps) => {
     <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-lg">
       {/* Header */}
       <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-800">
+        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+          <AlertTriangle className="text-yellow-400" size={20} />
+          System Alerts
+        </h3>
         <span className="text-xs text-slate-500 bg-slate-800 px-2 py-1 rounded">
           {alerts.length} Active
         </span>

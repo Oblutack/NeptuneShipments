@@ -138,27 +138,10 @@ export const StatsPage = () => {
       {/* ANALYTICS & LOGS SECTION */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-20">
         {/* Revenue Graph */}
-        <div className="border-slate-800 p-6 rounded-xl shadow-lg">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-bold text-white">Revenue Trend</h3>
-            <select className="bg-slate-800 text-xs text-slate-300 border border-slate-700 rounded px-2 py-1 outline-none">
-              <option>Last 7 Days</option>
-              <option>Last 30 Days</option>
-            </select>
-          </div>
-          <div className="h-[300px] w-full">
-            <RevenueChart />
-          </div>
-        </div>
+        <RevenueChart />
 
         {/* Live Alert Feed */}
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-lg flex flex-col">
-          <h3 className="text-lg font-bold text-white mb-6">System Alerts</h3>
-          <div className="flex-1 overflow-hidden">
-            {/* Pass the live vessel data to the feed */}
-            <AlertFeed vessels={vessels || []} />
-          </div>
-        </div>
+        <AlertFeed vessels={vessels || []} />
       </div>
     </div>
   );
