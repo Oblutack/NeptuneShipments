@@ -88,6 +88,20 @@ export interface VesselManifest {
   shipments: Shipment[];
 }
 
+export interface PortStat {
+  id: string;
+  name: string;
+  locode: string;
+  latitude: number;
+  longitude: number;
+  ship_count: number;
+}
+
+export interface PortStatsResponse {
+  total_ports: number;
+  ports: PortStat[];
+}
+
 type RootState = {
   auth: { token: string | null };
 };
@@ -182,6 +196,10 @@ export const apiSlice = createApi({
         "Shipments",
       ],
     }),
+    getPortStats: builder.query<PortStatsResponse, void>({
+      query: () => "/ports/stats",
+      providesTags: ["Ports"],
+    }),
   }),
 });
 
@@ -191,8 +209,7 @@ export const {
   useGetPortsQuery,
   useGetShipmentsQuery,
   useCreateShipmentMutation,
-
-  useLazyGetShipmentByTrackingQuery, // Lazy (Trigger manually)
+  useLazyGetShipmentByTrackingQuery,
   useGetVesselByIdQuery,
   useGetRouteByIdQuery,
   useLoginMutation,
@@ -201,4 +218,5 @@ export const {
   useGetNetworkMeshQuery,
   useGetActiveRoutesQuery,
   useGetShipmentsByVesselQuery,
+  useGetPortStatsQuery,
 } = apiSlice;

@@ -30,10 +30,20 @@ const growthRate =
 export const RevenueChart = () => {
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-lg">
-      {/* Header */}
+      {/* Main Header - matches System Alerts style */}
+      <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-800">
+        <h3 className="text-lg font-bold text-white">Revenue Trend</h3>
+        <select className="text-xs bg-slate-800 border border-slate-700 text-slate-300 px-3 py-1 rounded">
+          <option>Last 7 Days</option>
+          <option>Last 30 Days</option>
+          <option>Last 90 Days</option>
+        </select>
+      </div>
+
+      {/* Stats Header */}
       <div className="flex justify-between items-start mb-6">
         <div>
-          <p className="text-xs text-slate-500 mt-1">Last 7 days</p>
+          <p className="text-xs text-slate-500">Last 7 days</p>
         </div>
         <div className="text-right">
           <div className="text-2xl font-bold text-white">

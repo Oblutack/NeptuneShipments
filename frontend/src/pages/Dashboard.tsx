@@ -82,6 +82,11 @@ export const Dashboard = () => {
           )}
         </section>
 
+        {/* Command Deck Section */}
+        <section>
+          <MapCommandDeck />
+        </section>
+
         {/* FORMS & LISTS */}
         <section className="bg-slate-900 border border-slate-800 rounded-xl p-6">
           <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
