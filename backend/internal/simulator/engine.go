@@ -32,7 +32,7 @@ func (e *Engine) Start() {
 			e.tick()
 		}
 	}()
-	log.Println("🌊 Simulation Engine Started (Tick: 5s)")
+	log.Println("Simulation Engine Started (Tick: 5s)")
 }
 
 // tick is one frame of the simulation
@@ -65,7 +65,7 @@ func (e *Engine) moveVessel(ctx context.Context, v models.Vessel) {
 	if newFuel <= 0 {
 		newFuel = 0
 		if v.Status != "DISTRESS" {
-			log.Printf("🔥 MAYDAY! Ship %s has run out of fuel!", v.Name)
+			log.Printf("MAYDAY! Ship %s has run out of fuel!", v.Name)
 			// Fix 1: Use the repository method instead of raw SQL
 			e.vesselRepo.SetDistress(ctx, v.ID)
 		}

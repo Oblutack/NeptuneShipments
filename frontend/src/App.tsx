@@ -10,6 +10,7 @@ import { GlobalMap } from "./features/map/GlobalMap"; // We can use this directl
 import { useGetVesselsQuery, useGetPortsQuery } from "./features/api/apiSlice"; // Need for map wrapper
 import { StatsPage } from "./pages/dashboard/StatsPage";
 import { MapCommandDeck } from "./features/map/MapCommandDeck";
+import { SettingsPage } from "./pages/dashboard/SettingsPage";
 
 // Wrapper for Map Page to handle data fetching
 const MapPage = () => {
@@ -47,6 +48,7 @@ function App() {
             <Route path="fleet" element={<FleetPage />} />
             <Route path="cargo" element={<CargoPage />} />
             <Route path="map" element={<MapPage />} />
+            <Route path="settings" element={<SettingsPage />} />
           </Route>
         </Route>
       </Routes>
