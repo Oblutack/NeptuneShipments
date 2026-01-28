@@ -139,7 +139,7 @@ func main() {
 	shipments.Get("/", shipmentHandler.GetAllShipments)
 	shipments.Get("/:trackingNumber/bol", shipmentHandler.DownloadBOL)
 
-	simEngine := simulator.NewEngine(vesselRepo, shipmentRepo)
+	simEngine := simulator.NewEngine(vesselRepo, shipmentRepo, componentRepo)
 	simEngine.Start()
 
 	port := os.Getenv("PORT")

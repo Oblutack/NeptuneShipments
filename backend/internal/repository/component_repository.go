@@ -1,11 +1,11 @@
 package repository
 
 import (
-    "context"
-    "fmt"
+	"context"
+	"fmt"
 
-    "github.com/Oblutack/NeptuneShipments/backend/internal/models"
-    "github.com/jackc/pgx/v5/pgxpool"
+	"github.com/Oblutack/NeptuneShipments/backend/internal/models"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type ComponentRepository struct {
@@ -122,4 +122,44 @@ func (r *ComponentRepository) GetByID(ctx context.Context, id string) (*models.C
     }
 
     return &c, nil
+}
+
+func (r *ComponentRepository) DegradeComponents(ctx context.Context, vesselID string, amount float64) error {
+    query := `
+        UPDATE components
+        SET 
+            health_percentage = GREATEST(0, health_percentage - $2),
+            total_operating_hours = total_operating_hours + 5.0,
+            status = CASE
+                WHEN health_percentage - $2 <= 10 THEN 'CRITICAL'
+                WHEN health_percentage - $2 <= 50 THEN 'WARNING'
+                ELSE 'OPERATIONAL'
+            END,
+            updated_at = NOW()
+        WHERE vessel_id = $1
+    `
+
+    _, err := r.db.Exec(ctx, query, vesselID, amount)
+    if err != nil {
+        return fmt.Errorf("failed to degrade components: %w", err)
+    }
+
+    return nil
+}
+
+// CheckCriticalFailure determines if any component is below critical threshold
+func (r *ComponentRepository) CheckCriticalFailure(ctx context.Context, vesselID string) (bool, error) {
+    query := `
+        SELECT COUNT(*)
+        FROM components
+        WHERE vessel_id = $1 AND health_percentage <= 10.0
+    `
+
+    var count int
+    err := r.db.QueryRow(ctx, query, vesselID).Scan(&count)
+    if err != nil {
+        return false, fmt.Errorf("failed to check critical failure: %w", err)
+    }
+
+    return count > 0, nil
 }

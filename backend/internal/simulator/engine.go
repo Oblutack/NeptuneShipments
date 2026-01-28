@@ -13,12 +13,14 @@ import (
 type Engine struct {
 	vesselRepo    *repository.VesselRepository
 	shipmentRepo *repository.ShipmentRepository
+	componentRepo *repository.ComponentRepository
 }
 
-func NewEngine(vRepo *repository.VesselRepository, sRepo *repository.ShipmentRepository) *Engine {
+func NewEngine(vRepo *repository.VesselRepository, sRepo *repository.ShipmentRepository, componentRepo *repository.ComponentRepository,) *Engine {
     return &Engine{
         vesselRepo:   vRepo, 
         shipmentRepo: sRepo,
+		componentRepo: componentRepo,
     }
 }
 
@@ -114,5 +116,27 @@ func (e *Engine) moveVessel(ctx context.Context, v models.Vessel) {
 	// Note: We should probably update fuel here too for Strategy B, 
 	// but let's stick to Strategy A for now.
 	e.vesselRepo.UpdatePosition(ctx, v.ID, newLat, newLon)
+
+	// 1. Degrade components by 0.1% per tick
+    if err := e.componentRepo.DegradeComponents(ctx, v.ID, 0.1); err != nil {
+        log.Printf("Failed to degrade components for %s: %v", v.Name, err)
+        // Continue execution - don't stop simulation for this
+    }
+
+    // 2. Check for critical failures
+    hasCriticalFailure, err := e.componentRepo.CheckCriticalFailure(ctx, v.ID)
+    if err != nil {
+        log.Printf("Failed to check critical failure for %s: %v", v.Name, err)
+        // Continue execution
+    }
+
+    // 3. If critical failure detected, set vessel to distress
+    if hasCriticalFailure {
+        log.Printf("🔥 %s has a CRITICAL MECHANICAL FAILURE at (%.4f, %.4f)!", v.Name, newLat, newLon)
+        if err := e.vesselRepo.SetDistress(ctx, v.ID); err != nil {
+            log.Printf("Failed to set distress for %s: %v", v.Name, err)
+        }
+        return
+    }
 }
 
