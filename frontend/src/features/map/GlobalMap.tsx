@@ -10,6 +10,7 @@ import {
 } from "../api/apiSlice";
 import { Ship, Anchor, Network } from "lucide-react";
 import { useState } from "react";
+import { PortInspector } from "./PortInspector";
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 
@@ -48,7 +49,7 @@ const stringToColor = (str: string) => {
 interface GlobalMapProps {
   vessels: Vessel[] | undefined;
   ports: Port[] | undefined;
-  onShipClick?: (id: string | null) => void; // <--- Allow null here
+  onShipClick?: (id: string | null) => void;
   selectedVesselId?: string | null;
 }
 
@@ -79,6 +80,9 @@ export const GlobalMap = ({
   const [filterType, setFilterType] = useState<"ALL" | "TANKER" | "CONTAINER">(
     "ALL",
   );
+
+  const [selectedPortId, setSelectedPortId] = useState<string | null>(null);
+  const selectedPort = ports?.find((p) => p.id === selectedPortId);
   const [hideDocked, setHideDocked] = useState(false);
 
   // Queries
@@ -198,10 +202,20 @@ export const GlobalMap = ({
             latitude={port.latitude}
             anchor="bottom"
           >
-            <div className="group relative flex flex-col items-center cursor-pointer">
+            <div
+              className="group relative flex flex-col items-center cursor-pointer"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedPortId(port.id);
+              }}
+            >
               <Anchor
                 size={18}
-                className="text-orange-500/80 hover:text-orange-300 transition-colors"
+                className={`transition-colors ${
+                  selectedPortId === port.id
+                    ? "text-orange-300"
+                    : "text-orange-500/80 hover:text-orange-300"
+                }`}
               />
               <div className="absolute bottom-full mb-1 hidden group-hover:block bg-black/80 text-white text-[10px] p-1 px-2 rounded border border-orange-500/30 whitespace-nowrap z-50">
                 {port.name}
@@ -339,6 +353,13 @@ export const GlobalMap = ({
           </div>
         )}
       </Map>
+      {/* PORT INSPECTOR PANEL */}
+      {selectedPort && (
+        <PortInspector
+          port={selectedPort}
+          onClose={() => setSelectedPortId(null)}
+        />
+      )}
     </div>
   );
 };

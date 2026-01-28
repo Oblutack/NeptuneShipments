@@ -102,6 +102,31 @@ export interface PortStatsResponse {
   ports: PortStat[];
 }
 
+export interface Berth {
+  id: string;
+  terminal_id: string;
+  name: string;
+  length_meters: number;
+  is_occupied: boolean;
+  current_vessel_id?: string | null;
+  created_at: string;
+}
+
+export interface Terminal {
+  id: string;
+  port_id: string;
+  name: string;
+  type: "CONTAINER" | "LIQUID" | "BULK";
+  created_at: string;
+  berths: Berth[];
+}
+
+export interface PortTerminalsResponse {
+  port_id: string;
+  terminal_count: number;
+  terminals: Terminal[];
+}
+
 type RootState = {
   auth: { token: string | null };
 };
@@ -200,6 +225,13 @@ export const apiSlice = createApi({
       query: () => "/ports/stats",
       providesTags: ["Ports"],
     }),
+    getPortTerminals: builder.query<PortTerminalsResponse, string>({
+      query: (portId) => `/ports/${portId}/terminals`,
+      providesTags: (result, error, portId) => [
+        { type: "Ports", id: portId },
+        "Ports",
+      ],
+    }),
   }),
 });
 
@@ -219,4 +251,5 @@ export const {
   useGetActiveRoutesQuery,
   useGetShipmentsByVesselQuery,
   useGetPortStatsQuery,
+  useGetPortTerminalsQuery,
 } = apiSlice;
