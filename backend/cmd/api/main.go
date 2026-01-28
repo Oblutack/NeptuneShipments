@@ -44,6 +44,7 @@ func main() {
 	terminalRepo := repository.NewTerminalRepository(db)
 
 	componentRepo := repository.NewComponentRepository(db.GetPool())
+	crewRepo := repository.NewCrewRepository(db)
 
 	vesselHandler := handlers.NewVesselHandler(vesselRepo)
 	portHandler := handlers.NewPortHandler(portRepo)
@@ -61,7 +62,8 @@ func main() {
 	tankHandler := handlers.NewTankHandler(tankRepo)
 	routeHandler := handlers.NewRouteHandler(routeRepo, routingEngineRepo)
 	terminalHandler := handlers.NewTerminalHandler(terminalRepo)
-	componentHandler := handlers.NewComponentHandler(componentRepo) 
+	componentHandler := handlers.NewComponentHandler(componentRepo)
+	crewHandler := handlers.NewCrewHandler(crewRepo) 
 
 	// Initialize Fiber
 	app := fiber.New()
@@ -116,7 +118,8 @@ func main() {
 	vessels.Get("/", vesselHandler.GetAllVessels)
 	vessels.Get("/:vesselId/tanks", tankHandler.GetTanks)
 	vessels.Get("/:vesselId/shipments", shipmentHandler.GetShipmentsByVessel)
-	vessels.Get("/:vesselId/components", componentHandler.GetComponents) 
+	vessels.Get("/:vesselId/components", componentHandler.GetComponents)
+	vessels.Get("/:id/crew", crewHandler.GetCrewByVessel) 
 	vessels.Post("/:id/refuel", vesselHandler.RefuelVessel)
 
 	// Route lines
@@ -132,6 +135,10 @@ func main() {
 	// Components
 	components := api.Group("/components")
     components.Post("/:id/maintain", componentHandler.PerformMaintenance)
+
+	// Crew 
+	crew := api.Group("/crew")
+    crew.Get("/", crewHandler.GetAllCrew)
 
 	// Shipments
 	shipments := api.Group("/shipments")

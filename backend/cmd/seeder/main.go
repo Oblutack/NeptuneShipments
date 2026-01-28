@@ -30,9 +30,10 @@ func main() {
 	shipmentRepo := repository.NewShipmentRepository(dbService) 
 
 	routingEngineRepo := repository.NewRoutingRepository(dbService)
+	crewRepo := repository.NewCrewRepository(dbService)
 
     // 2. Init Importer
-	importer := services.NewImporterService(portRepo, userRepo, vesselRepo, routeRepo, shipmentRepo, routingEngineRepo)
+	importer := services.NewImporterService(portRepo, userRepo, vesselRepo, routeRepo, shipmentRepo, routingEngineRepo, crewRepo)
 
     log.Println("🌱 Starting Data Ingestion...")
 
@@ -57,6 +58,10 @@ func main() {
 	if err := importer.ImportShipments("../data/shipments.csv"); err != nil {
 		log.Fatal(err)
 	}
+
+	if err := importer.ImportCrew("../data/crew.csv"); err != nil { 
+        log.Fatal(err)
+    }
 
 	// Seed port infrastructure (terminals and berths)
 	seedPortInfrastructure(dbService.GetPool())

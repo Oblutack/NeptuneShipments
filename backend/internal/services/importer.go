@@ -18,7 +18,8 @@ type ImporterService struct {
 	vesselRepo   *repository.VesselRepository
 	routeRepo    *repository.RouteRepository
 	shipmentRepo *repository.ShipmentRepository
-	routingRepo  *repository.RoutingRepository 
+	routingRepo  *repository.RoutingRepository
+	crewRepo     *repository.CrewRepository 
 }
 
 func NewImporterService(
@@ -28,6 +29,7 @@ func NewImporterService(
 	r *repository.RouteRepository,
 	s *repository.ShipmentRepository,
 	rt *repository.RoutingRepository,
+	cr *repository.CrewRepository,
 ) *ImporterService {
 	return &ImporterService{
 		portRepo:     p,
@@ -35,7 +37,8 @@ func NewImporterService(
 		vesselRepo:   v,
 		routeRepo:    r,
 		shipmentRepo: s,
-		routingRepo:  rt, 
+		routingRepo:  rt,
+		crewRepo:     cr, 
 	}
 }
 
@@ -228,4 +231,49 @@ func (s *ImporterService) ImportShipments(filePath string) error {
 	}
 	fmt.Printf("✅ Imported %d Shipments (With Routing)\n", count)
 	return nil
+}
+
+// ImportCrew method
+func (s *ImporterService) ImportCrew(filePath string) error {
+    records, err := readCSV(filePath)
+    if err != nil {
+        return err
+    }
+
+    ctx := context.Background()
+    count := 0
+
+    for i := 1; i < len(records); i++ {
+        row := records[i]
+        // CSV format: name, role, license, nationality, vessel_imo
+
+        var vesselIDPtr *string
+        if row[4] != "" {
+            // Lookup vessel ID by IMO number
+            vID, err := s.vesselRepo.GetIDByIMO(ctx, row[4])
+            if err == nil {
+                vesselIDPtr = &vID
+            } else {
+                fmt.Printf("⚠️ Vessel IMO %s not found for crew %s\n", row[4], row[0])
+            }
+        }
+
+        crew := &models.CrewMember{
+            Name:        row[0],
+            Role:        row[1],
+            License:     row[2],
+            Nationality: row[3],
+            VesselID:    vesselIDPtr,
+            Status:      "ACTIVE",
+        }
+
+        if err := s.crewRepo.CreateOrUpdate(ctx, crew); err != nil {
+            fmt.Printf("❌ Crew Import Error (%s): %v\n", row[0], err)
+        } else {
+            count++
+        }
+    }
+
+    fmt.Printf("✅ Imported %d Crew Members\n", count)
+    return nil
 }

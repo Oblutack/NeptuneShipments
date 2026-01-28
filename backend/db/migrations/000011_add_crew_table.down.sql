@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS crew;
+DROP TYPE IF EXISTS crew_role;
