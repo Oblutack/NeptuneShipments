@@ -61,6 +61,8 @@ func main() {
 	// Seed port infrastructure (terminals and berths)
 	seedPortInfrastructure(dbService.GetPool())
 
+	seedComponents(dbService.GetPool())
+
     log.Println("🌱 Data Ingestion Complete!")
 }
 
@@ -145,4 +147,60 @@ func seedPortInfrastructure(pool *pgxpool.Pool) {
 		log.Printf("✅ Infrastructure built for %s", port.Name)
 	}
 	log.Println("🏗️ Port Infrastructure Complete!")
+}
+
+func seedComponents(pool *pgxpool.Pool) {
+	log.Println("🔧 Installing Ship Components...")
+	ctx := context.Background()
+
+	// 1. Get All Vessels
+	rows, err := pool.Query(ctx, "SELECT id, name FROM vessels")
+	if err != nil {
+		log.Fatalf("Failed to fetch vessels: %v", err)
+	}
+	defer rows.Close()
+
+	type VesselInfo struct {
+		ID   string
+		Name string
+	}
+	var vessels []VesselInfo
+	
+	for rows.Next() {
+		var v VesselInfo
+		rows.Scan(&v.ID, &v.Name)
+		vessels = append(vessels, v)
+	}
+
+	// 2. Define Standard Parts List
+	parts := []struct {
+		Name   string
+		Type   string
+		Health float64 // Initial health (simulate some wear)
+	}{
+		{"Main Engine", "PROPULSION", 95.0},
+		{"Auxiliary Generator", "ELECTRICAL", 98.0},
+		{"X-Band Radar", "NAVIGATION", 88.0},
+		{"Propeller Shaft", "PROPULSION", 92.0},
+		{"Hull Integrity", "HULL", 100.0},
+	}
+
+	// 3. Install Parts
+	for _, v := range vessels {
+		for _, part := range parts {
+            // Simulate wear: Randomize health slightly so they aren't all identical
+            // (In a real app, use math/rand, here we just use fixed values for simplicity)
+            
+			_, err := pool.Exec(ctx, `
+				INSERT INTO components (vessel_id, name, type, health_percentage)
+				VALUES ($1, $2, $3, $4)
+				ON CONFLICT (vessel_id, name) DO NOTHING
+			`, v.ID, part.Name, part.Type, part.Health)
+			
+			if err != nil {
+				log.Printf("❌ Failed to install %s on %s: %v", part.Name, v.Name, err)
+			}
+		}
+		log.Printf("✅ Components installed on %s", v.Name)
+	}
 }
