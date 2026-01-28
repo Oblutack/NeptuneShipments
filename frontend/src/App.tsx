@@ -11,6 +11,7 @@ import { useGetVesselsQuery, useGetPortsQuery } from "./features/api/apiSlice"; 
 import { StatsPage } from "./pages/dashboard/StatsPage";
 import { MapCommandDeck } from "./features/map/MapCommandDeck";
 import { SettingsPage } from "./pages/dashboard/SettingsPage";
+import { MaintenancePage } from "./pages/dashboard/MaintenancePage";
 
 // Wrapper for Map Page to handle data fetching
 const MapPage = () => {
@@ -49,6 +50,7 @@ function App() {
             <Route path="cargo" element={<CargoPage />} />
             <Route path="map" element={<MapPage />} />
             <Route path="settings" element={<SettingsPage />} />
+            <Route path="maintenance" element={<MaintenancePage />} />
           </Route>
         </Route>
       </Routes>

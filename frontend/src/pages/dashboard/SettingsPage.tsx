@@ -69,7 +69,7 @@ export const SettingsPage = () => {
             {/* Avatar */}
             <div className="flex-shrink-0">
               <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center text-white text-3xl font-bold">
-                {user?.username?.charAt(0).toUpperCase() || "U"}
+                {user?.full_name?.charAt(0).toUpperCase() || "U"}
               </div>
               <div className="flex items-center justify-center gap-1 mt-2 text-xs text-green-400">
                 <CheckCircle2 size={12} />
@@ -85,7 +85,7 @@ export const SettingsPage = () => {
                 </label>
                 <div className="flex items-center gap-2 text-white">
                   <User size={16} className="text-slate-500" />
-                  <span className="font-semibold">{user?.username}</span>
+                  <span className="font-semibold">{user?.full_name}</span>
                 </div>
               </div>
 
@@ -105,7 +105,7 @@ export const SettingsPage = () => {
                 </label>
                 <div className="flex items-center gap-2 text-slate-300">
                   <Building size={16} className="text-slate-500" />
-                  <span>{user?.company || "Neptune Shipping Co."}</span>
+                  <span>{user?.company_name || "Neptune Shipping Co."}</span>
                 </div>
               </div>
 

@@ -56,6 +56,7 @@ export interface User {
   id: string;
   email: string;
   full_name: string;
+  company_name?: string;
   role: "ADMIN" | "CLIENT";
 }
 
@@ -125,6 +126,36 @@ export interface PortTerminalsResponse {
   port_id: string;
   terminal_count: number;
   terminals: Terminal[];
+}
+
+export interface Component {
+  id: string;
+  vessel_id: string;
+  name: string;
+  type: "PROPULSION" | "ELECTRICAL" | "NAVIGATION" | "HULL";
+  health_percentage: number;
+  status: "OPERATIONAL" | "WARNING" | "CRITICAL";
+  total_operating_hours: number;
+  last_maintenance: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ComponentsResponse {
+  vessel_id: string;
+  total_count: number;
+  summary: {
+    critical: number;
+    warning: number;
+    operational: number;
+  };
+  components: Component[];
+}
+
+export interface MaintenanceResponse {
+  status: string;
+  message: string;
+  component: Component;
 }
 
 type RootState = {
@@ -216,7 +247,7 @@ export const apiSlice = createApi({
     }),
     getShipmentsByVessel: builder.query<VesselManifest, string>({
       query: (vesselId) => `/vessels/${vesselId}/shipments`,
-      providesTags: (result, error, vesselId) => [
+      providesTags: (_result, _error, vesselId) => [
         { type: "Shipments", id: vesselId },
         "Shipments",
       ],
@@ -227,10 +258,24 @@ export const apiSlice = createApi({
     }),
     getPortTerminals: builder.query<PortTerminalsResponse, string>({
       query: (portId) => `/ports/${portId}/terminals`,
-      providesTags: (result, error, portId) => [
+      providesTags: (_result, _error, portId) => [
         { type: "Ports", id: portId },
         "Ports",
       ],
+    }),
+    getComponents: builder.query<ComponentsResponse, string>({
+      query: (vesselId) => `/vessels/${vesselId}/components`,
+      providesTags: (_result, _error, vesselId) => [
+        { type: "Vessels", id: vesselId },
+        "Vessels",
+      ],
+    }),
+    performMaintenance: builder.mutation<MaintenanceResponse, string>({
+      query: (componentId) => ({
+        url: `/components/${componentId}/maintain`,
+        method: "POST",
+      }),
+      invalidatesTags: ["Vessels"], // Refresh all vessel-related data
     }),
   }),
 });
@@ -252,4 +297,6 @@ export const {
   useGetShipmentsByVesselQuery,
   useGetPortStatsQuery,
   useGetPortTerminalsQuery,
+  useGetComponentsQuery,
+  usePerformMaintenanceMutation,
 } = apiSlice;
