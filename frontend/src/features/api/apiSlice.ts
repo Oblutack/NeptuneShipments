@@ -158,6 +158,24 @@ export interface MaintenanceResponse {
   component: Component;
 }
 
+export interface CrewMember {
+  id: string;
+  name: string;
+  role: "CAPTAIN" | "CHIEF_ENGINEER" | "FIRST_OFFICER" | "DECKHAND" | "COOK";
+  license_number?: string | null;
+  nationality: string;
+  vessel_id?: string | null;
+  vessel_name?: string;
+  status: "ACTIVE" | "ON_LEAVE" | "RETIRED";
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CrewResponse {
+  total: number;
+  crew: CrewMember[];
+}
+
 type RootState = {
   auth: { token: string | null };
 };
@@ -175,7 +193,7 @@ export const apiSlice = createApi({
       return headers;
     },
   }),
-  tagTypes: ["Vessels", "Ports", "Shipments", "Routes"],
+  tagTypes: ["Vessels", "Ports", "Shipments", "Routes", "Crew"],
   endpoints: (builder) => ({
     getVessels: builder.query<Vessel[], void>({
       query: () => "/vessels",
@@ -277,6 +295,17 @@ export const apiSlice = createApi({
       }),
       invalidatesTags: ["Vessels"], // Refresh all vessel-related data
     }),
+    getCrew: builder.query<CrewResponse, void>({
+      query: () => "/crew",
+      providesTags: ["Crew"],
+    }),
+    getCrewByVessel: builder.query<CrewResponse, string>({
+      query: (vesselId) => `/vessels/${vesselId}/crew`,
+      providesTags: (result, error, vesselId) => [
+        { type: "Vessels", id: vesselId },
+        "Crew",
+      ],
+    }),
   }),
 });
 
@@ -299,4 +328,6 @@ export const {
   useGetPortTerminalsQuery,
   useGetComponentsQuery,
   usePerformMaintenanceMutation,
+  useGetCrewQuery,
+  useGetCrewByVesselQuery,
 } = apiSlice;

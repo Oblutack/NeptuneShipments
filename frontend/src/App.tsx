@@ -3,7 +3,7 @@ import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
 import { TrackingPage } from "./pages/TrackingPage";
 import { RequireAuth } from "./features/auth/RequireAuth";
-import { DashboardLayout } from "./layouts/DashboardLayout"; // <--- NEW LAYOUT
+import { DashboardLayout } from "./layouts/DashboardLayout";
 import { FleetPage } from "./pages/dashboard/FleetPage";
 import { CargoPage } from "./pages/dashboard/CargoPage";
 import { GlobalMap } from "./features/map/GlobalMap"; // We can use this directly for map page
@@ -12,6 +12,7 @@ import { StatsPage } from "./pages/dashboard/StatsPage";
 import { MapCommandDeck } from "./features/map/MapCommandDeck";
 import { SettingsPage } from "./pages/dashboard/SettingsPage";
 import { MaintenancePage } from "./pages/dashboard/MaintenancePage";
+import { CrewPage } from "./pages/dashboard/CrewPage";
 
 // Wrapper for Map Page to handle data fetching
 const MapPage = () => {
@@ -50,6 +51,7 @@ function App() {
             <Route path="cargo" element={<CargoPage />} />
             <Route path="map" element={<MapPage />} />
             <Route path="settings" element={<SettingsPage />} />
+            <Route path="crew" element={<CrewPage />} />
             <Route path="maintenance" element={<MaintenancePage />} />
           </Route>
         </Route>

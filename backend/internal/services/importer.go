@@ -245,10 +245,10 @@ func (s *ImporterService) ImportCrew(filePath string) error {
 
     for i := 1; i < len(records); i++ {
         row := records[i]
-        // CSV format: name, role, license, nationality, vessel_imo
+        // CSV format: name, role, license_number, nationality, vessel_imo
 
         var vesselIDPtr *string
-        if row[4] != "" {
+        if len(row) > 4 && row[4] != "" {
             // Lookup vessel ID by IMO number
             vID, err := s.vesselRepo.GetIDByIMO(ctx, row[4])
             if err == nil {
@@ -258,13 +258,19 @@ func (s *ImporterService) ImportCrew(filePath string) error {
             }
         }
 
+        // Handle nullable license_number
+        var licensePtr *string
+        if len(row) > 2 && row[2] != "" {
+            licensePtr = &row[2]
+        }
+
         crew := &models.CrewMember{
-            Name:        row[0],
-            Role:        row[1],
-            License:     row[2],
-            Nationality: row[3],
-            VesselID:    vesselIDPtr,
-            Status:      "ACTIVE",
+            Name:          row[0],
+            Role:          row[1],
+            LicenseNumber: licensePtr, 
+            Nationality:   row[3],
+            VesselID:      vesselIDPtr,
+            Status:        "ACTIVE",
         }
 
         if err := s.crewRepo.CreateOrUpdate(ctx, crew); err != nil {

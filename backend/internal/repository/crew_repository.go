@@ -20,7 +20,7 @@ func NewCrewRepository(db *database.Service) *CrewRepository {
 func (r *CrewRepository) GetAll(ctx context.Context) ([]models.CrewMember, error) {
     query := `
         SELECT 
-            c.id, c.name, c.role, c.license, c.nationality, 
+            c.id, c.name, c.role, c.license_number, c.nationality, 
             c.vessel_id, c.status, c.created_at, c.updated_at,
             v.name as vessel_name
         FROM crew c
@@ -50,7 +50,7 @@ func (r *CrewRepository) GetAll(ctx context.Context) ([]models.CrewMember, error
             &c.ID,
             &c.Name,
             &c.Role,
-            &c.License,
+            &c.LicenseNumber,
             &c.Nationality,
             &c.VesselID,
             &c.Status,
@@ -84,7 +84,7 @@ func (r *CrewRepository) GetAll(ctx context.Context) ([]models.CrewMember, error
 func (r *CrewRepository) GetByVesselID(ctx context.Context, vesselID string) ([]models.CrewMember, error) {
     query := `
         SELECT 
-            c.id, c.name, c.role, c.license, c.nationality, 
+            c.id, c.name, c.role, c.license_number, c.nationality, 
             c.vessel_id, c.status, c.created_at, c.updated_at,
             v.name as vessel_name
         FROM crew c
@@ -115,7 +115,7 @@ func (r *CrewRepository) GetByVesselID(ctx context.Context, vesselID string) ([]
             &c.ID,
             &c.Name,
             &c.Role,
-            &c.License,
+            &c.LicenseNumber,
             &c.Nationality,
             &c.VesselID,
             &c.Status,
@@ -164,9 +164,9 @@ func (r *CrewRepository) AssignToVessel(ctx context.Context, crewID string, vess
 // CreateOrUpdate inserts or updates a crew member (for CSV import)
 func (r *CrewRepository) CreateOrUpdate(ctx context.Context, crew *models.CrewMember) error {
     query := `
-        INSERT INTO crew (name, role, license, nationality, vessel_id, status)
+        INSERT INTO crew (name, role, license_number, nationality, vessel_id, status)
         VALUES ($1, $2, $3, $4, $5, 'ACTIVE')
-        ON CONFLICT (license) 
+        ON CONFLICT (license_number) 
         DO UPDATE SET 
             name = EXCLUDED.name,
             role = EXCLUDED.role,
@@ -181,7 +181,7 @@ func (r *CrewRepository) CreateOrUpdate(ctx context.Context, crew *models.CrewMe
         query,
         crew.Name,
         crew.Role,
-        crew.License,
+        crew.LicenseNumber,
         crew.Nationality,
         crew.VesselID,
     ).Scan(&crew.ID, &crew.CreatedAt, &crew.UpdatedAt)
