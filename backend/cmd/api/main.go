@@ -41,6 +41,8 @@ func main() {
 	routingEngineRepo := repository.NewRoutingRepository(db)
 	routeRepo := repository.NewRouteRepository(db)
 
+	terminalRepo := repository.NewTerminalRepository(db)
+
 	vesselHandler := handlers.NewVesselHandler(vesselRepo)
 	portHandler := handlers.NewPortHandler(portRepo)
 	
@@ -56,6 +58,7 @@ func main() {
 	authHandler := handlers.NewAuthHandler(userRepo)
 	tankHandler := handlers.NewTankHandler(tankRepo)
 	routeHandler := handlers.NewRouteHandler(routeRepo, routingEngineRepo)
+	terminalHandler := handlers.NewTerminalHandler(terminalRepo) 
 
 	// Initialize Fiber
 	app := fiber.New()
@@ -119,6 +122,7 @@ func main() {
 	ports := api.Group("/ports")
 	ports.Get("/", portHandler.GetAllPorts)
 	ports.Get("/stats", portHandler.GetPortStats)
+	ports.Get("/:portId/terminals", terminalHandler.GetPortTerminals)
 
 	// Shipments
 	shipments := api.Group("/shipments")
