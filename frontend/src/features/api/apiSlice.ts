@@ -176,6 +176,17 @@ export interface CrewResponse {
   crew: CrewMember[];
 }
 
+export interface FinancialStats {
+  total_revenue: number;
+  total_fuel_cost: number;
+  gross_profit: number;
+  active_job_count: number;
+  total_shipments: number;
+  completed_job_count: number;
+  fuel_consumed: number;
+  avg_revenue_per_job: number;
+}
+
 type RootState = {
   auth: { token: string | null };
 };
@@ -306,6 +317,10 @@ export const apiSlice = createApi({
         "Crew",
       ],
     }),
+    getFinancialStats: builder.query<FinancialStats, void>({
+      query: () => "/finance/stats",
+      providesTags: ["Shipments", "Vessels"], // Depends on both
+    }),
   }),
 });
 
@@ -330,4 +345,5 @@ export const {
   usePerformMaintenanceMutation,
   useGetCrewQuery,
   useGetCrewByVesselQuery,
+  useGetFinancialStatsQuery,
 } = apiSlice;

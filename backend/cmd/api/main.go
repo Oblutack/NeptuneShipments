@@ -45,6 +45,7 @@ func main() {
 
 	componentRepo := repository.NewComponentRepository(db.GetPool())
 	crewRepo := repository.NewCrewRepository(db)
+	financeRepo := repository.NewFinanceRepository(db)
 
 	vesselHandler := handlers.NewVesselHandler(vesselRepo)
 	portHandler := handlers.NewPortHandler(portRepo)
@@ -63,7 +64,8 @@ func main() {
 	routeHandler := handlers.NewRouteHandler(routeRepo, routingEngineRepo)
 	terminalHandler := handlers.NewTerminalHandler(terminalRepo)
 	componentHandler := handlers.NewComponentHandler(componentRepo)
-	crewHandler := handlers.NewCrewHandler(crewRepo) 
+	crewHandler := handlers.NewCrewHandler(crewRepo)
+	financeHandler := handlers.NewFinanceHandler(financeRepo) 
 
 	// Initialize Fiber
 	app := fiber.New()
@@ -139,6 +141,10 @@ func main() {
 	// Crew 
 	crew := api.Group("/crew")
     crew.Get("/", crewHandler.GetAllCrew)
+
+	// Finance
+    finance := api.Group("/finance") 
+    finance.Get("/stats", financeHandler.GetStats)
 
 	// Shipments
 	shipments := api.Group("/shipments")

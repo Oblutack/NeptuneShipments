@@ -13,6 +13,7 @@ import { MapCommandDeck } from "./features/map/MapCommandDeck";
 import { SettingsPage } from "./pages/dashboard/SettingsPage";
 import { MaintenancePage } from "./pages/dashboard/MaintenancePage";
 import { CrewPage } from "./pages/dashboard/CrewPage";
+import { FinancePage } from "./pages/dashboard/FinancePage";
 
 // Wrapper for Map Page to handle data fetching
 const MapPage = () => {
@@ -53,6 +54,7 @@ function App() {
             <Route path="settings" element={<SettingsPage />} />
             <Route path="crew" element={<CrewPage />} />
             <Route path="maintenance" element={<MaintenancePage />} />
+            <Route path="finance" element={<FinancePage />} />
           </Route>
         </Route>
       </Routes>
