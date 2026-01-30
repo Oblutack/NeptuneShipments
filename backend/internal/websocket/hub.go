@@ -45,19 +45,21 @@ func (h *Hub) Run() {
                 close(client.send)
             }
             h.mu.Unlock()
-            log.Printf("🔌 Client disconnected (Total: %d)", len(h.clients))
+    		log.Printf("🔌 Client disconnected (Total: %d)", len(h.clients))
 
         case message := <-h.broadcast:
-            h.mu.RLock()
+            h.mu.Lock()
             for client := range h.clients {
                 select {
                 case client.send <- message:
+                    // Message sent successfully
                 default:
-                    close(client.send)
+                    // Channel is full or closed, remove client
                     delete(h.clients, client)
+                    close(client.send)
                 }
             }
-            h.mu.RUnlock()
+            h.mu.Unlock()
         }
     }
 }

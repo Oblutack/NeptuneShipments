@@ -1,14 +1,14 @@
 package handlers
 
 import (
-    "context"
-    "encoding/json"
-    "log"
-    "time"
+	"context"
+	"encoding/json"
+	"log"
+	"time"
 
-    "github.com/Oblutack/NeptuneShipments/backend/internal/repository"
-    "github.com/Oblutack/NeptuneShipments/backend/internal/websocket"
-    ws "github.com/gofiber/websocket/v2"
+	"github.com/Oblutack/NeptuneShipments/backend/internal/repository"
+	"github.com/Oblutack/NeptuneShipments/backend/internal/websocket"
+	ws "github.com/gofiber/websocket/v2"
 )
 
 type WebSocketHandler struct {
@@ -23,7 +23,6 @@ func NewWebSocketHandler(hub *websocket.Hub, vesselRepo *repository.VesselReposi
     }
 }
 
-// FleetUpdate represents the vessel data sent via WebSocket
 type FleetUpdate struct {
     Type    string      `json:"type"`
     Payload interface{} `json:"payload"`
@@ -31,18 +30,20 @@ type FleetUpdate struct {
 
 // HandleFleetStream handles WebSocket connections for real-time fleet updates
 func (h *WebSocketHandler) HandleFleetStream(c *ws.Conn) {
+    log.Println("🔌 New WebSocket connection attempt")
+    
     // Create a new WebSocket client
     client := websocket.NewClient(h.hub, c)
 
     // Register client with hub
     h.hub.Register(client)
 
+    // Send initial data immediately (blocking)
+    h.sendInitialFleetData(client)
+
     // Start goroutines for reading and writing
     go client.WritePump()
-    go client.ReadPump()
-
-    // Send initial fleet data
-    go h.sendInitialFleetData(client)
+    client.ReadPump() // ✅ This blocks until connection closes
 }
 
 // sendInitialFleetData sends the current fleet state when client connects
@@ -55,9 +56,6 @@ func (h *WebSocketHandler) sendInitialFleetData(client *websocket.Client) {
         return
     }
 
-    // Wait a bit to ensure connection is ready
-    time.Sleep(100 * time.Millisecond)
-
     update := FleetUpdate{
         Type:    "FLEET_UPDATE",
         Payload: vessels,
@@ -69,11 +67,11 @@ func (h *WebSocketHandler) sendInitialFleetData(client *websocket.Client) {
         return
     }
 
-    // Send to this specific client
+    // Send directly to the client channel
     select {
     case client.Send() <- data:
         log.Println("📡 Sent initial fleet data to new client")
-    default:
-        log.Println("⚠️ Client buffer full, skipping initial data")
+    case <-time.After(2 * time.Second):
+        log.Println("⚠️ Timeout sending initial data")
     }
 }

@@ -17,6 +17,7 @@ type Engine struct {
 	shipmentRepo *repository.ShipmentRepository
 	componentRepo *repository.ComponentRepository
 	hub           *websocket.Hub
+	alertsSent    map[string]bool // Track which vessels have already sent alerts
 }
 
 // WebSocketMessage wraps all messages sent via WebSocket
@@ -31,6 +32,7 @@ func NewEngine(vRepo *repository.VesselRepository, sRepo *repository.ShipmentRep
         shipmentRepo: sRepo,
 		componentRepo: componentRepo,
 		hub:           hub,
+		alertsSent:    make(map[string]bool), // Initialize alert tracking
     }
 }
 
@@ -46,6 +48,18 @@ type AlertPayload struct {
 
 // broadcastAlert sends a notification to all connected clients
 func (e *Engine) broadcastAlert(level, message, vesselID, vesselName string) {
+	// Create a unique key for this alert type + vessel
+	alertKey := level + ":" + vesselID
+
+	// Check if we've already sent this alert
+	if e.alertsSent[alertKey] {
+		log.Printf("⚠️ Alert already sent for %s, skipping duplicate", alertKey)
+		return
+	}
+
+	// Mark this alert as sent
+	e.alertsSent[alertKey] = true
+
     alert := AlertPayload{
         Level:      level,
         Message:    message,
@@ -69,6 +83,12 @@ func (e *Engine) broadcastAlert(level, message, vesselID, vesselName string) {
     e.hub.Broadcast(jsonData)
 
     log.Printf("📢 Alert Broadcast: [%s] %s", level, message)
+}
+
+// clearAlertForVessel removes the alert tracking for a vessel (e.g., after refueling)
+func (e *Engine) clearAlertForVessel(vesselID string) {
+	delete(e.alertsSent, "CRITICAL:"+vesselID)
+	delete(e.alertsSent, "INFO:"+vesselID)
 }
 
 

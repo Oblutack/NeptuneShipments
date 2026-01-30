@@ -36,6 +36,7 @@ func main() {
 
 	hub := internalWs.NewHub()
     go hub.Run()
+	
 	vesselRepo := repository.NewVesselRepository(db.GetPool())
 	portRepo := repository.NewPortRepository(db)
 	shipmentRepo := repository.NewShipmentRepository(db)
@@ -79,6 +80,8 @@ func main() {
 	app.Use(cors.New(cors.Config{
 		AllowOrigins: "http://localhost:5173, http://127.0.0.1:5173",
 		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
+		AllowMethods:     "GET, POST, PUT, DELETE, OPTIONS",              
+    	AllowCredentials: true,
 	}))
 
 	// Health check
@@ -157,7 +160,28 @@ func main() {
 	shipments.Get("/", shipmentHandler.GetAllShipments)
 	shipments.Get("/:trackingNumber/bol", shipmentHandler.DownloadBOL)
 
-	 app.Get("/ws/fleet", websocket.New(wsHandler.HandleFleetStream))
+	app.Use("/ws", func(c *fiber.Ctx) error {
+    // Set CORS headers for WebSocket
+    c.Set("Access-Control-Allow-Origin", "http://localhost:5173")
+    c.Set("Access-Control-Allow-Credentials", "true")
+    c.Set("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization")
+    
+    // Handle preflight
+    if c.Method() == "OPTIONS" {
+        return c.SendStatus(fiber.StatusOK)
+    }
+    
+    // Allow WebSocket upgrade
+    if websocket.IsWebSocketUpgrade(c) {
+        c.Locals("allowed", true)
+        return c.Next()
+    }
+    return fiber.ErrUpgradeRequired
+	})
+
+	app.Get("/ws/fleet", websocket.New(wsHandler.HandleFleetStream, websocket.Config{
+		Origins: []string{"http://localhost:5173", "http://127.0.0.1:5173"}, 
+	}))
 
 	simEngine := simulator.NewEngine(vesselRepo, shipmentRepo, componentRepo, hub)
 	simEngine.Start()
