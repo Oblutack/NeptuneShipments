@@ -2,27 +2,75 @@ package simulator
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"time"
 
 	"github.com/Oblutack/NeptuneShipments/backend/internal/models"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/navigation"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/repository"
+	"github.com/Oblutack/NeptuneShipments/backend/internal/websocket"
 )
 
 type Engine struct {
 	vesselRepo    *repository.VesselRepository
 	shipmentRepo *repository.ShipmentRepository
 	componentRepo *repository.ComponentRepository
+	hub           *websocket.Hub
 }
 
-func NewEngine(vRepo *repository.VesselRepository, sRepo *repository.ShipmentRepository, componentRepo *repository.ComponentRepository,) *Engine {
+// WebSocketMessage wraps all messages sent via WebSocket
+type WebSocketMessage struct {
+    Type    string      `json:"type"`    
+    Payload interface{} `json:"payload"`
+}
+
+func NewEngine(vRepo *repository.VesselRepository, sRepo *repository.ShipmentRepository, componentRepo *repository.ComponentRepository, hub *websocket.Hub,) *Engine {
     return &Engine{
         vesselRepo:   vRepo, 
         shipmentRepo: sRepo,
 		componentRepo: componentRepo,
+		hub:           hub,
     }
 }
+
+// AlertPayload represents a notification sent to clients
+type AlertPayload struct {
+    Level     string `json:"level"`     
+    Message   string `json:"message"`
+    Timestamp string `json:"timestamp"`
+    VesselID  string `json:"vessel_id"`
+    VesselName string `json:"vessel_name"`
+}
+
+
+// broadcastAlert sends a notification to all connected clients
+func (e *Engine) broadcastAlert(level, message, vesselID, vesselName string) {
+    alert := AlertPayload{
+        Level:      level,
+        Message:    message,
+        Timestamp:  time.Now().Format(time.RFC3339),
+        VesselID:   vesselID,
+        VesselName: vesselName,
+    }
+
+    wsMessage := WebSocketMessage{
+        Type:    "ALERT",
+        Payload: alert,
+    }
+
+    jsonData, err := json.Marshal(wsMessage)
+    if err != nil {
+        log.Printf("Failed to marshal alert: %v", err)
+        return
+    }
+
+    // Broadcast to all connected WebSocket clients
+    e.hub.Broadcast(jsonData)
+
+    log.Printf("📢 Alert Broadcast: [%s] %s", level, message)
+}
+
 
 // Start begins the simulation loop in a background goroutine
 func (e *Engine) Start() {
@@ -70,6 +118,14 @@ func (e *Engine) moveVessel(ctx context.Context, v models.Vessel) {
 			log.Printf("MAYDAY! Ship %s has run out of fuel!", v.Name)
 			// Fix 1: Use the repository method instead of raw SQL
 			e.vesselRepo.SetDistress(ctx, v.ID)
+
+			
+            e.broadcastAlert(
+                "CRITICAL",
+                v.Name+" has run out of fuel and is stranded at sea!",
+                v.ID,
+                v.Name,
+			)
 		}
 		return // Ship stops moving
 	}
@@ -82,6 +138,14 @@ func (e *Engine) moveVessel(ctx context.Context, v models.Vessel) {
 			if v.Status == "AT_SEA" {
 				log.Printf("🚢 Ship %s has arrived at destination!", v.Name)
 				e.vesselRepo.SetDocked(ctx, v.ID)
+
+				e.broadcastAlert(
+                    "INFO",
+                    v.Name+" has successfully arrived at the destination port.",
+                    v.ID,
+                    v.Name,
+				)
+                
 				
 				// Update shipments to DELIVERED
 				e.shipmentRepo.UpdateETAForVessel(ctx, v.ID, *v.CurrentRouteID, 1.0, 0)
@@ -136,6 +200,15 @@ func (e *Engine) moveVessel(ctx context.Context, v models.Vessel) {
         if err := e.vesselRepo.SetDistress(ctx, v.ID); err != nil {
             log.Printf("Failed to set distress for %s: %v", v.Name, err)
         }
+
+		e.broadcastAlert(
+            "CRITICAL",
+            v.Name+" has experienced a critical mechanical failure!",
+            v.ID,
+            v.Name,
+        )
+
+		
         return
     }
 }

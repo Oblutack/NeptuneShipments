@@ -10,9 +10,11 @@ import (
 	"github.com/Oblutack/NeptuneShipments/backend/internal/repository"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/services"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/simulator"
+	internalWs "github.com/Oblutack/NeptuneShipments/backend/internal/websocket"
 	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/websocket/v2"
 	"github.com/joho/godotenv"
 )
 
@@ -32,6 +34,8 @@ func main() {
 
 	pdfService := services.NewPDFService()
 
+	hub := internalWs.NewHub()
+    go hub.Run()
 	vesselRepo := repository.NewVesselRepository(db.GetPool())
 	portRepo := repository.NewPortRepository(db)
 	shipmentRepo := repository.NewShipmentRepository(db)
@@ -65,7 +69,8 @@ func main() {
 	terminalHandler := handlers.NewTerminalHandler(terminalRepo)
 	componentHandler := handlers.NewComponentHandler(componentRepo)
 	crewHandler := handlers.NewCrewHandler(crewRepo)
-	financeHandler := handlers.NewFinanceHandler(financeRepo) 
+	financeHandler := handlers.NewFinanceHandler(financeRepo)
+	wsHandler := handlers.NewWebSocketHandler(hub, vesselRepo) 
 
 	// Initialize Fiber
 	app := fiber.New()
@@ -152,7 +157,9 @@ func main() {
 	shipments.Get("/", shipmentHandler.GetAllShipments)
 	shipments.Get("/:trackingNumber/bol", shipmentHandler.DownloadBOL)
 
-	simEngine := simulator.NewEngine(vesselRepo, shipmentRepo, componentRepo)
+	 app.Get("/ws/fleet", websocket.New(wsHandler.HandleFleetStream))
+
+	simEngine := simulator.NewEngine(vesselRepo, shipmentRepo, componentRepo, hub)
 	simEngine.Start()
 
 	port := os.Getenv("PORT")
