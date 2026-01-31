@@ -14,6 +14,7 @@ import { SettingsPage } from "./pages/dashboard/SettingsPage";
 import { MaintenancePage } from "./pages/dashboard/MaintenancePage";
 import { CrewPage } from "./pages/dashboard/CrewPage";
 import { FinancePage } from "./pages/dashboard/FinancePage";
+import { BerthScheduler } from "./features/port/BerthScheduler"
 
 // Wrapper for Map Page to handle data fetching
 const MapPage = () => {
@@ -55,6 +56,10 @@ function App() {
             <Route path="crew" element={<CrewPage />} />
             <Route path="maintenance" element={<MaintenancePage />} />
             <Route path="finance" element={<FinancePage />} />
+            <Route
+              path="/ports/:portId/schedule"
+              element={<BerthScheduler />}
+            />
           </Route>
         </Route>
       </Routes>

@@ -187,6 +187,32 @@ export interface FinancialStats {
   avg_revenue_per_job: number;
 }
 
+export interface BerthAllocation {
+  id: string;
+  vessel_id: string;
+  berth_id: string;
+  start_time: string;
+  end_time: string;
+  status: "SCHEDULED" | "ACTIVE" | "COMPLETED" | "CANCELLED";
+  notes: string;
+  created_at: string;
+  updated_at: string;
+  vessel_name?: string;
+  berth_name?: string;
+}
+
+export interface ScheduleResponse {
+  port_id: string;
+  start_date: string;
+  end_date: string;
+  allocations: BerthAllocation[];
+}
+
+export interface UnassignedVesselsResponse {
+  count: number;
+  vessels: Vessel[];
+}
+
 type RootState = {
   auth: { token: string | null };
 };
@@ -321,6 +347,42 @@ export const apiSlice = createApi({
       query: () => "/finance/stats",
       providesTags: ["Shipments", "Vessels"], // Depends on both
     }),
+    getPortSchedule: builder.query<
+      ScheduleResponse,
+      { portId: string; startDate?: string; endDate?: string }
+    >({
+      query: ({ portId, startDate, endDate }) => {
+        const params = new URLSearchParams();
+        if (startDate) params.append("start_date", startDate);
+        if (endDate) params.append("end_date", endDate);
+        return `/ports/${portId}/schedule?${params.toString()}`;
+      },
+      providesTags: (_result, _error, { portId }) => [
+        { type: "Ports", id: portId },
+      ],
+    }),
+
+    getUnassignedVessels: builder.query<UnassignedVesselsResponse, void>({
+      query: () => "/allocations/unassigned",
+      providesTags: ["Vessels"],
+    }),
+
+    createAllocation: builder.mutation<
+      BerthAllocation,
+      {
+        vessel_id: string;
+        berth_id: string;
+        start_time: string;
+        duration_hours: number;
+        notes?: string;
+      }>({
+      query: (body) => ({
+        url: "/allocations",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["Ports", "Vessels"],
+    }),
   }),
 });
 
@@ -346,4 +408,7 @@ export const {
   useGetCrewQuery,
   useGetCrewByVesselQuery,
   useGetFinancialStatsQuery,
+  useGetPortScheduleQuery,        
+  useGetUnassignedVesselsQuery,   
+  useCreateAllocationMutation,
 } = apiSlice;
