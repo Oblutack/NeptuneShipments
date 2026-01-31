@@ -51,6 +51,7 @@ func main() {
 	componentRepo := repository.NewComponentRepository(db.GetPool())
 	crewRepo := repository.NewCrewRepository(db)
 	financeRepo := repository.NewFinanceRepository(db)
+	allocationRepo := repository.NewAllocationRepository(db)
 
 	vesselHandler := handlers.NewVesselHandler(vesselRepo)
 	portHandler := handlers.NewPortHandler(portRepo)
@@ -71,7 +72,8 @@ func main() {
 	componentHandler := handlers.NewComponentHandler(componentRepo)
 	crewHandler := handlers.NewCrewHandler(crewRepo)
 	financeHandler := handlers.NewFinanceHandler(financeRepo)
-	wsHandler := handlers.NewWebSocketHandler(hub, vesselRepo) 
+	wsHandler := handlers.NewWebSocketHandler(hub, vesselRepo)
+	allocationHandler := handlers.NewAllocationHandler(allocationRepo) 
 
 	// Initialize Fiber
 	app := fiber.New()
@@ -159,6 +161,10 @@ func main() {
 	shipments.Post("/", shipmentHandler.CreateShipment)
 	shipments.Get("/", shipmentHandler.GetAllShipments)
 	shipments.Get("/:trackingNumber/bol", shipmentHandler.DownloadBOL)
+
+	app.Get("/api/ports/:portId/schedule", allocationHandler.GetSchedule)
+	app.Post("/api/allocations", allocationHandler.CreateAllocation)
+	app.Get("/api/allocations/unassigned", allocationHandler.GetUnassignedVessels)
 
 	app.Use("/ws", func(c *fiber.Ctx) error {
     // Set CORS headers for WebSocket
