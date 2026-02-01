@@ -10,6 +10,7 @@ import {
   Users,
   Receipt,
   Wrench,
+  Calendar,
 } from "lucide-react";
 import { useDispatch } from "react-redux";
 import { logout } from "../features/auth/authSlice";
@@ -28,6 +29,9 @@ export const Sidebar = () => {
 
     // --- LOGISTICS ---
     { icon: Package, label: "Cargo Manifests", path: "/dashboard/cargo" },
+
+    // --- BERTH PLANNER --
+    { icon: Calendar, label: "Berth Planner", path: "/dashboard/scheduler" },
 
     // --- BUSINESS ---
     { icon: Users, label: "Crew Management", path: "/dashboard/crew" },

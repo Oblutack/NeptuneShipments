@@ -1,12 +1,13 @@
 package repository
 
 import (
-    "context"
-    "fmt"
-    "time"
+	"context"
+	"database/sql"
+	"fmt"
+	"time"
 
-    "github.com/Oblutack/NeptuneShipments/backend/internal/database"
-    "github.com/Oblutack/NeptuneShipments/backend/internal/models"
+	"github.com/Oblutack/NeptuneShipments/backend/internal/database"
+	"github.com/Oblutack/NeptuneShipments/backend/internal/models"
 )
 
 type AllocationRepository struct {
@@ -17,6 +18,7 @@ func NewAllocationRepository(db *database.Service) *AllocationRepository {
     return &AllocationRepository{db: db}
 }
 
+// GetByPortID retrieves all allocations for terminals within a specific port
 // GetByPortID retrieves all allocations for terminals within a specific port
 func (r *AllocationRepository) GetByPortID(ctx context.Context, portID string, startDate, endDate time.Time) ([]models.BerthAllocation, error) {
     query := `
@@ -45,14 +47,21 @@ func (r *AllocationRepository) GetByPortID(ctx context.Context, portID string, s
     var allocations []models.BerthAllocation
     for rows.Next() {
         var a models.BerthAllocation
+        var notes sql.NullString // ✅ Handle NULL notes
+
         err := rows.Scan(
             &a.ID, &a.VesselID, &a.BerthID, &a.StartTime, &a.EndTime,
-            &a.Status, &a.Notes, &a.CreatedAt, &a.UpdatedAt,
+            &a.Status, &notes, &a.CreatedAt, &a.UpdatedAt,
             &a.VesselName, &a.BerthName,
         )
         if err != nil {
             return nil, fmt.Errorf("failed to scan allocation: %w", err)
         }
+
+        if notes.Valid {
+            a.Notes = notes.String
+        }
+
         allocations = append(allocations, a)
     }
 
@@ -100,7 +109,7 @@ func (r *AllocationRepository) CheckOverlap(ctx context.Context, berthID string,
     return &conflict, nil
 }
 
-// Create inserts a new berth allocation
+// Create inserts a new berth allocation and updates vessel status
 func (r *AllocationRepository) Create(ctx context.Context, allocation *models.BerthAllocation) error {
     // First check for conflicts
     conflict, err := r.CheckOverlap(ctx, allocation.BerthID, allocation.StartTime, allocation.EndTime)
@@ -112,13 +121,21 @@ func (r *AllocationRepository) Create(ctx context.Context, allocation *models.Be
         return fmt.Errorf("berth is already allocated to vessel '%s' during this time period", conflict.ConflictingVesselName)
     }
 
+    // Start transaction
+    tx, err := r.db.GetPool().Begin(ctx)
+    if err != nil {
+        return fmt.Errorf("failed to begin transaction: %w", err)
+    }
+    defer tx.Rollback(ctx)
+
+    // Insert allocation
     query := `
         INSERT INTO berth_allocations (vessel_id, berth_id, start_time, end_time, status, notes)
         VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING id, created_at, updated_at
     `
 
-    err = r.db.GetPool().QueryRow(
+    err = tx.QueryRow(
         ctx, query,
         allocation.VesselID,
         allocation.BerthID,
@@ -130,6 +147,18 @@ func (r *AllocationRepository) Create(ctx context.Context, allocation *models.Be
 
     if err != nil {
         return fmt.Errorf("failed to create allocation: %w", err)
+    }
+
+    // ✅ Update vessel status to DOCKED
+    updateVesselQuery := `UPDATE vessels SET status = 'DOCKED' WHERE id = $1`
+    _, err = tx.Exec(ctx, updateVesselQuery, allocation.VesselID)
+    if err != nil {
+        return fmt.Errorf("failed to update vessel status: %w", err)
+    }
+
+    // Commit transaction
+    if err := tx.Commit(ctx); err != nil {
+        return fmt.Errorf("failed to commit transaction: %w", err)
     }
 
     return nil
@@ -153,8 +182,8 @@ func (r *AllocationRepository) GetUnassignedVessels(ctx context.Context) ([]mode
         FROM vessels v
         LEFT JOIN berth_allocations ba ON v.id = ba.vessel_id 
             AND ba.status IN ('SCHEDULED', 'ACTIVE')
-        WHERE v.status IN ('AT_SEA', 'ANCHORED', 'DOCKED')
-          AND ba.id IS NULL
+            AND ba.end_time > NOW()  -- ✅ Only check future allocations
+        WHERE ba.id IS NULL  -- ✅ Vessel has no active/future allocations
         ORDER BY v.name ASC
     `
 

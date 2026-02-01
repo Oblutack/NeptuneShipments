@@ -23,8 +23,9 @@ export interface Port {
   un_locode: string;
   name: string;
   country: string;
-  latitude: number;
-  longitude: number;
+  lat: number;
+  lon: number;
+  type?: string;
 }
 
 export interface Shipment {
@@ -375,7 +376,8 @@ export const apiSlice = createApi({
         start_time: string;
         duration_hours: number;
         notes?: string;
-      }>({
+      }
+    >({
       query: (body) => ({
         url: "/allocations",
         method: "POST",
@@ -408,7 +410,7 @@ export const {
   useGetCrewQuery,
   useGetCrewByVesselQuery,
   useGetFinancialStatsQuery,
-  useGetPortScheduleQuery,        
-  useGetUnassignedVesselsQuery,   
+  useGetPortScheduleQuery,
+  useGetUnassignedVesselsQuery,
   useCreateAllocationMutation,
 } = apiSlice;

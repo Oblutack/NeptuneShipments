@@ -76,7 +76,8 @@ func (r *PortRepository) GetAll(ctx context.Context) ([]models.Port, error) {
     query := `
         SELECT id, un_locode, name, country, 
                ST_Y(location::geometry) as lat, 
-               ST_X(location::geometry) as lon, 
+               ST_X(location::geometry) as lon,
+               type 
                created_at
         FROM ports
     `
