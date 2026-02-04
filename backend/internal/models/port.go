@@ -11,4 +11,5 @@ type Port struct {
     Longitude float64   `json:"longitude"`
     CreatedAt time.Time `json:"created_at"`
     Type      string  `json:"type" db:"type"`
+    UpdatedAt time.Time `json:"updated_at"` 
 }

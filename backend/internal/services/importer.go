@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/csv"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/Oblutack/NeptuneShipments/backend/internal/models"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/repository"
@@ -42,40 +44,81 @@ func NewImporterService(
 	}
 }
 
-func (s *ImporterService) ImportPorts(filePath string) error {
-	f, err := os.Open(filePath)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
+func (s *ImporterService) ImportPorts(ctx context.Context, reader io.Reader) (int, error) {
+    csvReader := csv.NewReader(reader)
+    csvReader.FieldsPerRecord = -1
 
-	reader := csv.NewReader(f)
-	records, err := reader.ReadAll() // Reads all rows
-	if err != nil {
-		return err
-	}
+    // Read header
+    headers, err := csvReader.Read()
+    if err != nil {
+        return 0, fmt.Errorf("failed to read CSV header: %w", err)
+    }
 
-	ctx := context.Background()
-	count := 0
+    // Map headers
+    headerMap := make(map[string]int)
+    for i, header := range headers {
+        headerMap[strings.TrimSpace(strings.ToLower(header))] = i
+    }
 
-	// Skip header row (i=1)
-	for i := 1; i < len(records); i++ {
-		row := records[i]
-		// row[0]=name, row[1]=locode, row[2]=country, row[3]=lat, row[4]=lon
-		
-		lat, _ := strconv.ParseFloat(row[3], 64)
-		lon, _ := strconv.ParseFloat(row[4], 64)
+    // Validate required headers
+    requiredHeaders := []string{"name", "locode", "country", "latitude", "longitude"}
+    for _, required := range requiredHeaders {
+        if _, ok := headerMap[required]; !ok {
+            return 0, fmt.Errorf("missing required header: %s", required)
+        }
+    }
 
-		// Call the repo (We need to add a generic Create method to PortRepo first)
-		err := s.portRepo.CreateOrUpdate(ctx, row[0], row[1], row[2], lat, lon)
-		if err != nil {
-			fmt.Printf("Error importing %s: %v\n", row[0], err)
-			continue
-		}
-		count++
-	}
-	fmt.Printf("✅ Imported %d Ports from CSV\n", count)
-	return nil
+    // Read ports
+    var ports []models.Port
+    lineNum := 1
+
+    for {
+        record, err := csvReader.Read()
+        if err == io.EOF {
+            break
+        }
+        if err != nil {
+            return 0, fmt.Errorf("error reading line %d: %w", lineNum, err)
+        }
+        lineNum++
+
+        lat, err := strconv.ParseFloat(strings.TrimSpace(record[headerMap["latitude"]]), 64)
+        if err != nil {
+            return 0, fmt.Errorf("invalid latitude on line %d: %w", lineNum, err)
+        }
+
+        lon, err := strconv.ParseFloat(strings.TrimSpace(record[headerMap["longitude"]]), 64)
+        if err != nil {
+            return 0, fmt.Errorf("invalid longitude on line %d: %w", lineNum, err)
+        }
+
+        portType := "COMMERCIAL"
+        if idx, ok := headerMap["type"]; ok && idx < len(record) && record[idx] != "" {
+            portType = strings.TrimSpace(record[idx])
+        }
+
+        port := models.Port{
+            Name:      strings.TrimSpace(record[headerMap["name"]]),
+            UnLocode:    strings.TrimSpace(record[headerMap["locode"]]),
+            Country:   strings.TrimSpace(record[headerMap["country"]]),
+            Type:      portType,
+            Latitude:  lat,
+            Longitude: lon,
+        }
+
+        ports = append(ports, port)
+    }
+
+    if len(ports) == 0 {
+        return 0, fmt.Errorf("no ports found in CSV")
+    }
+
+    // Bulk create
+    if err := s.portRepo.BulkCreate(ctx, ports); err != nil {
+        return 0, fmt.Errorf("failed to bulk create ports: %w", err)
+    }
+
+    return len(ports), nil
 }
 
 func (s *ImporterService) ImportUsers(filePath string) error {
@@ -104,42 +147,101 @@ func (s *ImporterService) ImportUsers(filePath string) error {
 	return nil
 }
 
-func (s *ImporterService) ImportVessels(filePath string) error {
-	records, err := readCSV(filePath)
-	if err != nil { return err }
+func (s *ImporterService) ImportVessels(ctx context.Context, reader io.Reader) (int, error) {
+    csvReader := csv.NewReader(reader)
+    csvReader.FieldsPerRecord = -1
 
-	ctx := context.Background()
-	for i := 1; i < len(records); i++ {
-		row := records[i]
-		// row: name,imo,flag,type,teu,barrels,lat,lon,speed,fuel_cap,fuel_level
-		
-		teu, _ := strconv.Atoi(row[4])
-		barrels, _ := strconv.ParseFloat(row[5], 64)
-		lat, _ := strconv.ParseFloat(row[6], 64)
-		lon, _ := strconv.ParseFloat(row[7], 64)
-		speed, _ := strconv.ParseFloat(row[8], 64)
-		fCap, _ := strconv.ParseFloat(row[9], 64)
-		fLvl, _ := strconv.ParseFloat(row[10], 64)
+    // Read header
+    headers, err := csvReader.Read()
+    if err != nil {
+        return 0, fmt.Errorf("failed to read CSV header: %w", err)
+    }
 
-		vessel := &models.Vessel{
-			Name:            row[0],
-			IMONumber:       row[1],
-			FlagCountry:     row[2],
-			Type:            row[3],
-			CapacityTEU:     &teu,
-			CapacityBarrels: &barrels,
-			Latitude:        lat,
-			Longitude:       lon,
-			SpeedKnots:      speed,
-			FuelCapacity:    fCap,
-			FuelLevel:       fLvl,
-		}
-		if err := s.vesselRepo.CreateOrUpdate(ctx, vessel); err != nil {
-			fmt.Printf("❌ Vessel Import Error (%s): %v\n", row[0], err)
-		}
-	}
-	fmt.Println("✅ Vessels Imported")
-	return nil
+    // Map headers
+    headerMap := make(map[string]int)
+    for i, header := range headers {
+        headerMap[strings.TrimSpace(strings.ToLower(header))] = i
+    }
+
+    // Validate required headers
+    requiredHeaders := []string{"name", "imo_number", "type", "status", "latitude", "longitude"}
+    for _, required := range requiredHeaders {
+        if _, ok := headerMap[required]; !ok {
+            return 0, fmt.Errorf("missing required header: %s", required)
+        }
+    }
+
+    // Read vessels
+    var vessels []models.Vessel
+    lineNum := 1
+
+    for {
+        record, err := csvReader.Read()
+        if err == io.EOF {
+            break
+        }
+        if err != nil {
+            return 0, fmt.Errorf("error reading line %d: %w", lineNum, err)
+        }
+        lineNum++
+
+        lat, err := strconv.ParseFloat(strings.TrimSpace(record[headerMap["latitude"]]), 64)
+        if err != nil {
+            return 0, fmt.Errorf("invalid latitude on line %d: %w", lineNum, err)
+        }
+
+        lon, err := strconv.ParseFloat(strings.TrimSpace(record[headerMap["longitude"]]), 64)
+        if err != nil {
+            return 0, fmt.Errorf("invalid longitude on line %d: %w", lineNum, err)
+        }
+
+        // Parse optional fields
+        heading := 0.0
+        if idx, ok := headerMap["heading"]; ok && idx < len(record) && record[idx] != "" {
+            heading, _ = strconv.ParseFloat(strings.TrimSpace(record[idx]), 64)
+        }
+
+        speedKnots := 0.0
+        if idx, ok := headerMap["speed_knots"]; ok && idx < len(record) && record[idx] != "" {
+            speedKnots, _ = strconv.ParseFloat(strings.TrimSpace(record[idx]), 64)
+        }
+
+        fuelLevel := 100.0
+        if idx, ok := headerMap["fuel_level"]; ok && idx < len(record) && record[idx] != "" {
+            fuelLevel, _ = strconv.ParseFloat(strings.TrimSpace(record[idx]), 64)
+        }
+
+        fuelCapacity := 100.0
+        if idx, ok := headerMap["fuel_capacity"]; ok && idx < len(record) && record[idx] != "" {
+            fuelCapacity, _ = strconv.ParseFloat(strings.TrimSpace(record[idx]), 64)
+        }
+
+        vessel := models.Vessel{
+            Name:         strings.TrimSpace(record[headerMap["name"]]),
+            IMONumber:    strings.TrimSpace(record[headerMap["imo_number"]]),
+            Type:         strings.TrimSpace(record[headerMap["type"]]),
+            Status:       strings.TrimSpace(record[headerMap["status"]]),
+            Latitude:     lat,
+            Longitude:    lon,
+            Heading:      heading,
+            SpeedKnots:   speedKnots,
+            FuelLevel:    fuelLevel,
+            FuelCapacity: fuelCapacity,
+        }
+
+        vessels = append(vessels, vessel)
+    }
+
+    if len(vessels) == 0 {
+        return 0, fmt.Errorf("no vessels found in CSV")
+    }
+
+    // Bulk create
+    if err := s.vesselRepo.BulkCreate(ctx, vessels); err != nil {
+        return 0, fmt.Errorf("failed to bulk create vessels: %w", err)
+    }
+
+    return len(vessels), nil
 }
 
 func (s *ImporterService) ImportRoutes(filePath string) error {

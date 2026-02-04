@@ -53,8 +53,18 @@ func main() {
 	financeRepo := repository.NewFinanceRepository(db)
 	allocationRepo := repository.NewAllocationRepository(db)
 
-	vesselHandler := handlers.NewVesselHandler(vesselRepo)
-	portHandler := handlers.NewPortHandler(portRepo)
+	importerService := services.NewImporterService(
+    portRepo,
+    userRepo,
+    vesselRepo,      
+    routeRepo,
+    shipmentRepo,
+    routingEngineRepo,
+    crewRepo,
+)
+
+	vesselHandler := handlers.NewVesselHandler(vesselRepo, importerService)
+	portHandler := handlers.NewPortHandler(portRepo, importerService)
 	
 	shipmentHandler := handlers.NewShipmentHandler(
 		shipmentRepo,

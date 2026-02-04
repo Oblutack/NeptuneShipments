@@ -26,6 +26,132 @@ type PortStat struct {
     ShipCount int     `json:"ship_count"`
 }
 
+func (r *PortRepository) Create(ctx context.Context, port *models.Port) error {
+    query := `
+        INSERT INTO ports (name, locode, country, type, location)
+        VALUES ($1, $2, $3, $4, ST_SetSRID(ST_MakePoint($5, $6), 4326))
+        RETURNING id, created_at, updated_at
+    `
+
+    err := r.db.GetPool().QueryRow(
+        ctx, query,
+        port.Name, port.UnLocode, port.Country, port.Type,
+        port.Longitude, port.Latitude,
+    ).Scan(&port.ID, &port.CreatedAt, &port.UpdatedAt)
+
+    if err != nil {
+        return fmt.Errorf("failed to create port: %w", err)
+    }
+
+    return nil
+}
+
+// ✅ NEW: Update updates all fields of an existing port
+func (r *PortRepository) Update(ctx context.Context, port *models.Port) error {
+    query := `
+        UPDATE ports 
+        SET 
+            name = $1,
+            locode = $2,
+            country = $3,
+            type = $4,
+            location = ST_SetSRID(ST_MakePoint($5, $6), 4326),
+            updated_at = NOW()
+        WHERE id = $7
+        RETURNING updated_at
+    `
+
+    err := r.db.GetPool().QueryRow(
+        ctx, query,
+        port.Name, port.UnLocode, port.Country, port.Type,
+        port.Longitude, port.Latitude,
+        port.ID,
+    ).Scan(&port.UpdatedAt)
+
+    if err != nil {
+        return fmt.Errorf("failed to update port: %w", err)
+    }
+
+    return nil
+}
+
+// ✅ NEW: Delete removes a port by ID
+// NOTE: This checks for dependencies before deletion
+func (r *PortRepository) Delete(ctx context.Context, id string) error {
+    // Check for dependencies
+    var terminalCount, routeCount int
+
+    // Check terminals
+    err := r.db.GetPool().QueryRow(ctx,
+        `SELECT COUNT(*) FROM terminals WHERE port_id = $1`,
+        id,
+    ).Scan(&terminalCount)
+    if err != nil {
+        return fmt.Errorf("failed to check terminals: %w", err)
+    }
+
+    // Check routes
+    err = r.db.GetPool().QueryRow(ctx,
+        `SELECT COUNT(*) FROM routes WHERE origin_port_id = $1 OR destination_port_id = $1`,
+        id,
+    ).Scan(&routeCount)
+    if err != nil {
+        return fmt.Errorf("failed to check routes: %w", err)
+    }
+
+    // Return error if port has dependencies
+    if terminalCount > 0 || routeCount > 0 {
+        return fmt.Errorf(
+            "cannot delete port: has %d terminals and %d routes. Please remove them first",
+            terminalCount, routeCount,
+        )
+    }
+
+    // Proceed with deletion
+    query := `DELETE FROM ports WHERE id = $1`
+    result, err := r.db.GetPool().Exec(ctx, query, id)
+    if err != nil {
+        return fmt.Errorf("failed to delete port: %w", err)
+    }
+
+    if result.RowsAffected() == 0 {
+        return fmt.Errorf("port not found")
+    }
+
+    return nil
+}
+
+// BulkCreate inserts multiple ports in a transaction
+func (r *PortRepository) BulkCreate(ctx context.Context, ports []models.Port) error {
+    tx, err := r.db.GetPool().Begin(ctx)
+    if err != nil {
+        return fmt.Errorf("failed to begin transaction: %w", err)
+    }
+    defer tx.Rollback(ctx)
+
+    query := `
+        INSERT INTO ports (name, locode, country, type, location)
+        VALUES ($1, $2, $3, $4, ST_SetSRID(ST_MakePoint($5, $6), 4326))
+    `
+
+    for _, port := range ports {
+        _, err := tx.Exec(
+            ctx, query,
+            port.Name, port.UnLocode, port.Country, port.Type,
+            port.Longitude, port.Latitude,
+        )
+        if err != nil {
+            return fmt.Errorf("failed to insert port %s: %w", port.Name, err)
+        }
+    }
+
+    if err := tx.Commit(ctx); err != nil {
+        return fmt.Errorf("failed to commit transaction: %w", err)
+    }
+
+    return nil
+}
+
 // GetPortStats retrieves all ports with count of docked vessels within 10km
 func (r *PortRepository) GetPortStats(ctx context.Context) ([]PortStat, error) {
     query := `

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/Oblutack/NeptuneShipments/backend/internal/database"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/repository"
@@ -36,6 +37,7 @@ func main() {
 	importer := services.NewImporterService(portRepo, userRepo, vesselRepo, routeRepo, shipmentRepo, routingEngineRepo, crewRepo)
 
     log.Println("🌱 Starting Data Ingestion...")
+	ctx := context.Background()
 
     // 3. Run Imports (Order matters!)
     // Users first
@@ -43,17 +45,17 @@ func main() {
 		log.Fatal(err)
 	}
     // Ports
-	if err := importer.ImportPorts("../data/ports.csv"); err != nil {
-		log.Fatal(err)
-	}
+	if err := importPortsFromFile(ctx, importer, "../../data/ports.csv"); err != nil {
+        log.Fatal(err)
+    }
     // Routes
 	if err := importer.ImportRoutes("../data/routes.csv"); err != nil {
 		log.Fatal(err)
 	}
     // Vessels
-	if err := importer.ImportVessels("../data/vessels.csv"); err != nil {
-		log.Fatal(err)
-	}
+	if err := importVesselsFromFile(ctx, importer, "../../data/vessels.csv"); err != nil {
+        log.Fatal(err)
+    }
 	// Shipments
 	if err := importer.ImportShipments("../data/shipments.csv"); err != nil {
 		log.Fatal(err)
@@ -69,6 +71,39 @@ func main() {
 	seedComponents(dbService.GetPool())
 
     log.Println("🌱 Data Ingestion Complete!")
+}
+
+func importPortsFromFile(ctx context.Context, importer *services.ImporterService, filePath string) error {
+    file, err := os.Open(filePath)
+    if err != nil {
+        return fmt.Errorf("failed to open ports file: %w", err)
+    }
+    defer file.Close()
+
+    count, err := importer.ImportPorts(ctx, file)
+    if err != nil {
+        return err
+    }
+
+    log.Printf("✅ Imported %d ports", count)
+    return nil
+}
+
+// Helper function to import vessels from file
+func importVesselsFromFile(ctx context.Context, importer *services.ImporterService, filePath string) error {
+    file, err := os.Open(filePath)
+    if err != nil {
+        return fmt.Errorf("failed to open vessels file: %w", err)
+    }
+    defer file.Close()
+
+    count, err := importer.ImportVessels(ctx, file)
+    if err != nil {
+        return err
+    }
+
+    log.Printf("✅ Imported %d vessels", count)
+    return nil
 }
 
 // seedPortInfrastructure creates terminals and berths for all ports

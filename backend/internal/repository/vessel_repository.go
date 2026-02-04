@@ -75,6 +75,131 @@ func (r *VesselRepository) Create(ctx context.Context, vessel *models.Vessel) er
     return nil
 }
 
+func (r *VesselRepository) Update(ctx context.Context, vessel *models.Vessel) error {
+    query := `
+        UPDATE vessels 
+        SET 
+            name = $1,
+            imo_number = $2,
+            type = $3,
+            status = $4,
+            location = ST_SetSRID(ST_MakePoint($5, $6), 4326),
+            heading = $7,
+            speed_knots = $8,
+            fuel_level = $9,
+            fuel_capacity = $10,
+            updated_at = NOW()
+        WHERE id = $11
+        RETURNING updated_at
+    `
+
+    err := r.db.QueryRow(
+        ctx, query,
+        vessel.Name, vessel.IMONumber, vessel.Type, vessel.Status,
+        vessel.Longitude, vessel.Latitude,
+        vessel.Heading, vessel.SpeedKnots, vessel.FuelLevel, vessel.FuelCapacity,
+        vessel.ID,
+    ).Scan(&vessel.UpdatedAt)
+
+    if err != nil {
+        return fmt.Errorf("failed to update vessel: %w", err)
+    }
+
+    return nil
+}
+
+// ✅ NEW: Delete removes a vessel by ID
+// NOTE: This checks for active dependencies before deletion
+func (r *VesselRepository) Delete(ctx context.Context, id string) error {
+    // Check for active dependencies
+    var activeRoutes, activeShipments, activeAllocations int
+
+    // Check active routes
+    err := r.db.QueryRow(ctx,
+        `SELECT COUNT(*) FROM routes WHERE vessel_id = $1 AND status = 'ACTIVE'`,
+        id,
+    ).Scan(&activeRoutes)
+    if err != nil {
+        return fmt.Errorf("failed to check active routes: %w", err)
+    }
+
+    // Check active shipments
+    err = r.db.QueryRow(ctx,
+        `SELECT COUNT(*) FROM shipments WHERE vessel_id = $1 AND status IN ('IN_TRANSIT', 'LOADING')`,
+        id,
+    ).Scan(&activeShipments)
+    if err != nil {
+        return fmt.Errorf("failed to check active shipments: %w", err)
+    }
+
+    // Check active allocations
+    err = r.db.QueryRow(ctx,
+        `SELECT COUNT(*) FROM berth_allocations WHERE vessel_id = $1 AND status IN ('SCHEDULED', 'ACTIVE')`,
+        id,
+    ).Scan(&activeAllocations)
+    if err != nil {
+        return fmt.Errorf("failed to check active allocations: %w", err)
+    }
+
+    // Return error if vessel has active dependencies
+    if activeRoutes > 0 || activeShipments > 0 || activeAllocations > 0 {
+        return fmt.Errorf(
+            "cannot delete vessel: has %d active routes, %d active shipments, and %d active allocations. Please complete or cancel them first",
+            activeRoutes, activeShipments, activeAllocations,
+        )
+    }
+
+    // Proceed with deletion
+    query := `DELETE FROM vessels WHERE id = $1`
+    result, err := r.db.Exec(ctx, query, id)
+    if err != nil {
+        return fmt.Errorf("failed to delete vessel: %w", err)
+    }
+
+    if result.RowsAffected() == 0 {
+        return fmt.Errorf("vessel not found")
+    }
+
+    return nil
+}
+
+// BulkCreate inserts multiple vessels in a transaction
+func (r *VesselRepository) BulkCreate(ctx context.Context, vessels []models.Vessel) error {
+    tx, err := r.db.Begin(ctx)
+    if err != nil {
+        return fmt.Errorf("failed to begin transaction: %w", err)
+    }
+    defer tx.Rollback(ctx)
+
+    query := `
+        INSERT INTO vessels (
+            name, imo_number, type, status, location,
+            heading, speed_knots, fuel_level, fuel_capacity
+        ) VALUES (
+            $1, $2, $3, $4, ST_SetSRID(ST_MakePoint($5, $6), 4326),
+            $7, $8, $9, $10
+        )
+    `
+
+    for _, vessel := range vessels {
+        _, err := tx.Exec(
+            ctx, query,
+            vessel.Name, vessel.IMONumber, vessel.Type, vessel.Status,
+            vessel.Longitude, vessel.Latitude,
+            vessel.Heading, vessel.SpeedKnots, vessel.FuelLevel, vessel.FuelCapacity,
+        )
+        if err != nil {
+            return fmt.Errorf("failed to insert vessel %s: %w", vessel.Name, err)
+        }
+    }
+
+    if err := tx.Commit(ctx); err != nil {
+        return fmt.Errorf("failed to commit transaction: %w", err)
+    }
+
+    return nil
+}
+
 // GetAll retrieves all vessels
 func (r *VesselRepository) GetAll(ctx context.Context) ([]models.Vessel, error) {
     // --- UPDATED QUERY to include route columns ---

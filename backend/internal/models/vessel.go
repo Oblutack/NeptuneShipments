@@ -25,6 +25,7 @@ type Vessel struct {
 	
 	LastUpdated     time.Time `json:"last_updated"`
 	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 
 	CurrentRouteID *string  `json:"current_route_id" db:"current_route_id"`
     RouteProgress  float64  `json:"route_progress" db:"route_progress"`
