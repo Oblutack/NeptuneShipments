@@ -233,7 +233,7 @@ export const apiSlice = createApi({
       return headers;
     },
   }),
-  tagTypes: ["Vessels", "Ports", "Shipments", "Routes", "Crew"],
+  tagTypes: ["Vessels", "Ports", "Shipments", "Routes", "Crew", "Allocations"],
   endpoints: (builder) => ({
     getVessels: builder.query<Vessel[], void>({
       query: () => "/vessels",
@@ -457,6 +457,7 @@ export const apiSlice = createApi({
       },
       providesTags: (_result, _error, { portId }) => [
         { type: "Ports", id: portId },
+        { type: "Allocations", id: "LIST" },
       ],
     }),
 
@@ -480,7 +481,11 @@ export const apiSlice = createApi({
         method: "POST",
         body,
       }),
-      invalidatesTags: ["Ports", "Vessels"],
+      invalidatesTags: (result, error, { berth_id }) => [
+        "Ports",
+        "Vessels",
+        { type: "Allocations", id: "LIST" },
+      ],
     }),
   }),
 });
