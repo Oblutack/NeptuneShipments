@@ -426,7 +426,7 @@ const BerthRow = ({
   return (
     <div
       ref={setNodeRef}
-      className={`bg-slate-800 border rounded-lg p-3 min-h-[60px] relative transition ${
+      className={`bg-slate-800 border rounded-lg p-3 min-h-15 relative transition ${
         isOver
           ? "border-blue-500 bg-blue-900/20" // ✅ Visual feedback when hovering
           : "border-slate-700 hover:border-slate-600"

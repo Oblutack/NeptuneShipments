@@ -16,6 +16,8 @@ import { CrewPage } from "./pages/dashboard/CrewPage";
 import { FinancePage } from "./pages/dashboard/FinancePage";
 import { BerthScheduler } from "./features/port/BerthScheduler";
 import { SchedulerLanding } from "./features/port/SchedulerLanding";
+import DataManagementPage from './pages/dashboard/DataManagementPage';
+import 'react-toastify/dist/ReactToastify.css'; 
 
 // Wrapper for Map Page to handle data fetching
 const MapPage = () => {
@@ -27,7 +29,7 @@ const MapPage = () => {
   return (
     <div className="space-y-6">
       {/* 1. The Map */}
-      <div className="h-[600px]">
+      <div className="h-150">
         <GlobalMap vessels={vessels} ports={ports} onShipClick={() => {}} />
       </div>
 
@@ -57,6 +59,7 @@ function App() {
             <Route path="crew" element={<CrewPage />} />
             <Route path="maintenance" element={<MaintenancePage />} />
             <Route path="finance" element={<FinancePage />} />
+            <Route path="data" element={<DataManagementPage />} />
             <Route path="scheduler" element={<SchedulerLanding />} />
             <Route path="ports/:portId/schedule" element={<BerthScheduler />} />
           </Route>

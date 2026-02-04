@@ -67,8 +67,8 @@ export const SettingsPage = () => {
 
           <div className="flex items-start gap-6">
             {/* Avatar */}
-            <div className="flex-shrink-0">
-              <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center text-white text-3xl font-bold">
+            <div className="shrink-0">
+              <div className="w-24 h-24 bg-linear-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center text-white text-3xl font-bold">
                 {user?.full_name?.charAt(0).toUpperCase() || "U"}
               </div>
               <div className="flex items-center justify-center gap-1 mt-2 text-xs text-green-400">

@@ -90,7 +90,7 @@ const AlertCard = ({ alert }: { alert: Alert }) => {
       <div className="flex items-start gap-3">
         {/* Icon */}
         <div
-          className={`p-2 rounded-full flex-shrink-0 ${
+          className={`p-2 rounded-full shrink-0 ${
             isCritical ? "bg-red-900/50" : "bg-blue-900/50"
           }`}
         >

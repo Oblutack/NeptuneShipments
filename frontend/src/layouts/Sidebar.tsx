@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useDispatch } from "react-redux";
 import { logout } from "../features/auth/authSlice";
+import { Database } from 'lucide-react'; 
 
 export const Sidebar = () => {
   const dispatch = useDispatch();
@@ -36,6 +37,7 @@ export const Sidebar = () => {
     // --- BUSINESS ---
     { icon: Users, label: "Crew Management", path: "/dashboard/crew" },
     { icon: Receipt, label: "Financials", path: "/dashboard/finance" },
+    { icon: Database, label: 'Data Management', path: '/dashboard/data' }, 
   ];
 
   return (

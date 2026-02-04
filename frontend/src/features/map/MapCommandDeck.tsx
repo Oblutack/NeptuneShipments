@@ -129,7 +129,7 @@ const VoyageProgressCard = ({ vessel }: VoyageProgressCardProps) => {
         </div>
         <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden">
           <div
-            className="bg-gradient-to-r from-blue-500 to-cyan-400 h-full transition-all duration-500 ease-out"
+            className="bg-linear-to-r from-blue-500 to-cyan-400 h-full transition-all duration-500 ease-out"
             style={{ width: `${progress}%` }}
           ></div>
         </div>

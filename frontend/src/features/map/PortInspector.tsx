@@ -28,7 +28,7 @@ export const PortInspector = ({ port, onClose }: PortInspectorProps) => {
       onClick={(e) => e.stopPropagation()}
     >
       {/* HEADER */}
-      <div className="bg-gradient-to-r from-orange-900/30 to-slate-900 border-b border-slate-700 p-4 flex-shrink-0">
+      <div className="bg-linear-to-r from-orange-900/30 to-slate-900 border-b border-slate-700 p-4 shrink-0">
         <div className="flex justify-between items-start">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -119,7 +119,7 @@ export const PortInspector = ({ port, onClose }: PortInspectorProps) => {
           )}
         </div>
         {/* Fade gradient to indicate more content */}
-        <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-slate-900 to-transparent pointer-events-none" />
+        <div className="absolute bottom-0 left-0 right-0 h-12 bg-linear-to-t from-slate-900 to-transparent pointer-events-none" />
       </div>
     </div>
   );

@@ -51,7 +51,7 @@ export const MaintenancePage = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* LEFT: Vessel List */}
-        <div className="lg:col-span-1 bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-lg max-h-[600px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900">
+        <div className="lg:col-span-1 bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-lg max-h-150 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900">
           <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">
             Fleet Registry
           </h2>
@@ -152,7 +152,7 @@ const ComponentInspector = ({ vesselId }: { vesselId: string }) => {
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-xl overflow-hidden">
       {/* Header with Stats */}
-      <div className="bg-gradient-to-r from-slate-950 to-slate-900 border-b border-slate-800 p-6">
+      <div className="bg-linear-to-r from-slate-950 to-slate-900 border-b border-slate-800 p-6">
         <h2 className="text-xl font-bold text-white mb-4">
           Component Health Monitor
         </h2>

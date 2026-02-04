@@ -71,7 +71,7 @@ export const FinancePage = () => {
       {/* Top Row: Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Total Revenue */}
-        <div className="bg-gradient-to-br from-green-900/30 to-slate-900 border border-green-500/50 rounded-xl p-6 shadow-xl">
+        <div className="bg-linear-to-br from-green-900/30 to-slate-900 border border-green-500/50 rounded-xl p-6 shadow-xl">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-green-500/20 rounded-lg">
               <DollarSign size={24} className="text-green-400" />
@@ -93,7 +93,7 @@ export const FinancePage = () => {
         </div>
 
         {/* Fuel Costs */}
-        <div className="bg-gradient-to-br from-red-900/30 to-slate-900 border border-red-500/50 rounded-xl p-6 shadow-xl">
+        <div className="bg-linear-to-br from-red-900/30 to-slate-900 border border-red-500/50 rounded-xl p-6 shadow-xl">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-red-500/20 rounded-lg">
               <Fuel size={24} className="text-red-400" />
@@ -115,7 +115,7 @@ export const FinancePage = () => {
         </div>
 
         {/* Gross Profit */}
-        <div className="bg-gradient-to-br from-blue-900/30 to-slate-900 border border-blue-500/50 rounded-xl p-6 shadow-xl">
+        <div className="bg-linear-to-br from-blue-900/30 to-slate-900 border border-blue-500/50 rounded-xl p-6 shadow-xl">
           <div className="flex items-center justify-between mb-4">
             <div className="p-3 bg-blue-500/20 rounded-lg">
               <TrendingUp size={24} className="text-blue-400" />

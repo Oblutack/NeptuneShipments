@@ -14,6 +14,7 @@ interface DataTableProps<TData, TValue> {
   onRowClick?: (row: TData) => void;
 }
 
+/* eslint-disable react-hooks/incompatible-library */
 export function DataTable<TData, TValue>({
   columns,
   data,

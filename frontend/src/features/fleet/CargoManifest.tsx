@@ -151,7 +151,7 @@ export const CargoManifest = ({ vesselId }: CargoManifestProps) => {
                   <div className="flex items-start gap-2 max-w-xs">
                     <FileText
                       size={12}
-                      className="text-slate-500 mt-0.5 flex-shrink-0"
+                      className="text-slate-500 mt-0.5 shrink-0"
                     />
                     <span className="text-xs text-slate-400 line-clamp-2">
                       {shipment.description || (
