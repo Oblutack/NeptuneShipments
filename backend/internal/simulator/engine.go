@@ -117,12 +117,53 @@ func (e *Engine) tick() {
 		return
 	}
 
-	// 2. Move each ship
+	// 2. Recover DISTRESS vessels that have been refueled/repaired
+	for _, v := range vessels {
+		if v.Status == "DISTRESS" {
+			e.checkDistressRecovery(ctx, v)
+		}
+	}
+
+	// 3. Move each ship
 	for _, v := range vessels {
 		if v.Status == "AT_SEA" && v.SpeedKnots > 0 {
 			e.moveVessel(ctx, v)
 		}
 	}
+}
+
+// checkDistressRecovery checks if a DISTRESS vessel can be recovered
+func (e *Engine) checkDistressRecovery(ctx context.Context, v models.Vessel) {
+	// Check if vessel has fuel
+	if v.FuelLevel <= 0 {
+		return // Still out of fuel
+	}
+
+	// Check for critical component failures
+	hasCriticalFailure, err := e.componentRepo.CheckCriticalFailure(ctx, v.ID)
+	if err != nil || hasCriticalFailure {
+		return // Still has critical failures
+	}
+
+	// Vessel can be recovered!
+	log.Printf("✅ %s has recovered from DISTRESS (Fuel: %.0f)", v.Name, v.FuelLevel)
+	
+	// Set to ANCHORED (safe state) with 0 speed
+	if err := e.vesselRepo.RecoverFromDistress(ctx, v.ID); err != nil {
+		log.Printf("Failed to recover %s: %v", v.Name, err)
+		return
+	}
+
+	// Clear the alert tracking
+	e.clearAlertForVessel(v.ID)
+
+	// Broadcast recovery notification
+	e.broadcastAlert(
+		"INFO",
+		v.Name+" has been recovered and is now anchored.",
+		v.ID,
+		v.Name,
+	)
 }
 
 func (e *Engine) moveVessel(ctx context.Context, v models.Vessel) {
@@ -157,7 +198,12 @@ func (e *Engine) moveVessel(ctx context.Context, v models.Vessel) {
 		if v.RouteProgress >= 1.0 {
 			if v.Status == "AT_SEA" {
 				log.Printf("🚢 Ship %s has arrived at destination!", v.Name)
-				e.vesselRepo.SetDocked(ctx, v.ID)
+				
+				// Dock the vessel (updates status, moves to port, activates berth)
+				if err := e.vesselRepo.SetDockedWithRoute(ctx, v.ID, *v.CurrentRouteID); err != nil {
+					log.Printf("Failed to dock %s: %v", v.Name, err)
+					return
+				}
 
 				e.broadcastAlert(
                     "INFO",
@@ -166,7 +212,6 @@ func (e *Engine) moveVessel(ctx context.Context, v models.Vessel) {
                     v.Name,
 				)
                 
-				
 				// Update shipments to DELIVERED
 				e.shipmentRepo.UpdateETAForVessel(ctx, v.ID, *v.CurrentRouteID, 1.0, 0)
 			}

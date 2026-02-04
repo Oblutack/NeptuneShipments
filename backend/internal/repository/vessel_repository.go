@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/Oblutack/NeptuneShipments/backend/internal/models"
@@ -333,6 +334,91 @@ func (r *VesselRepository) SetDistress(ctx context.Context, id string) error {
 	query := `UPDATE vessels SET status = 'DISTRESS', speed_knots = 0 WHERE id = $1`
 	_, err := r.db.Exec(ctx, query, id)
 	return err
+}
+
+// RecoverFromDistress restores a vessel from DISTRESS to ANCHORED
+func (r *VesselRepository) RecoverFromDistress(ctx context.Context, id string) error {
+	query := `UPDATE vessels SET status = 'ANCHORED', speed_knots = 0 WHERE id = $1`
+	_, err := r.db.Exec(ctx, query, id)
+	return err
+}
+
+// SetDockedWithRoute docks a vessel, moves it to the destination port, and activates berth allocation
+func (r *VesselRepository) SetDockedWithRoute(ctx context.Context, vesselID, routeID string) error {
+	// Start transaction
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	// Get destination port location from route
+	var portLat, portLon float64
+	portQuery := `
+		SELECT ST_Y(p.location::geometry), ST_X(p.location::geometry)
+		FROM routes r
+		JOIN ports p ON r.destination_port_id = p.id
+		WHERE r.id = $1
+	`
+	err = tx.QueryRow(ctx, portQuery, routeID).Scan(&portLat, &portLon)
+	if err != nil {
+		return fmt.Errorf("failed to get port location: %w", err)
+	}
+
+	// Update vessel: set DOCKED status, move to port, stop movement
+	vesselQuery := `
+		UPDATE vessels 
+		SET 
+			status = 'DOCKED',
+			speed_knots = 0,
+			location = ST_SetSRID(ST_MakePoint($2, $3), 4326)
+		WHERE id = $1
+	`
+	_, err = tx.Exec(ctx, vesselQuery, vesselID, portLon, portLat)
+	if err != nil {
+		return fmt.Errorf("failed to dock vessel: %w", err)
+	}
+
+	// Activate berth allocation if it exists
+	allocationQuery := `
+		UPDATE berth_allocations
+		SET status = 'ACTIVE'
+		WHERE vessel_id = $1 AND status = 'SCHEDULED'
+	`
+	_, err = tx.Exec(ctx, allocationQuery, vesselID)
+	if err != nil {
+		return fmt.Errorf("failed to activate berth allocation: %w", err)
+	}
+
+	// Mark berth as occupied
+	berthQuery := `
+		UPDATE berths
+		SET is_occupied = true, current_vessel_id = $1
+		WHERE id = (SELECT berth_id FROM berth_allocations WHERE vessel_id = $1 AND status = 'ACTIVE')
+	`
+	_, err = tx.Exec(ctx, berthQuery, vesselID)
+	if err != nil {
+		// Not critical if berth update fails (vessel might not have allocation)
+		log.Printf("Warning: Failed to update berth occupancy: %v", err)
+	}
+
+	// Update shipments to DELIVERED
+	shipmentQuery := `
+		UPDATE shipments 
+		SET status = 'DELIVERED', updated_at = NOW() 
+		WHERE vessel_id = $1 AND status = 'IN_TRANSIT'
+	`
+	_, err = tx.Exec(ctx, shipmentQuery, vesselID)
+	if err != nil {
+		return fmt.Errorf("failed to update shipments: %w", err)
+	}
+
+	// Commit transaction
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
 }
 
 // RefuelVessel resets fuel to capacity and restarts the engine
