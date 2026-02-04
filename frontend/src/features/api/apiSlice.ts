@@ -20,12 +20,14 @@ export interface Vessel {
 
 export interface Port {
   id: string;
-  un_locode: string;
   name: string;
+  un_locode: string; 
   country: string;
-  lat: number;
-  lon: number;
-  type?: string;
+  type: string;
+  latitude: number;
+  longitude: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Shipment {
@@ -243,6 +245,61 @@ export const apiSlice = createApi({
       providesTags: ["Ports"],
     }),
 
+    getPortById: builder.query({
+      query: (id) => `/ports/${id}`,
+      providesTags: (result, error, id) => [{ type: "Ports", id }],
+    }),
+
+    createPort: builder.mutation({
+      query: (port) => ({
+        url: "/ports",
+        method: "POST",
+        body: port,
+      }),
+      invalidatesTags: ["Ports"],
+    }),
+
+    // Update Port
+    updatePort: builder.mutation({
+      query: ({ id, ...port }) => ({
+        url: `/ports/${id}`,
+        method: "PUT",
+        body: port,
+      }),
+      invalidatesTags: ["Ports"],
+    }),
+
+    // Delete Port
+    deletePort: builder.mutation({
+      query: (id) => ({
+        url: `/ports/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Ports"],
+    }),
+
+    // Upload Ports CSV
+    uploadPortCSV: builder.mutation({
+      query: (file: File) => {
+        const formData = new FormData();
+        formData.append("file", file);
+        return {
+          url: "/ports/import",
+          method: "POST",
+          body: formData,
+        };
+      },
+      invalidatesTags: ["Ports"],
+    }),
+
+    // Download Ports Template
+    downloadPortTemplate: builder.query({
+      query: () => ({
+        url: "/ports/template",
+        responseHandler: (response) => response.blob(),
+      }),
+    }),
+
     getShipments: builder.query<Shipment[], void>({
       query: () => "/shipments",
       providesTags: ["Shipments"],
@@ -263,6 +320,46 @@ export const apiSlice = createApi({
         body,
       }),
       invalidatesTags: ["Vessels"],
+    }),
+    // Update Vessel
+    updateVessel: builder.mutation({
+      query: ({ id, ...vessel }) => ({
+        url: `/vessels/${id}`,
+        method: "PUT",
+        body: vessel,
+      }),
+      invalidatesTags: ["Vessels"],
+    }),
+
+    // Delete Vessel
+    deleteVessel: builder.mutation({
+      query: (id) => ({
+        url: `/vessels/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Vessels"],
+    }),
+
+    // Upload Vessels CSV
+    uploadVesselCSV: builder.mutation({
+      query: (file: File) => {
+        const formData = new FormData();
+        formData.append("file", file);
+        return {
+          url: "/vessels/import",
+          method: "POST",
+          body: formData,
+        };
+      },
+      invalidatesTags: ["Vessels"],
+    }),
+
+    // Download Vessels Template
+    downloadVesselTemplate: builder.query({
+      query: () => ({
+        url: "/vessels/template",
+        responseHandler: (response) => response.blob(),
+      }),
     }),
     // Find Shipment by Tracking Number
     getShipmentByTracking: builder.query<Shipment, string>({
@@ -410,7 +507,16 @@ export const {
   useGetCrewQuery,
   useGetCrewByVesselQuery,
   useGetFinancialStatsQuery,
+  useUpdateVesselMutation,
+  useDeleteVesselMutation,
+  useUploadVesselCSVMutation,
+  useLazyDownloadVesselTemplateQuery,
   useGetPortScheduleQuery,
+  useDeletePortMutation,
+  useUploadPortCSVMutation,
+  useUpdatePortMutation,
+  useLazyDownloadPortTemplateQuery,
   useGetUnassignedVesselsQuery,
   useCreateAllocationMutation,
+  useCreatePortMutation,
 } = apiSlice;
