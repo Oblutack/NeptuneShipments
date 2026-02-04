@@ -200,27 +200,46 @@ func (r *PortRepository) GetPortStats(ctx context.Context) ([]PortStat, error) {
 
 func (r *PortRepository) GetAll(ctx context.Context) ([]models.Port, error) {
     query := `
-        SELECT id, un_locode, name, country, 
-               ST_Y(location::geometry) as lat, 
-               ST_X(location::geometry) as lon,
-               type 
-               created_at
+        SELECT 
+            id,
+            name,
+            un_locode,
+            country,
+            ST_Y(location::geometry) as latitude,
+            ST_X(location::geometry) as longitude,
+            created_at
         FROM ports
+        ORDER BY name ASC
     `
+
     rows, err := r.db.GetPool().Query(ctx, query)
     if err != nil {
-        return nil, err
+        return nil, fmt.Errorf("failed to query ports: %w", err)
     }
     defer rows.Close()
 
     var ports []models.Port
     for rows.Next() {
         var p models.Port
-        if err := rows.Scan(&p.ID, &p.UnLocode, &p.Name, &p.Country, &p.Latitude, &p.Longitude, &p.CreatedAt); err != nil {
-            return nil, err
+        err := rows.Scan(
+            &p.ID,
+            &p.Name,
+            &p.UnLocode,     
+            &p.Country,
+            &p.Latitude,
+            &p.Longitude,
+            &p.CreatedAt,
+        )
+        if err != nil {
+            return nil, fmt.Errorf("failed to scan port: %w", err)
         }
         ports = append(ports, p)
     }
+
+    if ports == nil {
+        ports = []models.Port{}
+    }
+
     return ports, nil
 }
 

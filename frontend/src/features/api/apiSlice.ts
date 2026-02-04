@@ -21,9 +21,9 @@ export interface Vessel {
 export interface Port {
   id: string;
   name: string;
-  un_locode: string; 
+  un_locode: string;
   country: string;
-  type: string;
+  type?: string; // ✅ Optional - not always present in backend
   latitude: number;
   longitude: number;
   created_at?: string;
@@ -223,7 +223,7 @@ type RootState = {
 export const apiSlice = createApi({
   reducerPath: "api",
   baseQuery: fetchBaseQuery({
-    baseUrl: "http://127.0.0.1:8080/api",
+    baseUrl: "http://localhost:8080/api", // ✅ FIX: Use localhost instead of 127.0.0.1
     prepareHeaders: (headers, { getState }) => {
       const token = (getState() as RootState).auth.token;
 

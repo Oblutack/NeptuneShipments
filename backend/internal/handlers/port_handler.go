@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/csv"
 	"fmt"
 	"net/http"
@@ -25,10 +26,21 @@ func NewPortHandler(repo *repository.PortRepository, importerService *services.I
 }
 
 func (h *PortHandler) GetAllPorts(c *fiber.Ctx) error {
-    ports, err := h.repo.GetAll(c.Context())
+    ctx := context.Background()
+    
+    ports, err := h.repo.GetAll(ctx)
     if err != nil {
-        return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+        return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+            "error": "Failed to fetch ports",
+        })
     }
+
+    // ✅ FIX: Return empty array instead of null if no ports
+    if ports == nil {
+        ports = []models.Port{}
+    }
+
+    // ✅ FIX: Return array directly, not wrapped in object
     return c.JSON(ports)
 }
 

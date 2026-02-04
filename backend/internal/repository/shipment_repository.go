@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Oblutack/NeptuneShipments/backend/internal/database"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/models"
@@ -41,30 +42,67 @@ func (r *ShipmentRepository) Create(ctx context.Context, s *models.Shipment) err
 
 // GetAll fetches all shipments
 func (r *ShipmentRepository) GetAll(ctx context.Context) ([]models.Shipment, error) {
-	query := `
-		SELECT id, tracking_number, customer_name, origin_port_id, destination_port_id, 
-		       vessel_id, description, container_number, weight_kg, status, eta, created_at, updated_at
-		FROM shipments
-	`
-	rows, err := r.db.GetPool().Query(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
+    query := `
+        SELECT 
+            s.id,
+            s.tracking_number,
+            s.customer_name,
+            s.origin_port_id,
+            s.destination_port_id,
+            s.vessel_id,
+            s.description,
+            s.container_number,
+            s.weight_kg,
+            s.status,
+            s.eta,
+            s.created_at,
+            s.updated_at,
+            origin.name AS origin_port_name,
+            dest.name AS destination_port_name
+        FROM shipments s
+        LEFT JOIN ports origin ON s.origin_port_id = origin.id
+        LEFT JOIN ports dest ON s.destination_port_id = dest.id
+        ORDER BY s.created_at DESC
+    `
 
-	var shipments []models.Shipment
-	for rows.Next() {
-		var s models.Shipment
-		err := rows.Scan(
-			&s.ID, &s.TrackingNumber, &s.CustomerName, &s.OriginPortID, &s.DestinationPortID,
-			&s.VesselID, &s.Description, &s.ContainerNumber, &s.WeightKG, &s.Status, &s.ETA, &s.CreatedAt, &s.UpdatedAt,
-		)
-		if err != nil {
-			return nil, err
-		}
-		shipments = append(shipments, s)
-	}
-	return shipments, nil
+    rows, err := r.db.GetPool().Query(ctx, query)
+    if err != nil {
+        return nil, fmt.Errorf("failed to query shipments: %w", err)
+    }
+    defer rows.Close()
+
+    var shipments []models.Shipment
+    for rows.Next() {
+        var s models.Shipment
+        err := rows.Scan(
+            &s.ID,
+            &s.TrackingNumber,
+            &s.CustomerName,
+            &s.OriginPortID,
+            &s.DestinationPortID,
+            &s.VesselID,
+            &s.Description,
+            &s.ContainerNumber,
+            &s.WeightKG,
+            &s.Status,
+            &s.ETA,
+            &s.CreatedAt,
+            &s.UpdatedAt,
+            &s.OriginPortName,      
+            &s.DestinationPortName, 
+        )
+        if err != nil {
+            return nil, fmt.Errorf("failed to scan shipment: %w", err)
+        }
+        shipments = append(shipments, s)
+    }
+
+    // ✅ FIX: Return empty array instead of nil
+    if shipments == nil {
+        shipments = []models.Shipment{}
+    }
+
+    return shipments, nil
 }
 
 // GetByTrackingNumber finds a single shipment with Port names included
