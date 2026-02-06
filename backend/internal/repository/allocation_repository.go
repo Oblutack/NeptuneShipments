@@ -249,3 +249,22 @@ func (r *AllocationRepository) GetScheduledAllocationByVesselID(ctx context.Cont
 
     return &a, nil
 }
+
+// GetBerthPortID returns the port ID for a given berth
+func (r *AllocationRepository) GetBerthPortID(ctx context.Context, berthID string) (string, error) {
+    query := `
+        SELECT t.port_id 
+        FROM berths b
+        JOIN terminals t ON b.terminal_id = t.id
+        WHERE b.id = $1
+    `
+    
+    var portID string
+    err := r.db.GetPool().QueryRow(ctx, query, berthID).Scan(&portID)
+    if err != nil {
+        return "", fmt.Errorf("failed to get berth's port: %w", err)
+    }
+    
+    return portID, nil
+}
+

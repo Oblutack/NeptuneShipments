@@ -247,7 +247,7 @@ export const apiSlice = createApi({
 
     getPortById: builder.query({
       query: (id) => `/ports/${id}`,
-      providesTags: (result, error, id) => [{ type: "Ports", id }],
+      providesTags: (_result, _error, id) => [{ type: "Ports", id }],
     }),
 
     createPort: builder.mutation({
@@ -436,7 +436,7 @@ export const apiSlice = createApi({
     }),
     getCrewByVessel: builder.query<CrewResponse, string>({
       query: (vesselId) => `/vessels/${vesselId}/crew`,
-      providesTags: (result, error, vesselId) => [
+      providesTags: (_result, _error, vesselId) => [
         { type: "Vessels", id: vesselId },
         "Crew",
       ],
@@ -481,7 +481,7 @@ export const apiSlice = createApi({
         method: "POST",
         body,
       }),
-      invalidatesTags: (result, error, { berth_id }) => [
+      invalidatesTags: () => [
         "Ports",
         "Vessels",
         { type: "Allocations", id: "LIST" },

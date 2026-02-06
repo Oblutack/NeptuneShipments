@@ -319,14 +319,7 @@ func (e *Engine) checkBerthActivation(ctx context.Context, v models.Vessel) {
 	}
 
 	// Get the berth's terminal to find the port ID
-	var terminalPortID string
-	portQuery := `
-		SELECT t.port_id 
-		FROM berths b
-		JOIN terminals t ON b.terminal_id = t.id
-		WHERE b.id = $1
-	`
-	err = e.vesselRepo.db.QueryRow(ctx, portQuery, allocation.BerthID).Scan(&terminalPortID)
+	terminalPortID, err := e.allocationRepo.GetBerthPortID(ctx, allocation.BerthID)
 	if err != nil {
 		log.Printf("Failed to get berth's port for %s: %v", v.Name, err)
 		return
@@ -343,7 +336,7 @@ func (e *Engine) checkBerthActivation(ctx context.Context, v models.Vessel) {
 	log.Printf("🚢 %s has arrived at %s! Activating berth allocation at %s", v.Name, nearbyPort.Name, allocation.BerthName)
 
 	// Begin transaction to update vessel, allocation, and berth atomically
-	tx, err := e.vesselRepo.db.Begin(ctx)
+	tx, err := e.vesselRepo.GetPool().Begin(ctx)
 	if err != nil {
 		log.Printf("Failed to begin transaction for %s: %v", v.Name, err)
 		return

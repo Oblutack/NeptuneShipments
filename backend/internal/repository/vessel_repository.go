@@ -514,3 +514,9 @@ func (r *VesselRepository) GetNearbyPort(ctx context.Context, lat, lon float64) 
 
 	return &port, nil
 }
+
+// GetPool returns the database connection pool
+func (r *VesselRepository) GetPool() *pgxpool.Pool {
+    return r.db
+}
+

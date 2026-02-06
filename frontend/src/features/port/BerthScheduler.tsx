@@ -49,15 +49,23 @@ export const BerthScheduler = () => {
     }),
   );
 
+  const [dateRange] = useState(() => {
+    const now = Date.now();
+    return {
+      startDate: new Date(now - 7 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split("T")[0],
+      endDate: new Date(now + 30 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .split("T")[0],
+    };
+  });
+
   const { data: scheduleData } = useGetPortScheduleQuery(
     {
       portId: portId!,
-      startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .split("T")[0], // 7 days ago
-      endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-        .toISOString()
-        .split("T")[0], // 30 days ahead
+      startDate: dateRange.startDate,
+      endDate: dateRange.endDate,
     },
     { skip: !portId, pollingInterval: 10000 },
   );
