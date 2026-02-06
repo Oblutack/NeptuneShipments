@@ -3,6 +3,7 @@ package simulator
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 
@@ -13,11 +14,12 @@ import (
 )
 
 type Engine struct {
-	vesselRepo    *repository.VesselRepository
-	shipmentRepo *repository.ShipmentRepository
-	componentRepo *repository.ComponentRepository
-	hub           *websocket.Hub
-	alertsSent    map[string]bool // Track which vessels have already sent alerts
+	vesselRepo     *repository.VesselRepository
+	shipmentRepo   *repository.ShipmentRepository
+	componentRepo  *repository.ComponentRepository
+	allocationRepo *repository.AllocationRepository
+	hub            *websocket.Hub
+	alertsSent     map[string]bool // Track which vessels have already sent alerts
 }
 
 // WebSocketMessage wraps all messages sent via WebSocket
@@ -26,13 +28,14 @@ type WebSocketMessage struct {
     Payload interface{} `json:"payload"`
 }
 
-func NewEngine(vRepo *repository.VesselRepository, sRepo *repository.ShipmentRepository, componentRepo *repository.ComponentRepository, hub *websocket.Hub,) *Engine {
+func NewEngine(vRepo *repository.VesselRepository, sRepo *repository.ShipmentRepository, componentRepo *repository.ComponentRepository, aRepo *repository.AllocationRepository, hub *websocket.Hub) *Engine {
     return &Engine{
-        vesselRepo:   vRepo, 
-        shipmentRepo: sRepo,
-		componentRepo: componentRepo,
-		hub:           hub,
-		alertsSent:    make(map[string]bool), // Initialize alert tracking
+        vesselRepo:     vRepo, 
+        shipmentRepo:   sRepo,
+		componentRepo:  componentRepo,
+		allocationRepo: aRepo,
+		hub:            hub,
+		alertsSent:     make(map[string]bool), // Initialize alert tracking
     }
 }
 
@@ -129,6 +132,11 @@ func (e *Engine) tick() {
 		if v.Status == "AT_SEA" && v.SpeedKnots > 0 {
 			e.moveVessel(ctx, v)
 		}
+	}
+
+	// 4. Check for berth activations (vessels arriving at port with scheduled allocations)
+	for _, v := range vessels {
+		e.checkBerthActivation(ctx, v)
 	}
 }
 
@@ -278,3 +286,136 @@ func (e *Engine) moveVessel(ctx context.Context, v models.Vessel) {
     }
 }
 
+// checkBerthActivation checks if a vessel with a SCHEDULED allocation is near its destination port
+// and automatically activates the allocation if within 10km
+func (e *Engine) checkBerthActivation(ctx context.Context, v models.Vessel) {
+	// Only check for AT_SEA vessels
+	if v.Status != "AT_SEA" {
+		return
+	}
+
+	// Check if vessel has a scheduled allocation
+	allocation, err := e.allocationRepo.GetScheduledAllocationByVesselID(ctx, v.ID)
+	if err != nil {
+		log.Printf("Failed to check scheduled allocation for %s: %v", v.Name, err)
+		return
+	}
+
+	// No scheduled allocation found
+	if allocation == nil {
+		return
+	}
+
+	// Check if vessel is near any port
+	nearbyPort, err := e.vesselRepo.GetNearbyPort(ctx, v.Latitude, v.Longitude)
+	if err != nil {
+		log.Printf("Failed to check nearby port for %s: %v", v.Name, err)
+		return
+	}
+
+	// Not near any port
+	if nearbyPort == nil {
+		return
+	}
+
+	// Get the berth's terminal to find the port ID
+	var terminalPortID string
+	portQuery := `
+		SELECT t.port_id 
+		FROM berths b
+		JOIN terminals t ON b.terminal_id = t.id
+		WHERE b.id = $1
+	`
+	err = e.vesselRepo.db.QueryRow(ctx, portQuery, allocation.BerthID).Scan(&terminalPortID)
+	if err != nil {
+		log.Printf("Failed to get berth's port for %s: %v", v.Name, err)
+		return
+	}
+
+	// Check if the nearby port matches the allocation's port
+	if nearbyPort.ID != terminalPortID {
+		// Vessel is near a different port
+		return
+	}
+
+	// ✅ Vessel is near the correct port with a scheduled allocation!
+	// Activate the berth allocation
+	log.Printf("🚢 %s has arrived at %s! Activating berth allocation at %s", v.Name, nearbyPort.Name, allocation.BerthName)
+
+	// Begin transaction to update vessel, allocation, and berth atomically
+	tx, err := e.vesselRepo.db.Begin(ctx)
+	if err != nil {
+		log.Printf("Failed to begin transaction for %s: %v", v.Name, err)
+		return
+	}
+	defer tx.Rollback(ctx)
+
+	// 1. Update vessel status to DOCKED and move to port coordinates
+	updateVesselQuery := `
+		UPDATE vessels 
+		SET 
+			status = 'DOCKED',
+			speed_knots = 0,
+			location = ST_SetSRID(ST_MakePoint($2, $3), 4326),
+			current_berth_id = $4,
+			last_updated = NOW()
+		WHERE id = $1
+	`
+	_, err = tx.Exec(ctx, updateVesselQuery, v.ID, nearbyPort.Longitude, nearbyPort.Latitude, allocation.BerthID)
+	if err != nil {
+		log.Printf("Failed to dock vessel %s: %v", v.Name, err)
+		return
+	}
+
+	// 2. Activate the berth allocation
+	updateAllocationQuery := `
+		UPDATE berth_allocations
+		SET status = 'ACTIVE', updated_at = NOW()
+		WHERE id = $1
+	`
+	_, err = tx.Exec(ctx, updateAllocationQuery, allocation.ID)
+	if err != nil {
+		log.Printf("Failed to activate allocation for %s: %v", v.Name, err)
+		return
+	}
+
+	// 3. Mark berth as occupied
+	updateBerthQuery := `
+		UPDATE berths
+		SET is_occupied = true, current_vessel_id = $1
+		WHERE id = $2
+	`
+	_, err = tx.Exec(ctx, updateBerthQuery, v.ID, allocation.BerthID)
+	if err != nil {
+		log.Printf("Failed to mark berth as occupied for %s: %v", v.Name, err)
+		return
+	}
+
+	// 4. Update shipments to DELIVERED
+	updateShipmentsQuery := `
+		UPDATE shipments 
+		SET status = 'DELIVERED', updated_at = NOW() 
+		WHERE vessel_id = $1 AND status = 'IN_TRANSIT'
+	`
+	_, err = tx.Exec(ctx, updateShipmentsQuery, v.ID)
+	if err != nil {
+		log.Printf("Warning: Failed to update shipments for %s: %v", v.Name, err)
+		// Not critical, continue
+	}
+
+	// Commit transaction
+	if err := tx.Commit(ctx); err != nil {
+		log.Printf("Failed to commit docking transaction for %s: %v", v.Name, err)
+		return
+	}
+
+	// ✅ Success! Broadcast notification
+	e.broadcastAlert(
+		"INFO",
+		fmt.Sprintf("%s has arrived at %s and docked at %s", v.Name, nearbyPort.Name, allocation.BerthName),
+		v.ID,
+		v.Name,
+	)
+
+	log.Printf("✅ Successfully docked %s at berth %s", v.Name, allocation.BerthName)
+}

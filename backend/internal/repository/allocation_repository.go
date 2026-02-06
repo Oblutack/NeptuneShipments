@@ -209,3 +209,43 @@ func (r *AllocationRepository) GetUnassignedVessels(ctx context.Context) ([]mode
 
     return vessels, nil
 }
+
+// GetScheduledAllocationByVesselID returns a SCHEDULED allocation for a vessel
+func (r *AllocationRepository) GetScheduledAllocationByVesselID(ctx context.Context, vesselID string) (*models.BerthAllocation, error) {
+    query := `
+        SELECT 
+            ba.id, ba.vessel_id, ba.berth_id, ba.start_time, ba.end_time, 
+            ba.status, ba.notes, ba.created_at, ba.updated_at,
+            v.name as vessel_name,
+            b.name as berth_name
+        FROM berth_allocations ba
+        JOIN berths b ON ba.berth_id = b.id
+        JOIN vessels v ON ba.vessel_id = v.id
+        WHERE ba.vessel_id = $1
+          AND ba.status = 'SCHEDULED'
+        ORDER BY ba.start_time ASC
+        LIMIT 1
+    `
+
+    var a models.BerthAllocation
+    var notes sql.NullString
+
+    err := r.db.GetPool().QueryRow(ctx, query, vesselID).Scan(
+        &a.ID, &a.VesselID, &a.BerthID, &a.StartTime, &a.EndTime,
+        &a.Status, &notes, &a.CreatedAt, &a.UpdatedAt,
+        &a.VesselName, &a.BerthName,
+    )
+
+    if err != nil {
+        if err.Error() == "no rows in result set" {
+            return nil, nil // No scheduled allocation found
+        }
+        return nil, fmt.Errorf("failed to fetch scheduled allocation: %w", err)
+    }
+
+    if notes.Valid {
+        a.Notes = notes.String
+    }
+
+    return &a, nil
+}

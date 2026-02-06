@@ -471,3 +471,46 @@ func (r *VesselRepository) GetIDByIMO(ctx context.Context, imo string) (string, 
 	err := r.db.QueryRow(ctx, "SELECT id FROM vessels WHERE imo_number = $1", imo).Scan(&id)
 	return id, err
 }
+
+// GetNearbyPort checks if vessel is within 10km of any port
+func (r *VesselRepository) GetNearbyPort(ctx context.Context, lat, lon float64) (*models.Port, error) {
+	query := `
+		SELECT 
+			id, 
+			name, 
+			locode, 
+			country,
+			ST_Y(location::geometry) as latitude,
+			ST_X(location::geometry) as longitude
+		FROM ports
+		WHERE ST_DWithin(
+			location::geography,
+			ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
+			10000  -- 10km radius
+		)
+		ORDER BY ST_Distance(
+			location::geography,
+			ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography
+		) ASC
+		LIMIT 1
+	`
+
+	var port models.Port
+	err := r.db.QueryRow(ctx, query, lon, lat).Scan(
+		&port.ID,
+		&port.Name,
+		&port.UnLocode,
+		&port.Country,
+		&port.Latitude,
+		&port.Longitude,
+	)
+
+	if err != nil {
+		if err.Error() == "no rows in result set" {
+			return nil, nil // No port nearby
+		}
+		return nil, fmt.Errorf("failed to check nearby port: %w", err)
+	}
+
+	return &port, nil
+}

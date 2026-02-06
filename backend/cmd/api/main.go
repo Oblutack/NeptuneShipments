@@ -199,7 +199,7 @@ func main() {
 		Origins: []string{"http://localhost:5173", "http://127.0.0.1:5173"}, 
 	}))
 
-	simEngine := simulator.NewEngine(vesselRepo, shipmentRepo, componentRepo, hub)
+	simEngine := simulator.NewEngine(vesselRepo, shipmentRepo, componentRepo, allocationRepo, hub)
 	simEngine.Start()
 
 	port := os.Getenv("PORT")
