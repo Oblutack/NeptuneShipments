@@ -84,6 +84,8 @@ export const GlobalMap = ({
   const [selectedPortId, setSelectedPortId] = useState<string | null>(null);
   const selectedPort = ports?.find((p) => p.id === selectedPortId);
   const [hideDocked, setHideDocked] = useState(false);
+  const [clickedShipId, setClickedShipId] = useState<string | null>(null);
+  const clickedShip = vessels?.find((v) => v.id === clickedShipId);
 
   // Queries
   const { data: networkData } = useGetNetworkMeshQuery(undefined, {
@@ -239,6 +241,8 @@ export const GlobalMap = ({
                 onClick={(e) => {
                   e.stopPropagation();
                   console.log("Clicked:", ship.name);
+                  // Set clicked ship for the info panel
+                  setClickedShipId(clickedShipId === ship.id ? null : ship.id);
                   if (onShipClick) {
                     // Toggle Logic: If clicking the same ship, deselect it (null)
                     onShipClick(isSelected ? null : ship.id);
@@ -335,6 +339,57 @@ export const GlobalMap = ({
             Fleet Paths
           </button>
         </div>
+
+        {/* SHIP INFO PANEL */}
+        {clickedShip && (
+          <div className="absolute top-[348px] left-4 z-10 bg-slate-900/90 p-3 rounded-xl border border-slate-700 shadow-xl backdrop-blur-md">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                Ship Info
+              </span>
+              <button
+                onClick={() => setClickedShipId(null)}
+                className="text-slate-500 hover:text-white transition-colors"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Ship size={16} className="text-blue-400" />
+                <span className="text-sm font-bold text-white">
+                  {clickedShip.name}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-400">Status:</span>
+                <span
+                  className={`font-bold px-2 py-0.5 rounded ${
+                    clickedShip.status === "AT_SEA"
+                      ? "bg-green-500/20 text-green-400"
+                      : clickedShip.status === "DOCKED"
+                        ? "bg-yellow-500/20 text-yellow-400"
+                        : clickedShip.status === "DISTRESS"
+                          ? "bg-red-500/20 text-red-400"
+                          : "bg-slate-500/20 text-slate-400"
+                  }`}
+                >
+                  {clickedShip.status}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* SELECTION INFO */}
         {activeShip && (
