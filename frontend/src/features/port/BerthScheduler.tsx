@@ -60,7 +60,7 @@ export const BerthScheduler = () => {
         .split("T")[0],
     };
   });
-
+  
   const { data: scheduleData } = useGetPortScheduleQuery(
     {
       portId: portId!,
