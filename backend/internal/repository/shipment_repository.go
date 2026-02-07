@@ -21,8 +21,8 @@ func (r *ShipmentRepository) Create(ctx context.Context, s *models.Shipment) err
 	query := `
 		INSERT INTO shipments (
 			tracking_number, customer_name, origin_port_id, destination_port_id, 
-			vessel_id, description, container_number, weight_kg, status, eta
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+			vessel_id, description, container_number, weight_kg, status, eta, manifest_items
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		RETURNING id, created_at, updated_at
 	`
 	
@@ -34,7 +34,7 @@ func (r *ShipmentRepository) Create(ctx context.Context, s *models.Shipment) err
 	err := r.db.GetPool().QueryRow(
 		ctx, query,
 		s.TrackingNumber, s.CustomerName, s.OriginPortID, s.DestinationPortID,
-		s.VesselID, s.Description, s.ContainerNumber, s.WeightKG, s.Status, s.ETA,
+		s.VesselID, s.Description, s.ContainerNumber, s.WeightKG, s.Status, s.ETA, s.ManifestItems,
 	).Scan(&s.ID, &s.CreatedAt, &s.UpdatedAt)
 
 	return err
@@ -54,6 +54,7 @@ func (r *ShipmentRepository) GetAll(ctx context.Context) ([]models.Shipment, err
             s.container_number,
             s.weight_kg,
             s.status,
+            COALESCE(s.manifest_items, '[]'::jsonb) as manifest_items,
             s.eta,
             s.created_at,
             s.updated_at,
@@ -85,6 +86,7 @@ func (r *ShipmentRepository) GetAll(ctx context.Context) ([]models.Shipment, err
             &s.ContainerNumber,
             &s.WeightKG,
             &s.Status,
+            &s.ManifestItems,
             &s.ETA,
             &s.CreatedAt,
             &s.UpdatedAt,
@@ -113,7 +115,9 @@ func (r *ShipmentRepository) GetByTrackingNumber(ctx context.Context, trackingNu
 			s.id, s.tracking_number, s.customer_name, 
 			s.origin_port_id, s.destination_port_id, 
 			s.vessel_id, s.description, s.container_number, 
-			s.weight_kg, s.status, s.eta, s.created_at, s.updated_at,
+			s.weight_kg, s.status, 
+			COALESCE(s.manifest_items, '[]'::jsonb) as manifest_items,
+			s.eta, s.created_at, s.updated_at,
 			p1.name as origin_name,
 			p2.name as dest_name
 		FROM shipments s
@@ -128,7 +132,7 @@ func (r *ShipmentRepository) GetByTrackingNumber(ctx context.Context, trackingNu
 		&s.ID, &s.TrackingNumber, &s.CustomerName, 
 		&s.OriginPortID, &s.DestinationPortID,
 		&s.VesselID, &s.Description, &s.ContainerNumber, 
-		&s.WeightKG, &s.Status, &s.ETA, &s.CreatedAt, &s.UpdatedAt,
+		&s.WeightKG, &s.Status, &s.ManifestItems, &s.ETA, &s.CreatedAt, &s.UpdatedAt,
 		&s.OriginPortName,      // <--- New scan target
 		&s.DestinationPortName, // <--- New scan target
 	)
@@ -172,16 +176,16 @@ func (r *ShipmentRepository) CreateOrUpdate(ctx context.Context, s *models.Shipm
 	query := `
 		INSERT INTO shipments (
 			tracking_number, customer_name, origin_port_id, destination_port_id, 
-			vessel_id, description, container_number, weight_kg, status
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'PENDING')
+			vessel_id, description, container_number, weight_kg, status, manifest_items
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'PENDING', $9)
 		ON CONFLICT (tracking_number) DO UPDATE 
-		SET status = EXCLUDED.status -- Just touch it to ensure it exists
+		SET status = EXCLUDED.status, manifest_items = EXCLUDED.manifest_items
 		RETURNING id
 	`
 	err := r.db.GetPool().QueryRow(
 		ctx, query,
 		s.TrackingNumber, s.CustomerName, s.OriginPortID, s.DestinationPortID,
-		s.VesselID, s.Description, s.ContainerNumber, s.WeightKG,
+		s.VesselID, s.Description, s.ContainerNumber, s.WeightKG, s.ManifestItems,
 	).Scan(&s.ID)
 	return err
 }
@@ -193,7 +197,9 @@ func (r *ShipmentRepository) GetByVesselID(ctx context.Context, vesselID string)
             s.id, s.tracking_number, s.customer_name, 
             s.origin_port_id, s.destination_port_id, 
             s.vessel_id, s.description, s.container_number, 
-            s.weight_kg, s.status, s.eta, s.created_at, s.updated_at,
+            s.weight_kg, s.status, 
+            COALESCE(s.manifest_items, '[]'::jsonb) as manifest_items,
+            s.eta, s.created_at, s.updated_at,
             p1.name as origin_name,
             p2.name as dest_name
         FROM shipments s
@@ -216,7 +222,7 @@ func (r *ShipmentRepository) GetByVesselID(ctx context.Context, vesselID string)
             &s.ID, &s.TrackingNumber, &s.CustomerName,
             &s.OriginPortID, &s.DestinationPortID,
             &s.VesselID, &s.Description, &s.ContainerNumber,
-            &s.WeightKG, &s.Status, &s.ETA, &s.CreatedAt, &s.UpdatedAt,
+            &s.WeightKG, &s.Status, &s.ManifestItems, &s.ETA, &s.CreatedAt, &s.UpdatedAt,
             &s.OriginPortName,
             &s.DestinationPortName,
         )
