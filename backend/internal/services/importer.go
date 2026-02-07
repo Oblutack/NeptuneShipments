@@ -267,6 +267,109 @@ func readCSV(path string) ([][]string, error) {
 	defer f.Close()
 	return csv.NewReader(f).ReadAll()
 }
+
+// generateManifestItems creates realistic manifest items based on shipment description
+func generateManifestItems(description string, weightKG float64) models.ManifestItems {
+	items := models.ManifestItems{}
+	desc := strings.ToLower(description)
+	
+	// Electronics
+	if strings.Contains(desc, "electronics") || strings.Contains(desc, "laptop") || strings.Contains(desc, "phone") {
+		items = append(items, models.ManifestItem{
+			SKU:        "ELEC-001",
+			Description: "Laptop Computers",
+			Quantity:   50,
+			UnitValue:  1200.00,
+			TotalValue: 60000.00,
+		})
+		items = append(items, models.ManifestItem{
+			SKU:        "ELEC-002",
+			Description: "Smartphones",
+			Quantity:   200,
+			UnitValue:  800.00,
+			TotalValue: 160000.00,
+		})
+	}
+	
+	// Textiles/Clothing
+	if strings.Contains(desc, "textile") || strings.Contains(desc, "clothing") || strings.Contains(desc, "garment") {
+		items = append(items, models.ManifestItem{
+			SKU:        "TEXT-001",
+			Description: "Cotton T-Shirts",
+			Quantity:   5000,
+			UnitValue:  12.50,
+			TotalValue: 62500.00,
+		})
+		items = append(items, models.ManifestItem{
+			SKU:        "TEXT-002",
+			Description: "Denim Jeans",
+			Quantity:   2000,
+			UnitValue:  35.00,
+			TotalValue: 70000.00,
+		})
+	}
+	
+	// Machinery
+	if strings.Contains(desc, "machinery") || strings.Contains(desc, "equipment") || strings.Contains(desc, "parts") {
+		items = append(items, models.ManifestItem{
+			SKU:        "MACH-001",
+			Description: "Industrial Pumps",
+			Quantity:   20,
+			UnitValue:  15000.00,
+			TotalValue: 300000.00,
+		})
+		items = append(items, models.ManifestItem{
+			SKU:        "MACH-002",
+			Description: "Engine Components",
+			Quantity:   100,
+			UnitValue:  850.00,
+			TotalValue: 85000.00,
+		})
+	}
+	
+	// Food
+	if strings.Contains(desc, "food") || strings.Contains(desc, "grain") || strings.Contains(desc, "produce") {
+		items = append(items, models.ManifestItem{
+			SKU:        "FOOD-001",
+			Description: "Wheat Grain (tons)",
+			Quantity:   int(weightKG / 1000), // Convert to tons
+			UnitValue:  250.00,
+			TotalValue: float64(int(weightKG/1000)) * 250.00,
+		})
+	}
+	
+	// Chemicals
+	if strings.Contains(desc, "chemical") || strings.Contains(desc, "pharmaceutical") {
+		items = append(items, models.ManifestItem{
+			SKU:        "CHEM-001",
+			Description: "Industrial Chemicals (drums)",
+			Quantity:   200,
+			UnitValue:  450.00,
+			TotalValue: 90000.00,
+		})
+		items = append(items, models.ManifestItem{
+			SKU:        "CHEM-002",
+			Description: "Medical Supplies",
+			Quantity:   500,
+			UnitValue:  120.00,
+			TotalValue: 60000.00,
+		})
+	}
+	
+	// Default/Generic cargo
+	if len(items) == 0 {
+		items = append(items, models.ManifestItem{
+			SKU:        "GEN-001",
+			Description: "General Cargo Pallets",
+			Quantity:   int(weightKG / 500), // Assuming 500kg per pallet
+			UnitValue:  350.00,
+			TotalValue: float64(int(weightKG/500)) * 350.00,
+		})
+	}
+	
+	return items
+}
+
 func (s *ImporterService) ImportShipments(filePath string) error {
 	records, err := readCSV(filePath)
 	if err != nil { return err }
@@ -300,6 +403,7 @@ func (s *ImporterService) ImportShipments(filePath string) error {
 			WeightKG:          weight,
 			ContainerNumber:   row[7],
             Status:            "PENDING", // Default
+			ManifestItems:     generateManifestItems(row[5], weight),
 		}
 
 		if err := s.shipmentRepo.CreateOrUpdate(ctx, shipment); err != nil {
