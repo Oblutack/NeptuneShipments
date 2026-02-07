@@ -10,6 +10,7 @@ frontend/build/
 # Back
 backend/bin/
 backend/*.exe
+backend/update_manifests.sql
 
 # Env
 .env
