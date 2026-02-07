@@ -3,7 +3,9 @@ import {
   useGetVesselsQuery,
   useGetComponentsQuery,
   usePerformMaintenanceMutation,
+  useRefuelVesselMutation,
   type Component,
+  type Vessel,
 } from "../../features/api/apiSlice";
 import {
   Loader2,
@@ -14,6 +16,7 @@ import {
   Clock,
   Gauge,
   Zap,
+  Fuel,
 } from "lucide-react";
 
 export const MaintenancePage = () => {
@@ -91,7 +94,142 @@ export const MaintenancePage = () => {
               </p>
             </div>
           ) : (
-            <ComponentInspector vesselId={selectedVessel.id} />
+            <>
+              <FuelGauge vessel={selectedVessel} />
+              <ComponentInspector vesselId={selectedVessel.id} />
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Fuel Gauge Component
+const FuelGauge = ({ vessel }: { vessel: Vessel }) => {
+  const [refuelVessel, { isLoading: isRefueling }] = useRefuelVesselMutation();
+  const fuelPercentage = (vessel.fuel_level / vessel.fuel_capacity) * 100;
+  const isLowFuel = fuelPercentage < 20;
+
+  return (
+    <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl mb-6">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="p-2 bg-orange-500/20 rounded-lg">
+          <Fuel className="text-orange-400" size={20} />
+        </div>
+        <div>
+          <h3 className="text-lg font-bold text-white">Fuel Management</h3>
+          <p className="text-xs text-slate-500">Monitor and refuel vessel</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Fuel Gauge */}
+        <div className="bg-slate-950 p-6 rounded-lg border border-slate-800">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-sm font-bold text-slate-400 uppercase">
+              Bunker Fuel Level
+            </span>
+            <span
+              className={`text-xs font-bold ${
+                isLowFuel ? "text-red-400" : "text-green-400"
+              }`}
+            >
+              {fuelPercentage.toFixed(1)}%
+            </span>
+          </div>
+
+          <div className="relative h-48 w-20 mx-auto bg-slate-800 rounded-full overflow-hidden border-2 border-slate-700">
+            <div
+              className={`absolute bottom-0 w-full transition-all duration-1000 ${
+                isLowFuel ? "bg-red-600 animate-pulse" : "bg-orange-500"
+              }`}
+              style={{ height: `${fuelPercentage}%` }}
+            ></div>
+          </div>
+
+          <div className="text-center mt-4">
+            <div className="text-2xl font-mono font-bold text-white">
+              {vessel.fuel_level.toFixed(0)}
+            </div>
+            <div className="text-xs text-slate-500">
+              / {vessel.fuel_capacity} Tons
+            </div>
+          </div>
+        </div>
+
+        {/* Fuel Stats & Actions */}
+        <div className="space-y-4">
+          <div className="bg-slate-950 p-4 rounded-lg border border-slate-800">
+            <div className="text-xs text-slate-500 uppercase tracking-wide mb-2">
+              Fuel Status
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-slate-400">Current Level</span>
+                <span className="text-sm font-bold text-white">
+                  {vessel.fuel_level.toFixed(0)} tons
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-slate-400">Capacity</span>
+                <span className="text-sm font-bold text-white">
+                  {vessel.fuel_capacity} tons
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-slate-400">Remaining</span>
+                <span
+                  className={`text-sm font-bold ${
+                    isLowFuel ? "text-red-400" : "text-green-400"
+                  }`}
+                >
+                  {(vessel.fuel_capacity - vessel.fuel_level).toFixed(0)} tons
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Refuel Button */}
+          <button
+            onClick={() => refuelVessel(vessel.id)}
+            disabled={isRefueling || fuelPercentage > 95}
+            className={`w-full px-4 py-3 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+              vessel.status === "DISTRESS"
+                ? "bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-500/20"
+                : "bg-orange-600 hover:bg-orange-500 text-white shadow-lg shadow-orange-500/20"
+            } disabled:bg-slate-700 disabled:text-slate-500 disabled:shadow-none`}
+          >
+            {isRefueling ? (
+              <>
+                <Loader2 className="animate-spin" size={16} />
+                Refueling...
+              </>
+            ) : (
+              <>
+                <Zap size={16} />
+                {vessel.status === "DISTRESS"
+                  ? "EMERGENCY REFUEL"
+                  : "Refuel Vessel"}
+              </>
+            )}
+          </button>
+
+          {isLowFuel && vessel.status !== "DISTRESS" && (
+            <div className="bg-yellow-900/20 border border-yellow-500/50 rounded-lg p-3 flex items-start gap-2">
+              <AlertTriangle
+                className="text-yellow-400 flex-shrink-0 mt-0.5"
+                size={16}
+              />
+              <div>
+                <p className="text-xs font-bold text-yellow-400">
+                  Low Fuel Warning
+                </p>
+                <p className="text-xs text-yellow-300/70 mt-1">
+                  Fuel level is below 20%. Consider refueling soon.
+                </p>
+              </div>
+            </div>
           )}
         </div>
       </div>

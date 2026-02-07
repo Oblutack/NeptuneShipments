@@ -1,10 +1,7 @@
 import { useState } from "react";
-import {
-  useGetVesselsQuery,
-  useRefuelVesselMutation,
-} from "../../features/api/apiSlice";
+import { useGetVesselsQuery } from "../../features/api/apiSlice";
 import type { Vessel } from "../../features/api/apiSlice";
-import { Ship, Loader2, Fuel, Zap } from "lucide-react";
+import { Ship, Loader2 } from "lucide-react";
 import { TankMonitor } from "../../features/fleet/TankMonitor";
 import { DataTable } from "../../components/ui/DataTable";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -15,9 +12,6 @@ export const FleetPage = () => {
     pollingInterval: 2000,
   });
   const [selectedShipId, setSelectedShipId] = useState<string | null>(null);
-
-  // Refuel Hook
-  const [refuelVessel, { isLoading: isRefueling }] = useRefuelVesselMutation();
 
   const selectedShip = vessels?.find((v) => v.id === selectedShipId);
 
@@ -67,20 +61,6 @@ export const FleetPage = () => {
       header: "Speed (kn)",
       cell: ({ row }) => <span>{row.original.speed_knots.toFixed(1)}</span>,
     },
-    {
-      accessorKey: "fuel_level",
-      header: "Fuel Level",
-      cell: ({ row }) => {
-        const v = row.original;
-        const pct = (v.fuel_level / v.fuel_capacity) * 100;
-        const color = pct < 20 ? "text-red-500 font-bold" : "text-slate-300";
-        return (
-          <span className={color}>
-            {v.fuel_level.toFixed(0)} / {v.fuel_capacity} tons
-          </span>
-        );
-      },
-    },
   ];
 
   if (isLoading)
@@ -115,57 +95,12 @@ export const FleetPage = () => {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* FUEL GAUGE */}
-            <div className="lg:col-span-1 bg-slate-950 p-4 rounded-lg border border-slate-800">
-              <div className="flex items-center gap-2 mb-4 text-slate-400">
-                <Fuel size={18} />
-                <span className="text-sm font-bold uppercase">Bunker Fuel</span>
-              </div>
-
-              <div className="relative h-48 w-16 mx-auto bg-slate-800 rounded-full overflow-hidden border border-slate-700">
-                <div
-                  className={`absolute bottom-0 w-full transition-all duration-1000 ${selectedShip.fuel_level < 500 ? "bg-red-600 animate-pulse" : "bg-orange-500"}`}
-                  style={{
-                    height: `${(selectedShip.fuel_level / selectedShip.fuel_capacity) * 100}%`,
-                  }}
-                ></div>
-              </div>
-
-              <div className="text-center mt-4">
-                <div className="text-xl font-mono font-bold">
-                  {selectedShip.fuel_level.toFixed(0)}
-                </div>
-                <div className="text-xs text-slate-500">
-                  / {selectedShip.fuel_capacity} Tons
-                </div>
-
-                {selectedShip.status === "DISTRESS" && (
-                  <div className="mt-4">
-                    <button
-                      onClick={() => refuelVessel(selectedShip.id)}
-                      disabled={isRefueling}
-                      className="w-full bg-red-600 hover:bg-red-500 text-white px-3 py-2 rounded text-xs font-bold shadow-lg flex items-center justify-center gap-2 transition-all hover:scale-105"
-                    >
-                      {isRefueling ? (
-                        <Loader2 className="animate-spin" size={12} />
-                      ) : (
-                        <Zap size={12} />
-                      )}
-                      EMERGENCY REFUEL
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* TANK MONITOR */}
-            <div className="lg:col-span-3">
-              <h3 className="text-sm font-bold text-slate-400 mb-4 uppercase">
-                Liquid Cargo Hold
-              </h3>
-              <TankMonitor vesselId={selectedShip.id} />
-            </div>
+          {/* TANK MONITOR */}
+          <div>
+            <h3 className="text-sm font-bold text-slate-400 mb-4 uppercase">
+              Liquid Cargo Hold
+            </h3>
+            <TankMonitor vesselId={selectedShip.id} />
           </div>
           {/* Cargo Manifest Section */}
           <CargoManifest vesselId={selectedShip.id} />
