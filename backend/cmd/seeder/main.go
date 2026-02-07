@@ -45,7 +45,7 @@ func main() {
 		log.Fatal(err)
 	}
     // Ports
-	if err := importPortsFromFile(ctx, importer, "../../data/ports.csv"); err != nil {
+	if err := importPortsFromFile(ctx, importer, "../data/ports.csv"); err != nil {
         log.Fatal(err)
     }
     // Routes
@@ -53,7 +53,7 @@ func main() {
 		log.Fatal(err)
 	}
     // Vessels
-	if err := importVesselsFromFile(ctx, importer, "../../data/vessels.csv"); err != nil {
+	if err := importVesselsFromFile(ctx, importer, "../data/vessels.csv"); err != nil {
         log.Fatal(err)
     }
 	// Shipments

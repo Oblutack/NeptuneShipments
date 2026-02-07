@@ -28,16 +28,16 @@ type PortStat struct {
 
 func (r *PortRepository) Create(ctx context.Context, port *models.Port) error {
     query := `
-        INSERT INTO ports (name, locode, country, type, location)
-        VALUES ($1, $2, $3, $4, ST_SetSRID(ST_MakePoint($5, $6), 4326))
-        RETURNING id, created_at, updated_at
+        INSERT INTO ports (name, un_locode, country, location)
+        VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326))
+        RETURNING id, created_at
     `
 
     err := r.db.GetPool().QueryRow(
         ctx, query,
-        port.Name, port.UnLocode, port.Country, port.Type,
+        port.Name, port.UnLocode, port.Country,
         port.Longitude, port.Latitude,
-    ).Scan(&port.ID, &port.CreatedAt, &port.UpdatedAt)
+    ).Scan(&port.ID, &port.CreatedAt)
 
     if err != nil {
         return fmt.Errorf("failed to create port: %w", err)
@@ -52,21 +52,18 @@ func (r *PortRepository) Update(ctx context.Context, port *models.Port) error {
         UPDATE ports 
         SET 
             name = $1,
-            locode = $2,
+            un_locode = $2,
             country = $3,
-            type = $4,
-            location = ST_SetSRID(ST_MakePoint($5, $6), 4326),
-            updated_at = NOW()
-        WHERE id = $7
-        RETURNING updated_at
+            location = ST_SetSRID(ST_MakePoint($4, $5), 4326)
+        WHERE id = $6
     `
 
-    err := r.db.GetPool().QueryRow(
+    _, err := r.db.GetPool().Exec(
         ctx, query,
-        port.Name, port.UnLocode, port.Country, port.Type,
+        port.Name, port.UnLocode, port.Country,
         port.Longitude, port.Latitude,
         port.ID,
-    ).Scan(&port.UpdatedAt)
+    )
 
     if err != nil {
         return fmt.Errorf("failed to update port: %w", err)
@@ -130,14 +127,14 @@ func (r *PortRepository) BulkCreate(ctx context.Context, ports []models.Port) er
     defer tx.Rollback(ctx)
 
     query := `
-        INSERT INTO ports (name, locode, country, type, location)
-        VALUES ($1, $2, $3, $4, ST_SetSRID(ST_MakePoint($5, $6), 4326))
+        INSERT INTO ports (name, un_locode, country, location)
+        VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326))
     `
 
     for _, port := range ports {
         _, err := tx.Exec(
             ctx, query,
-            port.Name, port.UnLocode, port.Country, port.Type,
+            port.Name, port.UnLocode, port.Country,
             port.Longitude, port.Latitude,
         )
         if err != nil {

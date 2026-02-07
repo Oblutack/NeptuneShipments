@@ -1,4 +1,4 @@
-name,locode,country,lat,lon
+name,locode,country,latitude,longitude
 Rotterdam,NLRTM,NL,51.9225,4.47917
 Shanghai,CNSHA,CN,31.2304,121.4737
 Singapore,SGSIN,SG,1.29027,103.851959

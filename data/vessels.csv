@@ -1,4 +1,4 @@
-name,imo,flag,type,teu,barrels,lat,lon,speed,fuel_cap,fuel_level
+name,imo,flag,type,teu,barrels,latitude,longitude,speed,fuel_cap,fuel_level
 Ever Given,IMO9811000,PA,CONTAINER,20124,0,30.0176,32.5462,15.0,3000.0,2800.0
 Seawise Giant,IMO9999999,LR,TANKER,0,4000000,29.9000,32.5400,12.0,5000.0,4500.0
 Emma Maersk,IMO9321483,DK,CONTAINER,15500,0,51.9225,4.47917,16.0,4000.0,3500.0
