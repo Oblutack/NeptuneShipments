@@ -30,6 +30,14 @@ export interface Port {
   updated_at?: string;
 }
 
+export interface ManifestItem {
+  sku: string;
+  description: string;
+  quantity: number;
+  unit_value: number;
+  total_value: number;
+}
+
 export interface Shipment {
   id: string;
   tracking_number: string;
@@ -40,6 +48,7 @@ export interface Shipment {
   description: string;
   weight_kg: number;
   status: string;
+  manifest_items: ManifestItem[];
   eta?: string;
   container_number?: string;
   origin_port_name?: string;
