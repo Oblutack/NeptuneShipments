@@ -12,6 +12,7 @@ import {
   ChevronDown,
   ChevronRight,
   DollarSign,
+  AlertTriangle,
 } from "lucide-react";
 
 interface CargoManifestProps {
@@ -53,9 +54,11 @@ export const CargoManifest = ({ vesselId }: CargoManifestProps) => {
   // Loading State
   if (isLoading) {
     return (
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 flex items-center justify-center gap-3">
-        <Loader2 className="animate-spin text-blue-400" size={24} />
-        <span className="text-slate-400">Loading manifest...</span>
+      <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-2xl p-12 flex items-center justify-center gap-3">
+        <Loader2 className="animate-spin text-blue-400" size={28} />
+        <span className="text-slate-300 font-medium">
+          Loading cargo manifest...
+        </span>
       </div>
     );
   }
@@ -63,9 +66,12 @@ export const CargoManifest = ({ vesselId }: CargoManifestProps) => {
   // Error State
   if (error) {
     return (
-      <div className="bg-red-900/20 border border-red-500/50 rounded-xl p-6 text-red-200">
-        <p className="font-bold mb-2">Failed to load cargo manifest</p>
-        <p className="text-sm text-red-400">Please try again later</p>
+      <div className="bg-red-900/20 border border-red-500/50 rounded-2xl p-8 text-red-200">
+        <div className="flex items-center gap-3 mb-3">
+          <AlertTriangle className="text-red-400" size={24} />
+          <p className="font-bold text-lg">Failed to load cargo manifest</p>
+        </div>
+        <p className="text-sm text-red-400/80">Please try again later</p>
       </div>
     );
   }
@@ -73,33 +79,42 @@ export const CargoManifest = ({ vesselId }: CargoManifestProps) => {
   // Empty State
   if (!data || data.count === 0) {
     return (
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-12 text-center">
-        <Package className="mx-auto mb-4 text-slate-600" size={48} />
-        <h3 className="text-lg font-bold text-slate-400 mb-2">
+      <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-2xl p-16 text-center">
+        <div className="p-6 bg-slate-800/50 rounded-2xl inline-block mb-6">
+          <Package className="text-slate-600" size={64} />
+        </div>
+        <h3 className="text-2xl font-bold text-white mb-2">
           No Cargo Manifest Found
         </h3>
-        <p className="text-sm text-slate-500">
-          This vessel has no assigned shipments
+        <p className="text-slate-400">
+          This vessel has no assigned shipments for tracking
         </p>
       </div>
     );
   }
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-xl overflow-hidden">
+    <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
       {/* Header */}
-      <div className="bg-slate-950 border-b border-slate-800 px-6 py-4">
+      <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border-b border-slate-800 px-6 py-4">
         <div className="flex justify-between items-center">
-          <h3 className="text-xl font-bold text-white flex items-center gap-2">
-            <Container className="text-blue-400" size={20} />
-            Cargo Manifest
-          </h3>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-slate-500 bg-slate-800 px-3 py-1 rounded-full">
-              Vessel ID: {data.vessel_id.slice(0, 8)}...
-            </span>
-            <span className="text-xs font-bold text-blue-400 bg-blue-900/30 px-3 py-1 rounded-full border border-blue-500/30">
+            <div className="p-2 bg-blue-500/20 rounded-lg">
+              <Container className="text-blue-400" size={20} />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-white">Cargo Manifest</h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Shipment tracking and manifest details
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold text-blue-400 bg-blue-900/30 px-4 py-2 rounded-xl border border-blue-500/30">
               {data.count} Shipment{data.count !== 1 ? "s" : ""}
+            </span>
+            <span className="text-xs font-bold text-green-400 bg-green-900/30 px-4 py-2 rounded-xl border border-green-500/30 flex items-center gap-2">
+              <DollarSign size={14} />${calculateTotalValue().toLocaleString()}
             </span>
           </div>
         </div>
@@ -236,31 +251,35 @@ export const CargoManifest = ({ vesselId }: CargoManifestProps) => {
                   {isExpanded && hasManifest && (
                     <tr
                       key={`${shipment.id}-details`}
-                      className="bg-slate-950/50"
+                      className="bg-gradient-to-r from-slate-900/50 to-slate-950/50"
                     >
-                      <td colSpan={8} className="px-6 py-4">
-                        <div className="ml-8 mt-2">
-                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3 flex items-center gap-2">
-                            <Package size={14} className="text-blue-400" />
-                            Manifest Items ({shipment.manifest_items.length})
-                          </h4>
-                          <div className="bg-slate-900/50 rounded-lg border border-slate-800 overflow-hidden">
+                      <td colSpan={8} className="px-6 py-6">
+                        <div className="ml-8">
+                          <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-800">
+                            <div className="p-1.5 bg-blue-500/20 rounded-lg">
+                              <Package size={14} className="text-blue-400" />
+                            </div>
+                            <h4 className="text-xs font-bold text-white uppercase tracking-wide">
+                              Manifest Items ({shipment.manifest_items.length})
+                            </h4>
+                          </div>
+                          <div className="bg-slate-900/70 backdrop-blur-sm rounded-xl border border-slate-700 overflow-hidden shadow-lg">
                             <table className="w-full text-xs">
                               <thead>
-                                <tr className="bg-slate-800/30 text-slate-500 uppercase tracking-wider">
-                                  <th className="px-4 py-2 text-left font-semibold">
+                                <tr className="bg-slate-800/50 text-slate-400 uppercase tracking-wider">
+                                  <th className="px-4 py-3 text-left font-semibold">
                                     SKU
                                   </th>
-                                  <th className="px-4 py-2 text-left font-semibold">
+                                  <th className="px-4 py-3 text-left font-semibold">
                                     Description
                                   </th>
-                                  <th className="px-4 py-2 text-right font-semibold">
+                                  <th className="px-4 py-3 text-right font-semibold">
                                     Quantity
                                   </th>
-                                  <th className="px-4 py-2 text-right font-semibold">
+                                  <th className="px-4 py-3 text-right font-semibold">
                                     Unit Value
                                   </th>
-                                  <th className="px-4 py-2 text-right font-semibold">
+                                  <th className="px-4 py-3 text-right font-semibold">
                                     Total Value
                                   </th>
                                 </tr>
@@ -269,27 +288,27 @@ export const CargoManifest = ({ vesselId }: CargoManifestProps) => {
                                 {shipment.manifest_items.map((item, idx) => (
                                   <tr
                                     key={idx}
-                                    className="hover:bg-slate-800/20"
+                                    className="hover:bg-slate-800/30 transition-colors"
                                   >
-                                    <td className="px-4 py-2">
-                                      <span className="font-mono text-blue-300">
+                                    <td className="px-4 py-3">
+                                      <span className="font-mono text-blue-300 font-medium">
                                         {item.sku}
                                       </span>
                                     </td>
-                                    <td className="px-4 py-2 text-slate-300">
+                                    <td className="px-4 py-3 text-slate-300 font-medium">
                                       {item.description}
                                     </td>
-                                    <td className="px-4 py-2 text-right font-mono text-slate-400">
+                                    <td className="px-4 py-3 text-right font-mono text-slate-300">
                                       {item.quantity.toLocaleString()}
                                     </td>
-                                    <td className="px-4 py-2 text-right font-mono text-slate-400">
+                                    <td className="px-4 py-3 text-right font-mono text-slate-300">
                                       $
                                       {item.unit_value.toLocaleString("en-US", {
                                         minimumFractionDigits: 2,
                                         maximumFractionDigits: 2,
                                       })}
                                     </td>
-                                    <td className="px-4 py-2 text-right font-mono text-green-400 font-bold">
+                                    <td className="px-4 py-3 text-right font-mono text-green-400 font-bold">
                                       $
                                       {item.total_value.toLocaleString(
                                         "en-US",
