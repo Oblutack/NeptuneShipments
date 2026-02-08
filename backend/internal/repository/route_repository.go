@@ -18,7 +18,7 @@ func NewRouteRepository(db *database.Service) *RouteRepository {
 // GetByID fetches a route and converts its path to GeoJSON
 func (r *RouteRepository) GetByID(ctx context.Context, id string) (*models.Route, error) {
 	query := `
-		SELECT id, name, ST_AsGeoJSON(path::geometry) as path, created_at
+		SELECT id, name, origin_port_id, destination_port_id, ST_AsGeoJSON(path::geometry) as path, created_at
 		FROM routes
 		WHERE id = $1
 	`
@@ -27,7 +27,7 @@ func (r *RouteRepository) GetByID(ctx context.Context, id string) (*models.Route
 	var pathJSON []byte
 	
 	err := r.db.GetPool().QueryRow(ctx, query, id).Scan(
-		&route.ID, &route.Name, &pathJSON, &route.CreatedAt,
+		&route.ID, &route.Name, &route.OriginPortID, &route.DestinationPortID, &pathJSON, &route.CreatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -49,13 +49,16 @@ func (r *RouteRepository) Create(ctx context.Context, name string, geoJSON []byt
 	return id, err
 }
 
-func (r *RouteRepository) CreateFromWKT(ctx context.Context, name, wkt string) error {
+func (r *RouteRepository) CreateFromWKT(ctx context.Context, name, wkt, originPortID, destPortID string) error {
     query := `
-        INSERT INTO routes (name, path)
-        VALUES ($1, ST_GeogFromText($2))
-        ON CONFLICT (name) DO UPDATE SET path = EXCLUDED.path
+        INSERT INTO routes (name, path, origin_port_id, destination_port_id)
+        VALUES ($1, ST_GeogFromText($2), $3, $4)
+        ON CONFLICT (name) DO UPDATE SET 
+            path = EXCLUDED.path,
+            origin_port_id = EXCLUDED.origin_port_id,
+            destination_port_id = EXCLUDED.destination_port_id
     `
-    _, err := r.db.GetPool().Exec(ctx, query, name, wkt)
+    _, err := r.db.GetPool().Exec(ctx, query, name, wkt, originPortID, destPortID)
     return err
 }
 

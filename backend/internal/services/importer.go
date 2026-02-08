@@ -251,8 +251,26 @@ func (s *ImporterService) ImportRoutes(filePath string) error {
 	ctx := context.Background()
 	for i := 1; i < len(records); i++ {
 		row := records[i]
-		// row: name, path_wkt
-		if err := s.routeRepo.CreateFromWKT(ctx, row[0], row[1]); err != nil {
+		// row: name, path_wkt, origin_locode, destination_locode
+		if len(row) < 4 {
+			fmt.Printf("❌ Route Import Error (%s): insufficient columns\n", row[0])
+			continue
+		}
+		
+		// Resolve locodes to port IDs
+		originPort, err := s.portRepo.GetByLocode(ctx, row[2])
+		if err != nil {
+			fmt.Printf("❌ Route Import Error (%s): origin port '%s' not found: %v\n", row[0], row[2], err)
+			continue
+		}
+		
+		destPort, err := s.portRepo.GetByLocode(ctx, row[3])
+		if err != nil {
+			fmt.Printf("❌ Route Import Error (%s): destination port '%s' not found: %v\n", row[0], row[3], err)
+			continue
+		}
+		
+		if err := s.routeRepo.CreateFromWKT(ctx, row[0], row[1], originPort.ID, destPort.ID); err != nil {
 			fmt.Printf("❌ Route Import Error (%s): %v\n", row[0], err)
 		}
 	}

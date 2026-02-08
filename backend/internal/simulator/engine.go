@@ -205,13 +205,14 @@ func (e *Engine) moveVessel(ctx context.Context, v models.Vessel) {
 		// Case 1: Route is finished (Arrived)
 		if v.RouteProgress >= 1.0 {
 			if v.Status == "AT_SEA" {
-				log.Printf("🚢 Ship %s has arrived at destination!", v.Name)
-				
 				// Dock the vessel (updates status, moves to port, activates berth)
 				if err := e.vesselRepo.SetDockedWithRoute(ctx, v.ID, *v.CurrentRouteID); err != nil {
 					log.Printf("Failed to dock %s: %v", v.Name, err)
 					return
 				}
+				
+				// Only log success after successful docking
+				log.Printf("🚢 Ship %s has arrived at destination!", v.Name)
 
 				e.broadcastAlert(
                     "INFO",

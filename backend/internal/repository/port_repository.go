@@ -264,3 +264,13 @@ func (r *PortRepository) GetIDByLocode(ctx context.Context, locode string) (stri
 	err := r.db.GetPool().QueryRow(ctx, "SELECT id FROM ports WHERE un_locode = $1", locode).Scan(&id)
 	return id, err
 }
+
+func (r *PortRepository) GetByLocode(ctx context.Context, locode string) (*models.Port, error) {
+	query := `SELECT id, un_locode, name, country, ST_Y(location::geometry), ST_X(location::geometry) FROM ports WHERE un_locode = $1`
+	var p models.Port
+	err := r.db.GetPool().QueryRow(ctx, query, locode).Scan(&p.ID, &p.UnLocode, &p.Name, &p.Country, &p.Latitude, &p.Longitude)
+	if err != nil {
+		return nil, fmt.Errorf("port with locode %s not found: %w", locode, err)
+	}
+	return &p, nil
+}

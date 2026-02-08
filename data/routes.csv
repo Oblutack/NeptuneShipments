@@ -1,2 +1,2 @@
-name,path_wkt
-Suez to Rotterdam,"LINESTRING(32.56 29.93, 32.56 30.50, 32.35 31.26, 31.00 32.00, 14.00 35.50, -5.50 36.00, -10.0 40.00, -5.00 48.00, 4.00 52.00)"
+name,path_wkt,origin_locode,destination_locode
+Suez to Rotterdam,"LINESTRING(32.56 29.93, 32.56 30.50, 32.35 31.26, 31.00 32.00, 14.00 35.50, -5.50 36.00, -10.0 40.00, -5.00 48.00, 4.00 52.00)",EGSUZ,NLRTM
