@@ -21,27 +21,33 @@ export const MapCommandDeck = () => {
 
   if (vesselsLoading || portsLoading) {
     return (
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 flex items-center justify-center gap-3">
-        <Loader2 className="animate-spin text-blue-400" size={24} />
-        <span className="text-slate-400">Loading command deck...</span>
+      <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-2xl p-8 flex items-center justify-center gap-3 shadow-xl">
+        <Loader2 className="animate-spin text-blue-400" size={32} />
+        <span className="text-slate-300 font-medium">
+          Loading command deck...
+        </span>
       </div>
     );
   }
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl shadow-xl overflow-hidden">
+    <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
       {/* Header */}
-      <div className="bg-slate-950 border-b border-slate-800 px-6 py-4">
+      <div className="bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border-b border-slate-800 px-6 py-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <Activity className="text-blue-400" size={20} />
-            Live Operations Command Deck
-          </h2>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-500/20 rounded-lg">
+              <Activity className="text-blue-400" size={20} />
+            </div>
+            <h2 className="text-xl font-bold text-white">
+              Live Operations Command Deck
+            </h2>
+          </div>
           <div className="flex items-center gap-3 text-xs">
-            <span className="bg-green-900/30 text-green-400 px-3 py-1 rounded-full border border-green-500/30">
+            <span className="bg-green-900/30 text-green-400 px-4 py-2 rounded-xl border border-green-500/30 font-bold">
               {activeVessels?.length || 0} Active Voyages
             </span>
-            <span className="bg-blue-900/30 text-blue-400 px-3 py-1 rounded-full border border-blue-500/30">
+            <span className="bg-blue-900/30 text-blue-400 px-4 py-2 rounded-xl border border-blue-500/30 font-bold">
               {portStats?.total_ports || 0} Ports Monitored
             </span>
           </div>
@@ -52,18 +58,26 @@ export const MapCommandDeck = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 divide-x divide-slate-800">
         {/* LEFT: Voyage Progress */}
         <div className="p-6">
-          <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-            <Ship className="text-green-400" size={18} />
-            Active Voyage Status
-          </h3>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="p-2 bg-green-500/20 rounded-lg">
+              <Ship className="text-green-400" size={18} />
+            </div>
+            <h3 className="text-lg font-bold text-white">
+              Active Voyage Status
+            </h3>
+          </div>
 
           {!activeVessels || activeVessels.length === 0 ? (
-            <div className="text-center py-8 text-slate-500">
-              <Ship className="mx-auto mb-2 opacity-30" size={32} />
-              <p className="text-sm">No active voyages</p>
+            <div className="text-center py-12">
+              <div className="p-6 bg-slate-800/50 rounded-2xl inline-block mb-4">
+                <Ship className="text-slate-600" size={48} />
+              </div>
+              <p className="text-sm text-slate-400 font-medium">
+                No active voyages
+              </p>
             </div>
           ) : (
-            <div className="space-y-4 max-h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900">
+            <div className="space-y-4 max-h-80 overflow-y-auto pr-2 hide-scrollbar">
               {activeVessels.map((vessel) => (
                 <VoyageProgressCard key={vessel.id} vessel={vessel} />
               ))}
@@ -73,18 +87,26 @@ export const MapCommandDeck = () => {
 
         {/* RIGHT: Port Congestion */}
         <div className="p-6">
-          <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-            <Anchor className="text-orange-400" size={18} />
-            Port Congestion Monitor
-          </h3>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="p-2 bg-orange-500/20 rounded-lg">
+              <Anchor className="text-orange-400" size={18} />
+            </div>
+            <h3 className="text-lg font-bold text-white">
+              Port Congestion Monitor
+            </h3>
+          </div>
 
           {!portStats?.ports || portStats.ports.length === 0 ? (
-            <div className="text-center py-8 text-slate-500">
-              <Anchor className="mx-auto mb-2 opacity-30" size={32} />
-              <p className="text-sm">No port data available</p>
+            <div className="text-center py-12">
+              <div className="p-6 bg-slate-800/50 rounded-2xl inline-block mb-4">
+                <Anchor className="text-slate-600" size={48} />
+              </div>
+              <p className="text-sm text-slate-400 font-medium">
+                No port data available
+              </p>
             </div>
           ) : (
-            <div className="space-y-3 max-h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900">
+            <div className="space-y-3 max-h-80 overflow-y-auto pr-2 hide-scrollbar">
               {portStats.ports.slice(0, 10).map((port) => (
                 <PortCongestionCard key={port.id} port={port} />
               ))}
@@ -105,14 +127,14 @@ const VoyageProgressCard = ({ vessel }: VoyageProgressCardProps) => {
   const progress = (vessel.route_progress || 0) * 100;
 
   return (
-    <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 hover:border-blue-500/50 transition">
+    <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10 transition-all">
       {/* Top Row */}
       <div className="flex justify-between items-start mb-3">
         <div className="flex items-center gap-2">
           <Ship size={16} className="text-blue-400" />
           <span className="font-bold text-white">{vessel.name}</span>
         </div>
-        <span className="text-xs bg-green-900/30 text-green-400 px-2 py-1 rounded border border-green-500/30">
+        <span className="text-xs bg-green-900/30 text-green-400 px-3 py-1.5 rounded-xl border border-green-500/30 font-bold">
           {vessel.speed_knots.toFixed(1)} kn
         </span>
       </div>
@@ -120,7 +142,7 @@ const VoyageProgressCard = ({ vessel }: VoyageProgressCardProps) => {
       {/* Progress Bar */}
       <div className="mb-2">
         <div className="flex justify-between items-center mb-1">
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-slate-400 font-medium">
             Progress to destination
           </span>
           <span className="text-xs font-bold text-blue-400">
@@ -129,7 +151,7 @@ const VoyageProgressCard = ({ vessel }: VoyageProgressCardProps) => {
         </div>
         <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden">
           <div
-            className="bg-linear-to-r from-blue-500 to-cyan-400 h-full transition-all duration-500 ease-out"
+            className="bg-gradient-to-r from-blue-500 to-cyan-400 h-full transition-all duration-500 ease-out shadow-lg shadow-blue-500/30"
             style={{ width: `${progress}%` }}
           ></div>
         </div>
@@ -184,7 +206,7 @@ const PortCongestionCard = ({ port }: PortCongestionCardProps) => {
   const status = getStatusColor(port.ship_count);
 
   return (
-    <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 hover:border-orange-500/50 transition">
+    <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4 hover:border-orange-500/50 hover:shadow-lg hover:shadow-orange-500/10 transition-all">
       <div className="flex justify-between items-center">
         {/* Left: Port Info */}
         <div className="flex-1">
@@ -192,7 +214,7 @@ const PortCongestionCard = ({ port }: PortCongestionCardProps) => {
             <Anchor size={14} className="text-orange-400" />
             <span className="font-bold text-white">{port.name}</span>
           </div>
-          <span className="text-xs text-slate-500 font-mono">
+          <span className="text-xs text-slate-500 font-mono font-medium">
             {port.locode}
           </span>
         </div>

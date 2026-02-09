@@ -272,13 +272,13 @@ export const GlobalMap = ({
         })}
 
         {/* CONTROLS */}
-        <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 bg-slate-900/90 p-3 rounded-xl border border-slate-700 shadow-xl backdrop-blur-md">
+        <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 bg-slate-900/50 backdrop-blur-xl p-4 rounded-2xl border border-slate-800 shadow-2xl">
           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">
             Layers
           </span>
           <button
             onClick={() => setShowWeather(!showWeather)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${showWeather ? "bg-red-500/20 text-red-400 border border-red-500/50" : "bg-slate-800 text-slate-500"}`}
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all ${showWeather ? "bg-red-500/20 text-red-400 border border-red-500/50 shadow-lg shadow-red-500/10" : "bg-slate-800 text-slate-500 hover:bg-slate-700"}`}
           >
             <div
               className={`w-1.5 h-1.5 rounded-full ${showWeather ? "bg-red-500" : "bg-slate-600"}`}
@@ -287,7 +287,7 @@ export const GlobalMap = ({
           </button>
           <button
             onClick={() => setShowNetwork(!showNetwork)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${showNetwork ? "bg-blue-500/20 text-blue-400 border border-blue-500/50" : "bg-slate-800 text-slate-500"}`}
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all ${showNetwork ? "bg-blue-500/20 text-blue-400 border border-blue-500/50 shadow-lg shadow-blue-500/10" : "bg-slate-800 text-slate-500 hover:bg-slate-700"}`}
           >
             <Network size={12} /> Lanes
           </button>
@@ -299,26 +299,26 @@ export const GlobalMap = ({
           <div className="flex gap-1">
             <button
               onClick={() => setFilterType("ALL")}
-              className={`flex-1 px-2 py-1 rounded text-[10px] font-bold ${filterType === "ALL" ? "bg-white text-black" : "bg-slate-800 text-slate-400"}`}
+              className={`flex-1 px-2 py-1.5 rounded-lg text-[10px] font-bold transition-all ${filterType === "ALL" ? "bg-gradient-to-r from-white to-slate-200 text-black shadow-lg" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}
             >
               ALL
             </button>
             <button
               onClick={() => setFilterType("TANKER")}
-              className={`flex-1 px-2 py-1 rounded text-[10px] font-bold ${filterType === "TANKER" ? "bg-yellow-600 text-white" : "bg-slate-800 text-slate-400"}`}
+              className={`flex-1 px-2 py-1.5 rounded-lg text-[10px] font-bold transition-all ${filterType === "TANKER" ? "bg-gradient-to-r from-yellow-600 to-amber-600 text-white shadow-lg shadow-yellow-500/20" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}
             >
               OIL
             </button>
             <button
               onClick={() => setFilterType("CONTAINER")}
-              className={`flex-1 px-2 py-1 rounded text-[10px] font-bold ${filterType === "CONTAINER" ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400"}`}
+              className={`flex-1 px-2 py-1.5 rounded-lg text-[10px] font-bold transition-all ${filterType === "CONTAINER" ? "bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg shadow-blue-500/20" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}
             >
               BOX
             </button>
           </div>
           <button
             onClick={() => setHideDocked(!hideDocked)}
-            className={`mt-1 flex items-center justify-between px-2 py-1 rounded text-[10px] font-bold ${hideDocked ? "bg-slate-700 text-white" : "text-slate-500 hover:bg-slate-800"}`}
+            className={`mt-1 flex items-center justify-between px-3 py-2 rounded-xl text-[10px] font-bold transition-all ${hideDocked ? "bg-slate-700 text-white border border-slate-600" : "text-slate-500 hover:bg-slate-800"}`}
           >
             <span>Hide Docked</span>
             {hideDocked && (
@@ -327,10 +327,10 @@ export const GlobalMap = ({
           </button>
           <button
             onClick={() => setShowAllRoutes(!showAllRoutes)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all ${
               showAllRoutes
-                ? "bg-orange-500/20 text-orange-400 border border-orange-500/50"
-                : "bg-slate-800 text-slate-500"
+                ? "bg-orange-500/20 text-orange-400 border border-orange-500/50 shadow-lg shadow-orange-500/10"
+                : "bg-slate-800 text-slate-500 hover:bg-slate-700"
             }`}
           >
             <div
@@ -342,7 +342,7 @@ export const GlobalMap = ({
 
         {/* SHIP INFO PANEL */}
         {clickedShip && (
-          <div className="absolute top-[348px] left-4 z-10 bg-slate-900/90 p-3 rounded-xl border border-slate-700 shadow-xl backdrop-blur-md">
+          <div className="absolute top-[348px] left-4 z-10 bg-slate-900/50 backdrop-blur-xl p-4 rounded-2xl border border-slate-800 shadow-2xl">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                 Ship Info
@@ -374,14 +374,14 @@ export const GlobalMap = ({
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-400">Status:</span>
                 <span
-                  className={`font-bold px-2 py-0.5 rounded ${
+                  className={`font-bold px-3 py-1 rounded-xl border ${
                     clickedShip.status === "AT_SEA"
-                      ? "bg-green-500/20 text-green-400"
+                      ? "bg-green-500/20 text-green-400 border-green-500/30"
                       : clickedShip.status === "DOCKED"
-                        ? "bg-yellow-500/20 text-yellow-400"
+                        ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
                         : clickedShip.status === "DISTRESS"
-                          ? "bg-red-500/20 text-red-400"
-                          : "bg-slate-500/20 text-slate-400"
+                          ? "bg-red-500/20 text-red-400 border-red-500/30"
+                          : "bg-slate-500/20 text-slate-400 border-slate-500/30"
                   }`}
                 >
                   {clickedShip.status}
@@ -393,7 +393,7 @@ export const GlobalMap = ({
 
         {/* SELECTION INFO */}
         {activeShip && (
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/95 border border-blue-500/50 text-white px-4 py-2 rounded-full shadow-2xl flex items-center gap-3 backdrop-blur-md">
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/50 backdrop-blur-xl border border-blue-500/50 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3">
             <Ship size={16} className="text-blue-400" />
             <span className="font-bold text-sm">{activeShip.name}</span>
             <span className="text-xs text-slate-400">|</span>
@@ -401,7 +401,7 @@ export const GlobalMap = ({
               {activeShip.speed_knots.toFixed(1)} KN
             </span>
             {!activeRouteId && (
-              <span className="text-xs text-yellow-500 font-bold ml-2">
+              <span className="text-xs text-yellow-400 bg-yellow-900/30 px-3 py-1 rounded-xl border border-yellow-500/30 font-bold ml-2">
                 NO ROUTE
               </span>
             )}
