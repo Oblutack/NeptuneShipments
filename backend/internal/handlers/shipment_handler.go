@@ -157,3 +157,41 @@ func (h *ShipmentHandler) GetShipmentsByVessel(c *fiber.Ctx) error {
         "shipments": shipments,
     })
 }
+
+// DeleteShipment handles DELETE /api/shipments/:id
+func (h *ShipmentHandler) DeleteShipment(c *fiber.Ctx) error {
+	shipmentID := c.Params("id")
+	
+	if shipmentID == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "Shipment ID is required"})
+	}
+	
+	if err := h.repo.Delete(c.Context(), shipmentID); err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": err.Error()})
+	}
+	
+	return c.Status(200).JSON(fiber.Map{"message": "Shipment deleted successfully"})
+}
+
+// UpdateShipment handles PUT /api/shipments/:id
+func (h *ShipmentHandler) UpdateShipment(c *fiber.Ctx) error {
+	shipmentID := c.Params("id")
+	
+	if shipmentID == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "Shipment ID is required"})
+	}
+	
+	var shipment models.Shipment
+	if err := c.BodyParser(&shipment); err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
+	}
+	
+	// Set the ID from URL params
+	shipment.ID = shipmentID
+	
+	if err := h.repo.Update(c.Context(), &shipment); err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+	}
+	
+	return c.Status(200).JSON(shipment)
+}

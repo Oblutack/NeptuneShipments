@@ -321,6 +321,23 @@ export const apiSlice = createApi({
       }),
       invalidatesTags: ["Shipments"],
     }),
+    // Update Shipment
+    updateShipment: builder.mutation({
+      query: ({ id, ...shipment }) => ({
+        url: `/shipments/${id}`,
+        method: "PUT",
+        body: shipment,
+      }),
+      invalidatesTags: ["Shipments"],
+    }),
+    // Delete Shipment
+    deleteShipment: builder.mutation({
+      query: (id) => ({
+        url: `/shipments/${id}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: ["Shipments"],
+    }),
 
     createVessel: builder.mutation<Vessel, Partial<Vessel>>({
       query: (body) => ({
@@ -533,4 +550,6 @@ export const {
   useGetUnassignedVesselsQuery,
   useCreateAllocationMutation,
   useCreatePortMutation,
+  useUpdateShipmentMutation,
+  useDeleteShipmentMutation,
 } = apiSlice;

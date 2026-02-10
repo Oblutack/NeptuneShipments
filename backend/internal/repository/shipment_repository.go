@@ -239,3 +239,53 @@ func (r *ShipmentRepository) GetByVesselID(ctx context.Context, vesselID string)
 
     return shipments, nil
 }
+
+// Delete removes a shipment by ID
+func (r *ShipmentRepository) Delete(ctx context.Context, id string) error {
+	query := `DELETE FROM shipments WHERE id = $1`
+	result, err := r.db.GetPool().Exec(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete shipment: %w", err)
+	}
+	
+	rowsAffected := result.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("shipment not found")
+	}
+	
+	return nil
+}
+
+// Update modifies an existing shipment
+func (r *ShipmentRepository) Update(ctx context.Context, s *models.Shipment) error {
+	query := `
+		UPDATE shipments 
+		SET 
+			customer_name = $1,
+			origin_port_id = $2,
+			destination_port_id = $3,
+			vessel_id = $4,
+			description = $5,
+			container_number = $6,
+			weight_kg = $7,
+			status = $8,
+			eta = $9,
+			manifest_items = $10,
+			updated_at = NOW()
+		WHERE id = $11
+		RETURNING updated_at
+	`
+	
+	err := r.db.GetPool().QueryRow(
+		ctx, query,
+		s.CustomerName, s.OriginPortID, s.DestinationPortID,
+		s.VesselID, s.Description, s.ContainerNumber, s.WeightKG,
+		s.Status, s.ETA, s.ManifestItems, s.ID,
+	).Scan(&s.UpdatedAt)
+	
+	if err != nil {
+		return fmt.Errorf("failed to update shipment: %w", err)
+	}
+	
+	return nil
+}

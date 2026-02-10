@@ -171,6 +171,8 @@ func main() {
 	shipments.Post("/", shipmentHandler.CreateShipment)
 	shipments.Get("/", shipmentHandler.GetAllShipments)
 	shipments.Get("/:trackingNumber/bol", shipmentHandler.DownloadBOL)
+	shipments.Delete("/:id", shipmentHandler.DeleteShipment)
+	shipments.Put("/:id", shipmentHandler.UpdateShipment)
 
 	app.Get("/api/ports/:portId/schedule", allocationHandler.GetSchedule)
 	app.Post("/api/allocations", allocationHandler.CreateAllocation)
