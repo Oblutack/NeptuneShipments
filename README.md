@@ -2,20 +2,65 @@
 
 > Enterprise Maritime Logistics & Fleet Management Platform
 
-**NeptuneOS** is a comprehensive ERP system designed for autonomous shipping operations at global scale. Built on real-time geospatial intelligence, graph-based routing algorithms, and predictive maintenance analytics, it provides unified command and control for modern maritime fleets.
+**NeptuneOS** is a full-stack ERP system for autonomous shipping operations at global scale. Built on real-time geospatial intelligence, graph-based ocean routing, and predictive maintenance analytics, it provides unified command and control for modern maritime fleets.
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Go-1.24-00ADD8?logo=go&logoColor=white" alt="Go 1.24" />
+  <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white" alt="React 19" />
+  <img src="https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/PostGIS-3.4-5CAE58" alt="PostGIS" />
+  <img src="https://img.shields.io/badge/pgRouting-3.6-336791" alt="pgRouting" />
+  <img src="https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white" alt="Docker" />
+  <img src="https://img.shields.io/badge/License-MIT-green" alt="MIT License" />
+</p>
+
+---
+
+## Demo
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/24084c95-17d3-442e-b675-35f66cd9f8bd" alt="NeptuneOS Demo" width="800" />
+</p>
+
+<details>
+<summary><strong>Watch Full Demo Video</strong></summary>
+<br>
+
+https://github.com/user-attachments/assets/e5640712-2615-40c1-87d2-5720afe597ab
+
+</details>
+
+---
+
+## Table of Contents
+
+- [Demo](#demo)
+- [Overview](#overview)
+- [System Architecture](#system-architecture)
+- [Key Modules](#key-modules)
+- [Data Model](#data-model)
+- [Installation & Setup](#installation--setup)
+- [API Reference](#api-reference)
+- [Operational Workflows](#operational-workflows)
+- [Performance](#performance)
+- [Security](#security--compliance)
+- [License](#license)
 
 ---
 
 ## Overview
 
-NeptuneOS integrates critical operational domains—fleet tracking, route optimization, cargo management, crew administration, and financial reporting—into a single platform. Leveraging PostGIS spatial databases and pgRouting's network analysis capabilities, the system enables intelligent decision-making for complex maritime logistics operations.
+NeptuneOS integrates critical operational domains — fleet tracking, route optimization, cargo management, crew administration, port scheduling, and financial reporting — into a single platform. Leveraging PostGIS spatial databases and pgRouting's Dijkstra-based network analysis, the system enables intelligent decision-making for complex maritime logistics.
 
 ### Core Value Proposition
 
-- **Autonomous Route Planning**: Graph-based pathfinding engine calculates optimal water-only routes between global ports
-- **Real-Time Fleet Intelligence**: Sub-second telemetry updates with geospatial physics simulation
-- **Predictive Maintenance**: Component-level health monitoring with entropy-based degradation modeling
-- **Integrated Operations**: Single source of truth spanning logistics, engineering, HR, and finance
+- **Autonomous Route Planning** — Graph-based pathfinding calculates optimal ocean-only routes between 180+ global ports
+- **Real-Time Fleet Intelligence** — WebSocket-driven telemetry with 5-second refresh, live on a Mapbox GL 3D globe
+- **Predictive Maintenance** — Component-level health monitoring with entropy-based degradation modeling
+- **Cargo Lifecycle Management** — Full CRUD for shipments with manifest items, BOL generation, and automatic status transitions
+- **Port Berth Scheduling** — Drag-and-drop terminal allocation with conflict detection
+- **Financial Analytics** — Real-time P&L reporting with revenue, fuel cost, and margin calculations
 
 ---
 
@@ -23,16 +68,29 @@ NeptuneOS integrates critical operational domains—fleet tracking, route optimi
 
 ### Technology Stack
 
-| Layer                | Technology                | Purpose                                    |
-| -------------------- | ------------------------- | ------------------------------------------ |
-| **API Server**       | Go 1.24 + Fiber v2        | High-throughput HTTP service               |
-| **Database**         | PostgreSQL 16 + PostGIS   | Geospatial data persistence                |
-| **Routing Engine**   | pgRouting 3.6             | Graph-based pathfinding algorithms         |
-| **Real-Time Layer**  | WebSockets (Fiber)        | Live telemetry streaming                   |
-| **Frontend**         | React 18 + TypeScript     | Type-safe UI framework                     |
-| **State Management** | Redux Toolkit + RTK Query | Centralized application state              |
-| **Visualization**    | Mapbox GL JS + Recharts   | 3D geospatial rendering & analytics charts |
-| **Styling**          | Tailwind CSS v4           | Utility-first design system                |
+| Layer                 | Technology                  | Purpose                                           |
+| --------------------- | --------------------------- | ------------------------------------------------- |
+| **API Server**        | Go 1.24 + Fiber v2          | High-throughput HTTP/WebSocket service            |
+| **Database**          | PostgreSQL 16 + PostGIS 3.4 | Geospatial data persistence                       |
+| **Routing Engine**    | pgRouting 3.6               | Dijkstra graph-based ocean pathfinding            |
+| **Real-Time Layer**   | WebSockets (Fiber)          | Live fleet telemetry & alert streaming            |
+| **Simulation Engine** | Go (background goroutine)   | Vessel movement, fuel burn, component degradation |
+| **PDF Generation**    | Maroto                      | Bill of Lading document generation                |
+| **Frontend**          | React 19 + TypeScript 5.9   | Type-safe UI with Vite 7                          |
+| **State Management**  | Redux Toolkit + RTK Query   | Centralized state with cache invalidation         |
+| **Visualization**     | Mapbox GL JS + Recharts     | 3D geospatial rendering & analytics charts        |
+| **Drag & Drop**       | dnd-kit                     | Berth scheduler allocation                        |
+| **Styling**           | Tailwind CSS v4             | Utility-first design system with glassmorphism    |
+
+### Service Ports
+
+| Service      | Port   | URL                            |
+| ------------ | ------ | ------------------------------ |
+| Backend API  | `8080` | `http://localhost:8080`        |
+| Frontend Dev | `5173` | `http://localhost:5173`        |
+| PostgreSQL   | `5455` | `localhost:5455`               |
+| pgAdmin      | `5050` | `http://localhost:5050`        |
+| WebSocket    | `8080` | `ws://localhost:8080/ws/fleet` |
 
 ### Project Structure
 
@@ -40,223 +98,195 @@ NeptuneOS integrates critical operational domains—fleet tracking, route optimi
 NeptuneOS/
 ├── backend/
 │   ├── cmd/
-│   │   ├── api/              # HTTP server entrypoint
-│   │   └── seeder/           # Database initialization tool
+│   │   ├── api/                  # HTTP server entrypoint
+│   │   └── seeder/               # Database initialization & CSV import tool
 │   ├── internal/
-│   │   ├── handlers/         # HTTP request handlers
-│   │   ├── repository/       # Data access layer (raw SQL)
-│   │   ├── services/         # Business logic & CSV importer
-│   │   ├── models/           # Domain entities
-│   │   ├── database/         # Connection pooling
-│   │   ├── simulator/        # Physics engine (background worker)
-│   │   ├── navigation/       # Geospatial calculations
-│   │   └── websocket/        # Real-time communication layer
+│   │   ├── handlers/             # HTTP request handlers (12 modules)
+│   │   ├── repository/           # Data access layer - raw SQL with pgx (12 repos)
+│   │   ├── services/             # Business logic: CSV importer, PDF generator
+│   │   ├── models/               # Domain entities (11 models)
+│   │   ├── database/             # Connection pooling (pgx pool)
+│   │   ├── simulator/            # Physics engine - movement, fuel, degradation
+│   │   ├── navigation/           # Geospatial math (Haversine, bearings)
+│   │   └── websocket/            # Hub + client management for real-time layer
 │   ├── db/
-│   │   └── migrations/       # Schema version control (golang-migrate)
-│   └── data/                 # CSV seed data (ports, vessels, routes)
+│   │   ├── Dockerfile            # Custom PostgreSQL + PostGIS + pgRouting image
+│   │   ├── migrations/           # 14 versioned schema migrations (golang-migrate)
+│   │   └── seeds/                # Ocean network graph seed data (~400 nodes)
+│   └── go.mod
 │
 ├── frontend/
 │   ├── src/
 │   │   ├── features/
-│   │   │   ├── api/          # RTK Query API definitions
-│   │   │   ├── auth/         # Authentication state management
-│   │   │   ├── map/          # Mapbox integration components
-│   │   │   ├── notifications/# WebSocket alert system
-│   │   │   └── analytics/    # Financial reporting modules
+│   │   │   ├── api/              # RTK Query API slice (centralized mutations/queries)
+│   │   │   ├── auth/             # JWT auth state + RequireAuth route guard
+│   │   │   ├── map/              # Mapbox GL globe, command deck, port inspector
+│   │   │   ├── fleet/            # Cargo manifest viewer, tank monitor
+│   │   │   ├── shipments/        # Shipment CRUD: form, list with edit/delete modals
+│   │   │   ├── crew/             # Crew roster and vessel assignment
+│   │   │   ├── port/             # Berth scheduler (drag-and-drop with dnd-kit)
+│   │   │   ├── analytics/        # Alert feed, revenue charts
+│   │   │   ├── notifications/    # WebSocket hook + notification state
+│   │   │   └── preferences/      # User preferences state
 │   │   ├── pages/
-│   │   │   └── dashboard/    # Command center views
-│   │   ├── layouts/          # Application shell components
-│   │   └── components/       # Reusable UI elements
-│   └── public/               # Static assets
+│   │   │   ├── LandingPage.tsx   # Public marketing page
+│   │   │   ├── LoginPage.tsx     # Authentication
+│   │   │   ├── TrackingPage.tsx  # Public shipment tracking with map
+│   │   │   └── dashboard/        # 10 dashboard views (stats, fleet, cargo, etc.)
+│   │   ├── layouts/              # DashboardLayout + Sidebar
+│   │   └── components/ui/        # DataTable, ToastContainer
+│   ├── package.json
+│   └── vite.config.ts
 │
-├── docker-compose.yml        # Development environment orchestration
-└── .env.example              # Configuration template
+├── data/                         # CSV seed files (ports, vessels, routes, crew, etc.)
+├── docker-compose.yml            # PostgreSQL + pgAdmin orchestration
+└── README.md
 ```
 
 ---
 
 ## Key Modules
 
-### 1. Global Command Center
+### 1. Global Command Center (Live Map)
 
-A unified operations dashboard providing real-time situational awareness across the entire fleet.
+Real-time situational awareness across the entire fleet on an interactive Mapbox GL 3D globe.
 
-**Capabilities:**
-
-- **Live Fleet Map**: 3D globe visualization with vessel positions, headings, and speed vectors
-- **Route Network**: Visual representation of shipping lanes computed via pgRouting
-- **Weather Integration**: Storm tracking overlays for tactical route adjustments
-- **Port Statistics**: Throughput analytics and terminal occupancy metrics
-
-**Technical Implementation:**
-
-- Mapbox GL JS with custom WebGL layers for performance optimization
-- WebSocket-based position updates (5-second refresh cycle)
-- GeoJSON feature rendering for routes and hazard zones
+- **Live Fleet Map** — Vessel positions, headings, and speed vectors with 5-second refresh
+- **Route Network Overlay** — Visualize shipping lanes and active voyage paths
+- **Storm Tracking** — Weather hazard overlays for tactical route adjustments
+- **Port Statistics** — Throughput analytics and terminal occupancy metrics
+- **Ship Info Panel** — Click any vessel for detailed status, fuel levels, and cargo
+- **Command Deck** — Side panel showing active voyages and port congestion monitors
+- **Fleet Paths Toggle** — Show/hide all active route geometries on the map
+- **Vessel Filters** — Filter by type (OIL tankers, BOX containers) or hide docked vessels
 
 ### 2. Intelligent Routing Engine
 
-Autonomous pathfinding system leveraging pgRouting's Dijkstra algorithm to compute water-traversable routes between any two global ports.
+Autonomous pathfinding leveraging pgRouting's Dijkstra algorithm on a pre-computed ocean network graph with ~400 navigable nodes.
 
-**Capabilities:**
+- **Ocean-Only Routes** — All routes follow water, never crossing land
+- **Automatic Route Assignment** — Creating a shipment auto-calculates the optimal route, assigns it to the vessel, and starts the voyage
+- **Multi-Segment Route Merging** — `ST_LineMerge` converts pgRouting's MultiLineString output into clean LineString geometries
+- **Spherical Distance** — Haversine formula for accurate great-circle distance calculations
 
-- **Graph-Based Navigation**: Treats ocean regions as a navigable network with ~400 nodes
-- **Constraint-Aware Routing**: Respects vessel draft limits, canal restrictions, and sovereign waters
-- **Multi-Modal Optimization**: Balances distance, fuel consumption, and transit time
+### 3. Cargo & Shipment Management
 
-**Technical Implementation:**
+Full lifecycle management from manifest creation through delivery.
 
-- PostGIS `GEOGRAPHY(LINESTRING, 4326)` for route geometries
-- pgRouting `pgr_dijkstra` queries on pre-computed shipping lane graph
-- Spherical distance calculations using Haversine formula
+- **Shipment CRUD** — Create, read, update, and delete shipments with confirmation modals
+- **Manifest Items** — JSONB-stored line items with SKU, description, quantity, and unit value
+- **Bill of Lading (BOL)** — PDF generation and download via the Maroto library
+- **Smart Status Transitions** — Automatic PENDING → IN_TRANSIT when vessel departs, IN_TRANSIT → DELIVERED on arrival
+- **Public Tracking** — Anyone can track a shipment by tracking number (no auth required)
+- **Vessel Assignment** — Assign shipments to specific vessels, with automatic route calculation
 
-### 3. Liquid Logistics Module
+### 4. Liquid Logistics (Tank Monitoring)
 
-Specialized system for tanker operations, monitoring liquid cargo from loading to discharge.
+Specialized tanker operations dashboard for monitoring liquid cargo.
 
-**Capabilities:**
+- **Tank-Level Monitoring** — Real-time ullage tracking across multiple compartments
+- **Thermal Management** — Temperature readings per tank for sensitive cargoes
+- **Flow State Tracking** — Fill/drain status indicators for active pumping operations
 
-- **Tank-Level Monitoring**: Real-time ullage tracking across multiple compartments
-- **Thermal Management**: Temperature sensor integration for sensitive cargoes
-- **Pumping Operations**: Flow rate monitoring and automated valve control logging
-- **Cargo Integrity**: Automatic alerts for anomalous conditions
+### 5. Engineering & Predictive Maintenance
 
-**Technical Implementation:**
+Component-level health monitoring powered by the simulation engine's entropy-based degradation.
 
-- Per-vessel tank inventory with capacity/level tracking
-- Time-series data storage for trend analysis
-- Integration with vessel telemetry stream
+- **Component Types** — Propulsion, electrical, navigation, and hull systems tracked individually
+- **Health Degradation** — 0.1% entropy-based degradation per simulation tick
+- **Status Thresholds** — Automatic OPERATIONAL → WARNING → CRITICAL state transitions
+- **One-Click Maintenance** — Reset component health to 100% with logged timestamp
+- **Distress Detection** — Vessel enters DISTRESS state on critical component failure
+- **Recovery Workflow** — Vessels auto-recover from DISTRESS after repairs and refueling
 
-### 4. Engineering & Maintenance System
+### 6. Crew Management
 
-Predictive maintenance framework using entropy-based degradation modeling to forecast component failures.
+Personnel administration with vessel assignments and role tracking.
 
-**Capabilities:**
+- **Crew Roster** — Full listing with name, role, license, nationality, and status
+- **Vessel Assignment** — Assign crew members to specific vessels
+- **Role Hierarchy** — Captain, Chief Engineer, First Officer, Deckhand, Cook
+- **Status Tracking** — Active, On Leave, and Retired states
+- **CSV Bulk Import** — Onboard entire crew lists from CSV files
 
-- **Component Health Tracking**: Individual monitoring of engines, pumps, generators, navigation systems
-- **Entropy Engine**: Probabilistic degradation simulation (0.1% per simulation tick)
-- **Critical Failure Detection**: Automatic "Distress" state activation on sub-threshold health levels
-- **Maintenance Scheduling**: Work order generation based on predictive analytics
+### 7. Port & Berth Scheduling
 
-**Technical Implementation:**
+Terminal management with drag-and-drop berth allocation.
 
-- Component health modeled as `health_percentage` (0-100)
-- Background degradation applied by simulator engine
-- Threshold-based alerting system via WebSocket notifications
+- **Terminal Directory** — Browse terminals by port with type classification (Container, Liquid, Bulk)
+- **Berth Allocation** — Schedule vessel arrivals with start/end times and notes
+- **Drag-and-Drop** — Visual scheduler powered by dnd-kit for intuitive allocation
+- **Conflict Detection** — Prevent overlapping berth bookings
+- **Auto-Activation** — Berth status automatically updates when vessels arrive at port
 
-### 5. Human Resources Management
+### 8. Financial Analytics
 
-Comprehensive crew administration system tracking personnel assignments, qualifications, and compliance.
+Real-time P&L dashboard with operational cost modeling.
 
-**Capabilities:**
+- **Revenue Tracking** — Freight rate calculations based on cargo weight ($/kg)
+- **Fuel Cost Modeling** — Bunker fuel consumption at $600/ton with dynamic burn rates
+- **Gross Profit** — Automated P&L: Revenue - Operating Costs
+- **KPI Dashboard** — Active jobs, completed shipments, fuel consumed, average revenue per job
+- **Interactive Charts** — Recharts-powered visualizations with margin analysis
 
-- **Crew Rostering**: Assignment tracking by vessel with rank hierarchy
-- **License Management**: Certification expiry monitoring and renewal workflows
-- **Nationality Compliance**: Regulatory adherence for international waters transit
-- **Skill Matrix**: Competency tracking for operational planning
+### 9. Data Management
 
-**Technical Implementation:**
+Centralized CSV import system for initial data seeding and bulk operations.
 
-- Relational data model linking crew → vessels
-- CSV-based bulk import for initial crew onboarding
-- CRUD operations via RESTful API
+- **Multi-Entity Import** — Ports, vessels, routes, crew, shipments, and users
+- **Validation** — Header parsing with field-level validation
+- **Bulk Operations** — Efficient batch processing via repository layer
 
-### 6. Financial Analytics Dashboard
+### 10. Real-Time Simulation Engine
 
-Real-time profit & loss reporting with operational cost modeling and revenue forecasting.
+Background physics engine that powers the entire live fleet experience.
 
-**Capabilities:**
-
-- **Revenue Tracking**: Freight rate calculations based on cargo weight ($/kg)
-- **Fuel Cost Modeling**: Bunker fuel consumption tracking with dynamic pricing ($600/ton)
-- **Gross Profit Calculation**: Automated P&L generation (Revenue - Operating Costs)
-- **KPI Visualization**: Interactive charts for margin analysis and trend forecasting
-
-**Technical Implementation:**
-
-- SQL-based aggregation queries for real-time calculations
-- Recharts library for interactive data visualization
-- Polling-based updates (5-second refresh)
+- **Vessel Movement** — Route-following with progress-based interpolation along LineString geometries
+- **Fuel Consumption** — Burn rate scales with vessel speed: `0.5 × (speed / 20.0)` tons per tick
+- **Component Degradation** — Probabilistic entropy applied to all ship components each tick
+- **Distress Detection** — Automatic DISTRESS state on fuel depletion or critical component failure
+- **Arrival Handling** — Auto-dock vessels at destination, update shipment status to DELIVERED
+- **WebSocket Alerts** — Broadcasts CRITICAL and INFO notifications to all connected clients
+- **Deduplication** — Alert tracking prevents duplicate notifications per vessel
 
 ---
 
 ## Data Model
 
+### Entity Relationship Overview
+
+```
+Ports ──────────── Terminals ──────── Berths
+  │                                     │
+  │ origin/destination                  │ allocation
+  │                                     │
+Shipments ─────── Vessels ────────── BerthAllocations
+  │                 │
+  │ manifest        │ assignment
+  │                 │
+ManifestItems     Components
+(JSONB)             │
+                  Crew
+                    │
+                  Users (auth)
+```
+
 ### Core Entities
 
-#### Vessels
-
-```sql
-id                UUID PRIMARY KEY
-name              VARCHAR(255) NOT NULL
-imo_number        VARCHAR(20) UNIQUE
-type              VARCHAR(50) -- CONTAINER, TANKER, BULK
-status            VARCHAR(50) -- AT_SEA, DOCKED, DISTRESS
-location          GEOGRAPHY(POINT, 4326)
-heading           FLOAT -- Degrees (0-360)
-speed_knots       FLOAT
-fuel_level        FLOAT
-fuel_capacity     FLOAT
-current_route_id  UUID REFERENCES routes(id)
-route_progress    FLOAT -- 0.0 to 1.0
-```
-
-#### Routes
-
-```sql
-id          UUID PRIMARY KEY
-name        VARCHAR(255) UNIQUE
-origin_id   UUID REFERENCES ports(id)
-destination_id UUID REFERENCES ports(id)
-path        GEOGRAPHY(LINESTRING, 4326)
-distance_nm FLOAT -- Nautical miles
-```
-
-#### Ports
-
-```sql
-id          UUID PRIMARY KEY
-name        VARCHAR(255) UNIQUE
-code        VARCHAR(10) UNIQUE
-location    GEOGRAPHY(POINT, 4326)
-country     VARCHAR(100)
-type        VARCHAR(50) -- COMMERCIAL, INDUSTRIAL, NAVAL
-```
-
-#### Shipments
-
-```sql
-id                  UUID PRIMARY KEY
-tracking_number     VARCHAR(50) UNIQUE
-origin_port_id      UUID REFERENCES ports(id)
-destination_port_id UUID REFERENCES ports(id)
-vessel_id           UUID REFERENCES vessels(id)
-status              VARCHAR(50) -- PENDING, IN_TRANSIT, DELIVERED
-weight_kg           FLOAT
-eta                 TIMESTAMP
-```
-
-#### Components
-
-```sql
-id                UUID PRIMARY KEY
-vessel_id         UUID REFERENCES vessels(id)
-component_type    VARCHAR(50) -- ENGINE, PUMP, GENERATOR, NAVIGATION
-health_percentage FLOAT -- 0.0 to 100.0
-last_maintenance  TIMESTAMP
-```
-
-#### Crew
-
-```sql
-id             UUID PRIMARY KEY
-name           VARCHAR(255)
-role           VARCHAR(100) -- CAPTAIN, ENGINEER, DECKHAND
-license_number VARCHAR(50)
-nationality    VARCHAR(100)
-vessel_id      UUID REFERENCES vessels(id)
-status         VARCHAR(50) -- ACTIVE, ON_LEAVE
-```
+| Entity              | Key Fields                                                                                                                                              | Notes                                                         |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| **Vessel**          | `id`, `name`, `imo_number`, `type`, `status`, `location` (POINT), `heading`, `speed_knots`, `fuel_level/capacity`, `current_route_id`, `route_progress` | 6 statuses: AT_SEA, DOCKED, ANCHORED, DISTRESS, IDLE          |
+| **Port**            | `id`, `un_locode`, `name`, `country`, `location` (POINT), `type`                                                                                        | 180+ global ports                                             |
+| **Route**           | `id`, `name`, `path` (LINESTRING), `origin_port_id`, `destination_port_id`                                                                              | Computed via pgRouting Dijkstra                               |
+| **Shipment**        | `id`, `tracking_number`, `customer_name`, `origin/destination_port_id`, `vessel_id`, `status`, `weight_kg`, `manifest_items` (JSONB), `eta`             | Statuses: PENDING, IN_TRANSIT, DELIVERED                      |
+| **ManifestItem**    | `sku`, `description`, `quantity`, `unit_value`, `total_value`                                                                                           | Stored as JSONB array in Shipment                             |
+| **Terminal**        | `id`, `port_id`, `name`, `type`                                                                                                                         | Types: CONTAINER, LIQUID, BULK, GENERAL                       |
+| **Berth**           | `id`, `terminal_id`, `name`, `length_meters`, `is_occupied`, `current_vessel_id`                                                                        | Nested under Terminal                                         |
+| **BerthAllocation** | `id`, `vessel_id`, `berth_id`, `start_time`, `end_time`, `status`, `notes`                                                                              | Statuses: SCHEDULED, ACTIVE, COMPLETED, CANCELLED             |
+| **Component**       | `id`, `vessel_id`, `name`, `type`, `health_percentage`, `status`, `total_operating_hours`, `last_maintenance`                                           | Types: PROPULSION, ELECTRICAL, NAVIGATION, HULL               |
+| **Crew**            | `id`, `name`, `role`, `license_number`, `nationality`, `vessel_id`, `status`                                                                            | Roles: CAPTAIN, CHIEF_ENGINEER, FIRST_OFFICER, DECKHAND, COOK |
+| **User**            | `id`, `email`, `password_hash`, `full_name`, `company_name`, `role`                                                                                     | Auth entity with bcrypt hashing                               |
+| **FinancialStats**  | `total_revenue`, `total_fuel_cost`, `gross_profit`, `active_job_count`, `avg_revenue_per_job`                                                           | Computed via SQL aggregation                                  |
 
 ---
 
@@ -264,55 +294,56 @@ status         VARCHAR(50) -- ACTIVE, ON_LEAVE
 
 ### Prerequisites
 
-- **Docker Desktop** 24.0+
+- **Docker Desktop** 24.0+ (for PostgreSQL + PostGIS + pgRouting)
 - **Go** 1.24+
-- **Node.js** 20+
-- **golang-migrate** CLI tool
+- **Node.js** 20+ with npm
+- **golang-migrate** CLI ([installation guide](https://github.com/golang-migrate/migrate))
+- **Mapbox** account ([get a free token](https://account.mapbox.com/))
 
-### Step 1: Environment Configuration
-
-Create backend configuration:
+### Step 1: Clone & Configure
 
 ```bash
-cd backend
-cat > .env << EOF
-DB_URL=postgres://postgres:admin@localhost:5455/neptune?sslmode=disable
+git clone https://github.com/Oblutack/NeptuneShipments.git
+cd NeptuneShipments
+```
+
+Create `backend/.env`:
+
+```env
+DB_URL=postgres://postgres:password123@localhost:5455/neptune_shipments?sslmode=disable
 PORT=8080
 JWT_SECRET=neptune_production_secret_key
 ENVIRONMENT=development
-EOF
 ```
 
-Create frontend configuration:
+Create `frontend/.env`:
 
-```bash
-cd frontend
-cat > .env << EOF
+```env
 VITE_API_URL=http://127.0.0.1:8080
 VITE_MAPBOX_TOKEN=your_mapbox_token_here
-EOF
 ```
 
-### Step 2: Database Initialization
-
-Start PostgreSQL with PostGIS and pgRouting extensions:
+### Step 2: Start Database
 
 ```bash
 docker-compose up -d --build
 ```
 
-Run database migrations:
+This starts:
+
+- **PostgreSQL 16** with PostGIS + pgRouting on port `5455`
+- **pgAdmin** on port `5050` (login: `admin@neptune.com` / `password123`)
+
+### Step 3: Run Migrations
 
 ```bash
 cd backend
 migrate -path db/migrations \
-  -database "postgres://postgres:admin@localhost:5455/neptune?sslmode=disable" \
+  -database "postgres://postgres:password123@localhost:5455/neptune_shipments?sslmode=disable" \
   up
 ```
 
-### Step 3: Data Seeding
-
-Import initial dataset (ports, vessels, routes, crew):
+### Step 4: Seed Data
 
 ```bash
 cd backend
@@ -326,21 +357,26 @@ Expected output:
 ✅ Imported 15 Vessels
 ✅ Imported 12 Routes
 ✅ Imported 45 Crew Members
-🌊 Shipping Network Graph Created (400 nodes)
+🌊 Shipping Network Graph Created (~400 nodes)
 ```
 
-### Step 4: Start Services
+### Step 5: Start Services
 
-**Backend API Server:**
+**Backend:**
 
 ```bash
-cd backend/cmd/api
-go run main.go
+cd backend
+go run cmd/api/main.go
 ```
 
-API available at: `http://localhost:8080`
+```
+Server starting on port 8080
+Access via: http://localhost:8080
+✅ WebSocket Hub Running
+Simulation Engine Started (Tick: 5s)
+```
 
-**Frontend Development Server:**
+**Frontend:**
 
 ```bash
 cd frontend
@@ -348,7 +384,19 @@ npm install
 npm run dev
 ```
 
-Dashboard available at: `http://localhost:5173`
+```
+VITE v7.x  ready in 500ms
+Local: http://localhost:5173/
+```
+
+### Step 6: Login
+
+Navigate to `http://localhost:5173/login` and use:
+
+```
+Email:    admin@neptune.com
+Password: admin123
+```
 
 ---
 
@@ -356,113 +404,66 @@ Dashboard available at: `http://localhost:5173`
 
 ### Authentication
 
-All protected endpoints require JWT authentication via `Authorization: Bearer <token>` header.
+All protected endpoints require: `Authorization: Bearer <token>`
 
-**Login:**
-
-```http
-POST /api/auth/login
-Content-Type: application/json
-
-{
-  "email": "admin@neptune.com",
-  "password": "admin123"
-}
-```
+| Method | Endpoint          | Auth | Description                  |
+| ------ | ----------------- | ---- | ---------------------------- |
+| `POST` | `/api/auth/login` | No   | Authenticate and receive JWT |
 
 ### Fleet Operations
 
-**List All Vessels:**
+| Method | Endpoint                            | Auth | Description                    |
+| ------ | ----------------------------------- | ---- | ------------------------------ |
+| `GET`  | `/api/vessels`                      | Yes  | List all vessels               |
+| `GET`  | `/api/vessels/:id`                  | No   | Get vessel details             |
+| `POST` | `/api/vessels`                      | Yes  | Create a new vessel            |
+| `POST` | `/api/vessels/:id/refuel`           | Yes  | Refuel vessel to full capacity |
+| `GET`  | `/api/vessels/:vesselId/tanks`      | Yes  | Get vessel tank levels         |
+| `GET`  | `/api/vessels/:vesselId/components` | Yes  | Get vessel components          |
+| `GET`  | `/api/vessels/:id/crew`             | Yes  | Get crew assigned to vessel    |
+| `GET`  | `/api/vessels/:vesselId/shipments`  | Yes  | Get vessel cargo manifest      |
 
-```http
-GET /api/vessels
-Authorization: Bearer <token>
-```
+### Routing
 
-**Get Vessel Details:**
+| Method | Endpoint                | Auth | Description                                              |
+| ------ | ----------------------- | ---- | -------------------------------------------------------- |
+| `GET`  | `/api/routes/network`   | No   | Get full ocean network mesh (GeoJSON)                    |
+| `POST` | `/api/routes/calculate` | No   | Calculate route between two coordinates                  |
+| `GET`  | `/api/routes/active`    | No   | Get all active voyage routes (GeoJSON FeatureCollection) |
+| `GET`  | `/api/routes/:id`       | No   | Get specific route by ID                                 |
 
-```http
-GET /api/vessels/:id
-Authorization: Bearer <token>
-```
+### Cargo & Shipments
 
-**Refuel Vessel:**
+| Method   | Endpoint                             | Auth | Description                          |
+| -------- | ------------------------------------ | ---- | ------------------------------------ |
+| `GET`    | `/api/shipments/:trackingNumber`     | No   | Public shipment tracking             |
+| `GET`    | `/api/shipments`                     | Yes  | List all shipments                   |
+| `POST`   | `/api/shipments`                     | Yes  | Create shipment (auto-routes vessel) |
+| `PUT`    | `/api/shipments/:id`                 | Yes  | Update shipment                      |
+| `DELETE` | `/api/shipments/:id`                 | Yes  | Delete shipment                      |
+| `GET`    | `/api/shipments/:trackingNumber/bol` | Yes  | Download Bill of Lading (PDF)        |
 
-```http
-POST /api/vessels/:id/refuel
-Authorization: Bearer <token>
-```
+### Ports & Scheduling
 
-### Routing Engine
+| Method | Endpoint                       | Auth | Description                           |
+| ------ | ------------------------------ | ---- | ------------------------------------- |
+| `GET`  | `/api/ports`                   | Yes  | List all ports                        |
+| `GET`  | `/api/ports/stats`             | Yes  | Port throughput statistics            |
+| `GET`  | `/api/ports/:portId/terminals` | Yes  | Get port terminals and berths         |
+| `GET`  | `/api/ports/:portId/schedule`  | Yes  | Get port berth schedule               |
+| `POST` | `/api/allocations`             | Yes  | Create berth allocation               |
+| `GET`  | `/api/allocations/unassigned`  | Yes  | Get vessels without berth assignments |
 
-**Calculate Route:**
+### Other
 
-```http
-POST /api/routes/calculate
-Authorization: Bearer <token>
-Content-Type: application/json
+| Method | Endpoint                       | Auth | Description                      |
+| ------ | ------------------------------ | ---- | -------------------------------- |
+| `POST` | `/api/components/:id/maintain` | Yes  | Perform maintenance on component |
+| `GET`  | `/api/crew`                    | Yes  | List all crew members            |
+| `GET`  | `/api/finance/stats`           | Yes  | Get financial KPIs               |
+| `GET`  | `/health`                      | No   | Server health check              |
 
-{
-  "origin_port_id": "uuid",
-  "destination_port_id": "uuid"
-}
-```
-
-**Get Active Routes (GeoJSON):**
-
-```http
-GET /api/routes/active
-Authorization: Bearer <token>
-```
-
-### Cargo Management
-
-**Create Shipment:**
-
-```http
-POST /api/shipments
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "origin_port_id": "uuid",
-  "destination_port_id": "uuid",
-  "vessel_id": "uuid",
-  "weight_kg": 25000,
-  "cargo_type": "ELECTRONICS"
-}
-```
-
-**Track Shipment (Public):**
-
-```http
-GET /api/shipments/:tracking_number
-```
-
-### Financial Analytics
-
-**Get Financial Statistics:**
-
-```http
-GET /api/finance/stats
-Authorization: Bearer <token>
-```
-
-Response:
-
-```json
-{
-  "total_revenue": 2450000.0,
-  "total_fuel_cost": 840000.0,
-  "gross_profit": 1610000.0,
-  "active_job_count": 23,
-  "profit_margin": 65.7
-}
-```
-
-### Real-Time Updates
-
-**WebSocket Connection:**
+### WebSocket
 
 ```
 ws://localhost:8080/ws/fleet
@@ -470,93 +471,81 @@ ws://localhost:8080/ws/fleet
 
 Message types:
 
-- `FLEET_UPDATE`: Vessel position updates
-- `ALERT`: Critical notifications (fuel depletion, mechanical failure, arrival)
+- `FLEET_UPDATE` — Vessel positions, headings, speeds, fuel levels (every 5s)
+- `ALERT` — Critical notifications with level, message, vessel ID, and timestamp
 
 ---
 
 ## Operational Workflows
 
-### Scenario 1: Creating a New Shipment
+### Creating a Shipment (Automatic Voyage Start)
 
-1. Navigate to **Cargo Management** dashboard
-2. Click "Create Shipment"
-3. Select origin/destination ports from dropdown
-4. Assign to available vessel
-5. System automatically:
-   - Calculates optimal route via pgRouting
-   - Computes ETA based on distance and vessel speed
-   - Generates unique tracking number
-   - Updates vessel status to `IN_TRANSIT`
+1. Navigate to **Dashboard → Cargo**
+2. Fill in the shipment form: origin port, destination port, vessel, customer, weight, manifest items
+3. Submit — the backend automatically:
+   - Calculates the optimal ocean route via pgRouting
+   - Assigns the route to the selected vessel
+   - Sets the vessel status to `AT_SEA` with full fuel
+   - Transitions the shipment to `IN_TRANSIT`
+   - Updates any other PENDING shipments on the same vessel
+4. The vessel immediately begins moving along the route on the live map
 
-### Scenario 2: Monitoring Fleet Health
+### Monitoring Fleet Health
 
-1. Access **Engineering Dashboard**
-2. View component health matrix for all vessels
-3. System highlights components below 30% health
-4. Click "Perform Maintenance" to reset component health to 100%
-5. Maintenance log automatically recorded with timestamp
+1. Navigate to **Dashboard → Maintenance**
+2. View component health matrix across all vessels
+3. Components below 30% health are highlighted as WARNING/CRITICAL
+4. Click **Perform Maintenance** to reset health to 100%
+5. If a vessel enters DISTRESS (fuel empty or critical failure), refuel or repair to recover
 
-### Scenario 3: Responding to Critical Alerts
+### Responding to Alerts
 
-1. Real-time toast notification appears (e.g., "Ever Given has run out of fuel")
-2. Click notification to view vessel details
-3. Vessel status automatically changed to `DISTRESS`
-4. Dispatch refueling operation or tugboat assistance
-5. Post-refuel, status resets to `AT_SEA`
+1. Real-time toast notification appears (e.g., _"Ever Given has run out of fuel!"_)
+2. Vessel automatically enters DISTRESS state and stops moving
+3. Navigate to the vessel on the map and initiate refueling
+4. Post-refuel, the vessel auto-recovers to ANCHORED status
+5. Create a new shipment to resume the voyage
+
+### Scheduling a Berth
+
+1. Navigate to **Dashboard → Scheduler** and select a port
+2. View terminal/berth availability in the timeline view
+3. Drag unassigned vessels to available berth slots
+4. Set arrival time, departure time, and notes
+5. When a vessel arrives at the port, the allocation auto-activates
 
 ---
 
-## Performance Characteristics
+## Performance
 
-### Simulation Engine
-
-- **Update Frequency**: 5-second tick rate
-- **Concurrent Vessels**: Tested up to 500 simultaneous entities
-- **Route Calculation**: <100ms for trans-oceanic routes (pgRouting)
-
-### Database Queries
-
-- **Spatial Queries**: Optimized with `GIST` indexes on `GEOGRAPHY` columns
-- **Connection Pooling**: 20 max connections (pgx pool)
-- **Average Response Time**: <50ms for standard CRUD operations
-
-### Frontend Performance
-
-- **Initial Load**: <2 seconds (code-split routes)
-- **WebSocket Latency**: <100ms for real-time updates
-- **Map Rendering**: 60 FPS with hardware acceleration
+| Metric                | Value                                 |
+| --------------------- | ------------------------------------- |
+| Simulation tick rate  | 5 seconds                             |
+| Route calculation     | < 100ms (trans-oceanic via pgRouting) |
+| API response time     | < 50ms (standard CRUD)                |
+| WebSocket latency     | < 100ms                               |
+| Frontend initial load | < 2s (Vite code-split)                |
+| Map rendering         | 60 FPS (hardware accelerated)         |
+| DB connection pool    | 20 max connections (pgx)              |
+| Spatial index         | GIST on all GEOGRAPHY columns         |
 
 ---
 
 ## Security & Compliance
 
-### Authentication & Authorization
-
-- JWT-based stateless authentication
-- Role-Based Access Control (RBAC) with `admin` and `user` roles
-- Password hashing using bcrypt (cost factor: 10)
-
-### Data Protection
-
-- Environment-based configuration (no hardcoded secrets)
-- CORS restrictions to whitelisted origins
-- SQL injection prevention via parameterized queries
-
-### Audit Logging
-
-- All state-changing operations logged with timestamps
-- Maintenance records tracked per component
-- Shipment status transitions recorded
+- **Authentication** — JWT-based stateless auth with configurable secret
+- **Password Security** — bcrypt hashing (cost factor 10)
+- **Route Protection** — `RequireAuth` guard on all dashboard routes
+- **CORS** — Restricted to `localhost:5173` and `127.0.0.1:5173`
+- **SQL Injection Prevention** — Parameterized queries throughout (pgx)
+- **Environment Config** — All secrets via `.env` files (never committed)
 
 ---
 
 ## License
 
-MIT License - Copyright (c) 2026 NeptuneOS
+MIT License — Copyright (c) 2026 NeptuneOS
 
 ---
 
 **NeptuneOS** — Powering the future of autonomous maritime logistics.
-
-```
