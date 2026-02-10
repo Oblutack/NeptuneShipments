@@ -175,6 +175,15 @@ func (e *Engine) checkDistressRecovery(ctx context.Context, v models.Vessel) {
 }
 
 func (e *Engine) moveVessel(ctx context.Context, v models.Vessel) {
+	// 0. Safety Check: If vessel is AT_SEA, ensure all PENDING shipments are IN_TRANSIT
+	// This catches any edge cases where shipments didn't transition properly
+	if v.Status == "AT_SEA" && v.CurrentRouteID != nil {
+		err := e.shipmentRepo.UpdateStatusByVessel(ctx, v.ID, "PENDING", "IN_TRANSIT")
+		if err != nil {
+			log.Printf("Warning: Failed to update shipment statuses for vessel %s: %v", v.Name, err)
+		}
+	}
+
 	// 1. Calculate Fuel Burn
 	// Base burn: 0.5 tons per tick. Increases with speed.
 	burnRate := 0.5 * (v.SpeedKnots / 20.0)

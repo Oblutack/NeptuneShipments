@@ -11,6 +11,7 @@ frontend/build/
 backend/bin/
 backend/*.exe
 backend/update_manifests.sql
+fix_pending_shipment.sql
 
 # Env
 .env

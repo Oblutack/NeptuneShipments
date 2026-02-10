@@ -42,12 +42,28 @@ func (h *ShipmentHandler) CreateShipment(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid request"})
 	}
 
-	// 1. Create the Shipment Record
+	// 1. Check vessel status BEFORE creating shipment to set correct initial status
+	initialStatus := "PENDING"
+	if shipment.VesselID != nil && *shipment.VesselID != "" {
+		vessel, err := h.vesselRepo.GetByID(c.Context(), *shipment.VesselID)
+		if err == nil {
+			// If vessel is already at sea, set shipment to IN_TRANSIT immediately
+			if vessel.Status == "AT_SEA" {
+				initialStatus = "IN_TRANSIT"
+				fmt.Printf("✅ Vessel %s is already AT_SEA, setting shipment to IN_TRANSIT\n", vessel.Name)
+			} else {
+				fmt.Printf("⚓ Vessel %s is %s, shipment will be PENDING until vessel departs\n", vessel.Name, vessel.Status)
+			}
+		}
+	}
+	shipment.Status = initialStatus
+
+	// 2. Create the Shipment Record with correct initial status
 	if err := h.repo.Create(c.Context(), &shipment); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	// 2. AUTOMATIC ROUTING LOGIC
+	// 3. AUTOMATIC ROUTING LOGIC
 	// If a vessel is assigned, we calculate the route for that vessel
 	if shipment.VesselID != nil {
 		// A. Get Port Coordinates
@@ -63,22 +79,31 @@ func (h *ShipmentHandler) CreateShipment(c *fiber.Ctx) error {
 		// B. Calculate Path using pgRouting
 		pathJSON, err := h.routingRepo.CalculatePath(c.Context(), origin.Latitude, origin.Longitude, dest.Latitude, dest.Longitude)
 		if err != nil {
-			fmt.Printf("Routing Error: %v\n", err)
+			fmt.Printf("❌ Routing Error: %v\n", err)
 			// Don't fail the request, just warn
 		} else {
 			// C. Save the new Route
 			routeName := fmt.Sprintf("%s to %s (Auto)", origin.Name, dest.Name)
 			routeID, err := h.routeRepo.Create(c.Context(), routeName, pathJSON)
 			if err == nil {
-				// D. Assign Route to Vessel (This now refuels it too)
-				h.vesselRepo.AssignRoute(c.Context(), *shipment.VesselID, routeID)
-				
-				// E. UPDATE SHIPMENT STATUS to IN_TRANSIT
-				// Ensure this line is present and uncommented!
-				h.repo.UpdateStatus(c.Context(), shipment.ID, "IN_TRANSIT")
-                
-                // Update the local struct so the JSON response is correct immediately
-                shipment.Status = "IN_TRANSIT" 
+				// D. Assign Route to Vessel (This sets vessel to AT_SEA and refuels it)
+				err = h.vesselRepo.AssignRoute(c.Context(), *shipment.VesselID, routeID)
+				if err != nil {
+					fmt.Printf("❌ Failed to assign route to vessel: %v\n", err)
+				} else {
+					fmt.Printf("🚢 Route assigned to vessel, updating shipment status to IN_TRANSIT\n")
+					
+					// E. UPDATE SHIPMENT STATUS to IN_TRANSIT (vessel is now moving)
+					h.repo.UpdateStatus(c.Context(), shipment.ID, "IN_TRANSIT")
+					
+					// F. Update ALL pending shipments on this vessel to IN_TRANSIT
+					h.repo.UpdateStatusByVessel(c.Context(), *shipment.VesselID, "PENDING", "IN_TRANSIT")
+					
+					// Update the local struct so the JSON response is correct immediately
+					shipment.Status = "IN_TRANSIT"
+				}
+			} else {
+				fmt.Printf("❌ Failed to create route: %v\n", err)
 			}
 		}
 	}

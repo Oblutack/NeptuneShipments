@@ -289,3 +289,26 @@ func (r *ShipmentRepository) Update(ctx context.Context, s *models.Shipment) err
 	
 	return nil
 }
+
+// UpdateStatusByVessel updates all shipments on a vessel from one status to another
+// Used when vessel changes state (e.g., ANCHORED -> AT_SEA, transitions PENDING -> IN_TRANSIT)
+func (r *ShipmentRepository) UpdateStatusByVessel(ctx context.Context, vesselID string, fromStatus string, toStatus string) error {
+	query := `
+		UPDATE shipments 
+		SET status = $1, updated_at = NOW()
+		WHERE vessel_id = $2 
+		AND status = $3
+	`
+	
+	result, err := r.db.GetPool().Exec(ctx, query, toStatus, vesselID, fromStatus)
+	if err != nil {
+		return fmt.Errorf("failed to update shipment statuses for vessel: %w", err)
+	}
+	
+	rowsAffected := result.RowsAffected()
+	if rowsAffected > 0 {
+		fmt.Printf("✅ Updated %d shipment(s) from %s to %s for vessel %s\n", rowsAffected, fromStatus, toStatus, vesselID)
+	}
+	
+	return nil
+}

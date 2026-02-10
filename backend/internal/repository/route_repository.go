@@ -41,7 +41,7 @@ func (r *RouteRepository) GetByID(ctx context.Context, id string) (*models.Route
 func (r *RouteRepository) Create(ctx context.Context, name string, geoJSON []byte) (string, error) {
 	query := `
 		INSERT INTO routes (name, path)
-		VALUES ($1, ST_GeomFromGeoJSON($2))
+		VALUES ($1, ST_LineMerge(ST_GeomFromGeoJSON($2)))
 		RETURNING id
 	`
 	var id string
