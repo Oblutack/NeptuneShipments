@@ -55,8 +55,8 @@ NeptuneOS integrates critical operational domains — fleet tracking, route opti
 
 ### Core Value Proposition
 
-- **Autonomous Route Planning** — Graph-based pathfinding calculates optimal ocean-only routes between 180+ global ports
-- **Real-Time Fleet Intelligence** — WebSocket-driven telemetry with 5-second refresh, live on a Mapbox GL 3D globe
+- **Autonomous Route Planning** — Graph-based pathfinding calculates optimal ocean-only routes over a seeded ocean network (14 ports, ~15-node graph in the default seed data — small by design for a demo, the pgRouting/PostGIS setup scales to a much larger network without code changes)
+- **Live Fleet Intelligence** — Vessel positions refresh via 2-5s HTTP polling (RTK Query) on a Mapbox GL 3D globe; a WebSocket (`/ws/fleet`, now token-authenticated) pushes a snapshot on connect plus live CRITICAL/INFO alerts
 - **Predictive Maintenance** — Component-level health monitoring with entropy-based degradation modeling
 - **Cargo Lifecycle Management** — Full CRUD for shipments with manifest items, BOL generation, and automatic status transitions
 - **Port Berth Scheduling** — Drag-and-drop terminal allocation with conflict detection
@@ -112,7 +112,7 @@ NeptuneOS/
 │   ├── db/
 │   │   ├── Dockerfile            # Custom PostgreSQL + PostGIS + pgRouting image
 │   │   ├── migrations/           # 14 versioned schema migrations (golang-migrate)
-│   │   └── seeds/                # Ocean network graph seed data (~400 nodes)
+│   │   └── seeds/                # Ocean network graph seed data (~15 nodes in the default seed)
 │   └── go.mod
 │
 ├── frontend/
@@ -227,7 +227,11 @@ Real-time P&L dashboard with operational cost modeling.
 - **Fuel Cost Modeling** — Bunker fuel consumption at $600/ton with dynamic burn rates
 - **Gross Profit** — Automated P&L: Revenue - Operating Costs
 - **KPI Dashboard** — Active jobs, completed shipments, fuel consumed, average revenue per job
-- **Interactive Charts** — Recharts-powered visualizations with margin analysis
+- **Interactive Charts** — Recharts-powered visualizations. The KPI
+  numbers above are real, computed from the database; the 7-day revenue
+  trend line chart itself is currently hardcoded mock data
+  (`FinancePage.tsx`, `RevenueChart.tsx`), not wired to real historical
+  data yet
 
 ### 9. Data Management
 
@@ -275,8 +279,8 @@ ManifestItems     Components
 
 | Entity              | Key Fields                                                                                                                                              | Notes                                                         |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| **Vessel**          | `id`, `name`, `imo_number`, `type`, `status`, `location` (POINT), `heading`, `speed_knots`, `fuel_level/capacity`, `current_route_id`, `route_progress` | 6 statuses: AT_SEA, DOCKED, ANCHORED, DISTRESS, IDLE          |
-| **Port**            | `id`, `un_locode`, `name`, `country`, `location` (POINT), `type`                                                                                        | 180+ global ports                                             |
+| **Vessel**          | `id`, `name`, `imo_number`, `type`, `status`, `location` (POINT), `heading`, `speed_knots`, `fuel_level/capacity`, `current_route_id`, `route_progress` | 5 statuses: AT_SEA, DOCKED, ANCHORED, MAINTENANCE, DISTRESS   |
+| **Port**            | `id`, `un_locode`, `name`, `country`, `location` (POINT), `type`                                                                                        | 14 ports in the default seed data                              |
 | **Route**           | `id`, `name`, `path` (LINESTRING), `origin_port_id`, `destination_port_id`                                                                              | Computed via pgRouting Dijkstra                               |
 | **Shipment**        | `id`, `tracking_number`, `customer_name`, `origin/destination_port_id`, `vessel_id`, `status`, `weight_kg`, `manifest_items` (JSONB), `eta`             | Statuses: PENDING, IN_TRANSIT, DELIVERED                      |
 | **ManifestItem**    | `sku`, `description`, `quantity`, `unit_value`, `total_value`                                                                                           | Stored as JSONB array in Shipment                             |
@@ -350,15 +354,12 @@ cd backend
 go run cmd/seeder/main.go
 ```
 
-Expected output:
-
-```
-✅ Imported 180 Ports
-✅ Imported 15 Vessels
-✅ Imported 12 Routes
-✅ Imported 45 Crew Members
-🌊 Shipping Network Graph Created (~400 nodes)
-```
+This imports the default seed data in `data/*.csv`: 14 ports, 6 vessels,
+7 crew members, 1 seed route, and the ocean routing graph (~15 nodes).
+Additional routes are created automatically at runtime whenever a
+shipment is assigned to a vessel. The seeder logs its own progress as it
+runs (`✅ Imported N ports`, etc.) - swap in your own CSVs under `data/`
+to seed a larger fleet/port set without any code changes.
 
 ### Step 5: Start Services
 
@@ -534,6 +535,13 @@ Message types:
 ## Security & Compliance
 
 - **Authentication** — JWT-based stateless auth with configurable secret
+- **Authorization** — role-based (`ADMIN`/`CLIENT`) middleware on
+  destructive/administrative endpoints (vessel and port mutations, CSV
+  import, component maintenance, berth allocation, crew assignment,
+  shipment update/delete); reads and tracking stay open to any
+  authenticated user. `/ws/fleet` requires a valid token too, passed as
+  a query param since a browser WebSocket handshake can't carry a
+  header.
 - **Password Security** — bcrypt hashing (cost factor 10)
 - **Route Protection** — `RequireAuth` guard on all dashboard routes
 - **CORS** — Restricted to `localhost:5173` and `127.0.0.1:5173`

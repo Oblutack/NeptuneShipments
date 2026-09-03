@@ -139,7 +139,7 @@ export const LandingPage = () => {
               </div>
               <h3 className="text-xl font-bold mb-3">Predictive Analytics</h3>
               <p className="text-slate-400 leading-relaxed">
-                AI-driven ETA calculations and fuel consumption modeling for
+                Automated ETA calculations and fuel consumption modeling for
                 maximum operational efficiency.
               </p>
             </div>
@@ -151,8 +151,8 @@ export const LandingPage = () => {
               </div>
               <h3 className="text-xl font-bold mb-3">Secure Operations</h3>
               <p className="text-slate-400 leading-relaxed">
-                Enterprise-grade RBAC security ensuring data integrity for
-                admins, captains, and clients.
+                Role-based access control ensuring data integrity for
+                admins and clients.
               </p>
             </div>
           </div>
