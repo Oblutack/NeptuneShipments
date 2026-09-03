@@ -214,11 +214,15 @@ export const ShipmentList = () => {
                   try {
                     await deleteShipment(deleteConfirm).unwrap();
                     setDeleteConfirm(null);
-                  } catch (err: any) {
+                  } catch (err) {
                     console.error("Delete failed:", err);
+                    const apiError = err as {
+                      data?: { error?: string };
+                      message?: string;
+                    };
                     setDeleteError(
-                      err?.data?.error ||
-                        err?.message ||
+                      apiError?.data?.error ||
+                        apiError?.message ||
                         "Failed to delete shipment. Please try again.",
                     );
                   }

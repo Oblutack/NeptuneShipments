@@ -1,4 +1,11 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import {
+  createApi,
+  fetchBaseQuery,
+  type BaseQueryFn,
+  type FetchArgs,
+  type FetchBaseQueryError,
+} from "@reduxjs/toolkit/query/react";
+import { logout } from "../auth/authSlice";
 
 export interface Vessel {
   id: string;
@@ -229,19 +236,38 @@ type RootState = {
   auth: { token: string | null };
 };
 
+const rawBaseQuery = fetchBaseQuery({
+  baseUrl: "http://localhost:8080/api", // ✅ FIX: Use localhost instead of 127.0.0.1
+  prepareHeaders: (headers, { getState }) => {
+    const token = (getState() as RootState).auth.token;
+
+    if (token) {
+      headers.set("authorization", `Bearer ${token}`);
+    }
+    return headers;
+  },
+});
+
+// A 401 from any endpoint means the token is missing/expired/invalid.
+// Previously nothing handled this: the dashboard stayed up with every
+// request silently failing instead of sending the user back to login.
+// Dispatching logout() here clears the stored user, and RequireAuth
+// (which redirects to /login whenever there's no user) does the rest.
+const baseQueryWithReauth: BaseQueryFn<
+  string | FetchArgs,
+  unknown,
+  FetchBaseQueryError
+> = async (args, api, extraOptions) => {
+  const result = await rawBaseQuery(args, api, extraOptions);
+  if (result.error?.status === 401) {
+    api.dispatch(logout());
+  }
+  return result;
+};
+
 export const apiSlice = createApi({
   reducerPath: "api",
-  baseQuery: fetchBaseQuery({
-    baseUrl: "http://localhost:8080/api", // ✅ FIX: Use localhost instead of 127.0.0.1
-    prepareHeaders: (headers, { getState }) => {
-      const token = (getState() as RootState).auth.token;
-
-      if (token) {
-        headers.set("authorization", `Bearer ${token}`);
-      }
-      return headers;
-    },
-  }),
+  baseQuery: baseQueryWithReauth,
   tagTypes: ["Vessels", "Ports", "Shipments", "Routes", "Crew", "Allocations"],
   endpoints: (builder) => ({
     getVessels: builder.query<Vessel[], void>({
