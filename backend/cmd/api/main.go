@@ -7,6 +7,7 @@ import (
 
 	"github.com/Oblutack/NeptuneShipments/backend/internal/database"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/handlers"
+	"github.com/Oblutack/NeptuneShipments/backend/internal/middleware"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/repository"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/services"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/simulator"
@@ -121,6 +122,17 @@ func main() {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
 		},
 	})
+	requireAdmin := middleware.RequireRole("ADMIN")
+
+	// Browsers can't set custom headers on a native WebSocket handshake,
+	// so /ws/fleet takes its token as a query param instead of a header.
+	requireAuthWS := jwtware.New(jwtware.Config{
+		SigningKey:  jwtware.SigningKey{Key: []byte(jwtSecret)},
+		TokenLookup: "query:token",
+		ErrorHandler: func(c *fiber.Ctx, err error) error {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
+		},
+	})
 
 	// PUBLIC ROUTES
 	api.Post("/auth/login", authHandler.Login)
@@ -149,48 +161,51 @@ func main() {
 	// PRIVATE ROUTES
 	// Vessels
 	vessels := api.Group("/vessels")
-	vessels.Post("/", vesselHandler.CreateVessel)
+	vessels.Post("/", requireAdmin, vesselHandler.CreateVessel)
 	vessels.Get("/", vesselHandler.GetAllVessels)
-	vessels.Put("/:id", vesselHandler.UpdateVessel)
-	vessels.Delete("/:id", vesselHandler.DeleteVessel)
-	vessels.Post("/import", vesselHandler.UploadVesselsCSV)
+	vessels.Put("/:id", requireAdmin, vesselHandler.UpdateVessel)
+	vessels.Delete("/:id", requireAdmin, vesselHandler.DeleteVessel)
+	vessels.Post("/import", requireAdmin, vesselHandler.UploadVesselsCSV)
 	vessels.Get("/:vesselId/tanks", tankHandler.GetTanks)
 	vessels.Get("/:vesselId/shipments", shipmentHandler.GetShipmentsByVessel)
 	vessels.Get("/:vesselId/components", componentHandler.GetComponents)
 	vessels.Get("/:id/crew", crewHandler.GetCrewByVessel)
-	vessels.Post("/:id/refuel", vesselHandler.RefuelVessel)
+	vessels.Post("/:id/refuel", requireAdmin, vesselHandler.RefuelVessel)
 
 	// Ports
 	ports := api.Group("/ports")
 	ports.Get("/", portHandler.GetAllPorts)
 	ports.Get("/stats", portHandler.GetPortStats)
-	ports.Post("/", portHandler.CreatePort)
-	ports.Put("/:id", portHandler.UpdatePort)
-	ports.Delete("/:id", portHandler.DeletePort)
-	ports.Post("/import", portHandler.UploadPortsCSV)
+	ports.Post("/", requireAdmin, portHandler.CreatePort)
+	ports.Put("/:id", requireAdmin, portHandler.UpdatePort)
+	ports.Delete("/:id", requireAdmin, portHandler.DeletePort)
+	ports.Post("/import", requireAdmin, portHandler.UploadPortsCSV)
 	ports.Get("/template", portHandler.DownloadPortsTemplate)
 	ports.Get("/:portId/terminals", terminalHandler.GetPortTerminals)
 
 
 	// Components
 	components := api.Group("/components")
-    components.Post("/:id/maintain", componentHandler.PerformMaintenance)
+    components.Post("/:id/maintain", requireAdmin, componentHandler.PerformMaintenance)
 
-	// Crew 
+	// Crew
 	crew := api.Group("/crew")
     crew.Get("/", crewHandler.GetAllCrew)
 
 	// Finance
-    finance := api.Group("/finance") 
+    finance := api.Group("/finance")
     finance.Get("/stats", financeHandler.GetStats)
 
 	// Shipments
+	// Create/read stay open to any authenticated user (a client booking
+	// or tracking their own shipment); delete/update are administrative
+	// actions the same way vessel/port mutations are.
 	shipments := api.Group("/shipments")
 	shipments.Post("/", shipmentHandler.CreateShipment)
 	shipments.Get("/", shipmentHandler.GetAllShipments)
 	shipments.Get("/:trackingNumber/bol", shipmentHandler.DownloadBOL)
-	shipments.Delete("/:id", shipmentHandler.DeleteShipment)
-	shipments.Put("/:id", shipmentHandler.UpdateShipment)
+	shipments.Delete("/:id", requireAdmin, shipmentHandler.DeleteShipment)
+	shipments.Put("/:id", requireAdmin, shipmentHandler.UpdateShipment)
 
 	// Berth allocations
 	// NOTE: these three used to be registered on `app` instead of `api`,
@@ -198,7 +213,7 @@ func main() {
 	// with no token. Moved under the protected group like everything else.
 	ports.Get("/:portId/schedule", allocationHandler.GetSchedule)
 	allocations := api.Group("/allocations")
-	allocations.Post("/", allocationHandler.CreateAllocation)
+	allocations.Post("/", requireAdmin, allocationHandler.CreateAllocation)
 	allocations.Get("/unassigned", allocationHandler.GetUnassignedVessels)
 
 	app.Use("/ws", func(c *fiber.Ctx) error {
@@ -220,8 +235,12 @@ func main() {
     return fiber.ErrUpgradeRequired
 	})
 
-	app.Get("/ws/fleet", websocket.New(wsHandler.HandleFleetStream, websocket.Config{
-		Origins: []string{"http://localhost:5173", "http://127.0.0.1:5173"}, 
+	// This used to be wide open - anyone could connect and stream the
+	// full live fleet with no token at all. requireAuthWS is the query-
+	// param variant since a browser's native WebSocket API can't set an
+	// Authorization header on the handshake.
+	app.Get("/ws/fleet", requireAuthWS, websocket.New(wsHandler.HandleFleetStream, websocket.Config{
+		Origins: []string{"http://localhost:5173", "http://127.0.0.1:5173"},
 	}))
 
 	simEngine := simulator.NewEngine(vesselRepo, shipmentRepo, componentRepo, allocationRepo, hub)

@@ -35,7 +35,13 @@ export const useWebSocket = (): void => {
       console.log(
         `🔌 Connecting to WebSocket... (Attempt ${reconnectAttemptsRef.current + 1})`,
       );
-      const ws = new WebSocket("ws://localhost:8080/ws/fleet");
+      // The browser's native WebSocket API can't set an Authorization
+      // header, so the token goes as a query param - the backend's
+      // /ws/fleet middleware looks for it there specifically.
+      const token = localStorage.getItem("token");
+      const ws = new WebSocket(
+        `ws://localhost:8080/ws/fleet?token=${encodeURIComponent(token ?? "")}`,
+      );
 
       ws.onopen = () => {
         console.log("✅ WebSocket Connected");
