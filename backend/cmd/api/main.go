@@ -106,51 +106,69 @@ func main() {
 	// API routes group
 	api := app.Group("/api")
 
-	// PUBLIC ROUTES
-	api.Post("/auth/login", authHandler.Login)
-	api.Get("/shipments/:trackingNumber", shipmentHandler.GetShipmentByTracking) 
-	api.Get("/vessels/:id", vesselHandler.GetVesselByID) 
-	
-    // --- ROUTING ENGINE ---
-    api.Get("/routes/network", routeHandler.GetNetworkMesh)      
-	api.Post("/routes/calculate", routeHandler.CalculateRoute)
-	
-	// Active Fleet Routes
-	api.Get("/routes/active", routeHandler.GetActiveRoutes) 
-	
-	api.Get("/routes/:id", routeHandler.GetRoute)                
-
 	// --- MIDDLEWARE ---
+	// Built here, ahead of route registration, because one route below
+	// needs it applied explicitly rather than through the usual
+	// api.Use(...) split further down - see the comment on
+	// /vessels/template for why.
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
-		jwtSecret = "neptune_secret_key_12345" 
+		jwtSecret = "neptune_secret_key_12345"
 	}
-
-	api.Use(jwtware.New(jwtware.Config{
+	requireAuth := jwtware.New(jwtware.Config{
 		SigningKey: jwtware.SigningKey{Key: []byte(jwtSecret)},
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
 		},
-	}))
+	})
+
+	// PUBLIC ROUTES
+	api.Post("/auth/login", authHandler.Login)
+	api.Get("/shipments/:trackingNumber", shipmentHandler.GetShipmentByTracking)
+
+	// Fiber matches GET routes at the same path depth in registration
+	// order, not by specificity - so this has to be registered before
+	// the public /vessels/:id below, or a request for "/vessels/template"
+	// would be handed to GetVesselByID with id="template" instead. Still
+	// protected: requireAuth is applied directly since it's ahead of the
+	// api.Use(requireAuth) call that protects everything else.
+	api.Get("/vessels/template", requireAuth, vesselHandler.DownloadVesselsTemplate)
+	api.Get("/vessels/:id", vesselHandler.GetVesselByID)
+
+    // --- ROUTING ENGINE ---
+    api.Get("/routes/network", routeHandler.GetNetworkMesh)
+	api.Post("/routes/calculate", routeHandler.CalculateRoute)
+
+	// Active Fleet Routes
+	api.Get("/routes/active", routeHandler.GetActiveRoutes)
+
+	api.Get("/routes/:id", routeHandler.GetRoute)
+
+	api.Use(requireAuth)
 
 	// PRIVATE ROUTES
 	// Vessels
 	vessels := api.Group("/vessels")
 	vessels.Post("/", vesselHandler.CreateVessel)
 	vessels.Get("/", vesselHandler.GetAllVessels)
+	vessels.Put("/:id", vesselHandler.UpdateVessel)
+	vessels.Delete("/:id", vesselHandler.DeleteVessel)
+	vessels.Post("/import", vesselHandler.UploadVesselsCSV)
 	vessels.Get("/:vesselId/tanks", tankHandler.GetTanks)
 	vessels.Get("/:vesselId/shipments", shipmentHandler.GetShipmentsByVessel)
 	vessels.Get("/:vesselId/components", componentHandler.GetComponents)
-	vessels.Get("/:id/crew", crewHandler.GetCrewByVessel) 
+	vessels.Get("/:id/crew", crewHandler.GetCrewByVessel)
 	vessels.Post("/:id/refuel", vesselHandler.RefuelVessel)
-
-	// Route lines
-	api.Get("/routes/network", routeHandler.GetNetworkMesh)
 
 	// Ports
 	ports := api.Group("/ports")
 	ports.Get("/", portHandler.GetAllPorts)
 	ports.Get("/stats", portHandler.GetPortStats)
+	ports.Post("/", portHandler.CreatePort)
+	ports.Put("/:id", portHandler.UpdatePort)
+	ports.Delete("/:id", portHandler.DeletePort)
+	ports.Post("/import", portHandler.UploadPortsCSV)
+	ports.Get("/template", portHandler.DownloadPortsTemplate)
 	ports.Get("/:portId/terminals", terminalHandler.GetPortTerminals)
 
 
@@ -174,9 +192,14 @@ func main() {
 	shipments.Delete("/:id", shipmentHandler.DeleteShipment)
 	shipments.Put("/:id", shipmentHandler.UpdateShipment)
 
-	app.Get("/api/ports/:portId/schedule", allocationHandler.GetSchedule)
-	app.Post("/api/allocations", allocationHandler.CreateAllocation)
-	app.Get("/api/allocations/unassigned", allocationHandler.GetUnassignedVessels)
+	// Berth allocations
+	// NOTE: these three used to be registered on `app` instead of `api`,
+	// which skipped the JWT middleware entirely - anyone could hit them
+	// with no token. Moved under the protected group like everything else.
+	ports.Get("/:portId/schedule", allocationHandler.GetSchedule)
+	allocations := api.Group("/allocations")
+	allocations.Post("/", allocationHandler.CreateAllocation)
+	allocations.Get("/unassigned", allocationHandler.GetUnassignedVessels)
 
 	app.Use("/ws", func(c *fiber.Ctx) error {
     // Set CORS headers for WebSocket

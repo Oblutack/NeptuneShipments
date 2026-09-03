@@ -89,9 +89,9 @@ func (r *VesselRepository) Update(ctx context.Context, vessel *models.Vessel) er
             speed_knots = $8,
             fuel_level = $9,
             fuel_capacity = $10,
-            updated_at = NOW()
+            last_updated = NOW()
         WHERE id = $11
-        RETURNING updated_at
+        RETURNING last_updated
     `
 
     err := r.db.QueryRow(
@@ -100,7 +100,7 @@ func (r *VesselRepository) Update(ctx context.Context, vessel *models.Vessel) er
         vessel.Longitude, vessel.Latitude,
         vessel.Heading, vessel.SpeedKnots, vessel.FuelLevel, vessel.FuelCapacity,
         vessel.ID,
-    ).Scan(&vessel.UpdatedAt)
+    ).Scan(&vessel.LastUpdated)
 
     if err != nil {
         return fmt.Errorf("failed to update vessel: %w", err)
@@ -109,24 +109,25 @@ func (r *VesselRepository) Update(ctx context.Context, vessel *models.Vessel) er
     return nil
 }
 
-// ✅ NEW: Delete removes a vessel by ID
+// Delete removes a vessel by ID
 // NOTE: This checks for active dependencies before deletion
 func (r *VesselRepository) Delete(ctx context.Context, id string) error {
-    // Check for active dependencies
-    var activeRoutes, activeShipments, activeAllocations int
-
-    // Check active routes
+    // Check if the vessel is currently on a voyage. There's no vessel_id
+    // on routes - a vessel's current route is tracked the other way
+    // around, via vessels.current_route_id.
+    var onActiveVoyage bool
     err := r.db.QueryRow(ctx,
-        `SELECT COUNT(*) FROM routes WHERE vessel_id = $1 AND status = 'ACTIVE'`,
+        `SELECT current_route_id IS NOT NULL AND status = 'AT_SEA' FROM vessels WHERE id = $1`,
         id,
-    ).Scan(&activeRoutes)
+    ).Scan(&onActiveVoyage)
     if err != nil {
-        return fmt.Errorf("failed to check active routes: %w", err)
+        return fmt.Errorf("failed to check vessel voyage status: %w", err)
     }
 
     // Check active shipments
+    var activeShipments int
     err = r.db.QueryRow(ctx,
-        `SELECT COUNT(*) FROM shipments WHERE vessel_id = $1 AND status IN ('IN_TRANSIT', 'LOADING')`,
+        `SELECT COUNT(*) FROM shipments WHERE vessel_id = $1 AND status IN ('PENDING', 'IN_TRANSIT')`,
         id,
     ).Scan(&activeShipments)
     if err != nil {
@@ -134,6 +135,7 @@ func (r *VesselRepository) Delete(ctx context.Context, id string) error {
     }
 
     // Check active allocations
+    var activeAllocations int
     err = r.db.QueryRow(ctx,
         `SELECT COUNT(*) FROM berth_allocations WHERE vessel_id = $1 AND status IN ('SCHEDULED', 'ACTIVE')`,
         id,
@@ -143,10 +145,10 @@ func (r *VesselRepository) Delete(ctx context.Context, id string) error {
     }
 
     // Return error if vessel has active dependencies
-    if activeRoutes > 0 || activeShipments > 0 || activeAllocations > 0 {
+    if onActiveVoyage || activeShipments > 0 || activeAllocations > 0 {
         return fmt.Errorf(
-            "cannot delete vessel: has %d active routes, %d active shipments, and %d active allocations. Please complete or cancel them first",
-            activeRoutes, activeShipments, activeAllocations,
+            "cannot delete vessel: on active voyage=%v, %d active shipments, and %d active allocations. Please complete or cancel them first",
+            onActiveVoyage, activeShipments, activeAllocations,
         )
     }
 
@@ -174,18 +176,18 @@ func (r *VesselRepository) BulkCreate(ctx context.Context, vessels []models.Vess
 
     query := `
         INSERT INTO vessels (
-            name, imo_number, type, status, location,
+            name, imo_number, flag_country, type, status, location,
             heading, speed_knots, fuel_level, fuel_capacity
         ) VALUES (
-            $1, $2, $3, $4, ST_SetSRID(ST_MakePoint($5, $6), 4326),
-            $7, $8, $9, $10
+            $1, $2, $3, $4, $5, ST_SetSRID(ST_MakePoint($6, $7), 4326),
+            $8, $9, $10, $11
         )
     `
 
     for _, vessel := range vessels {
         _, err := tx.Exec(
             ctx, query,
-            vessel.Name, vessel.IMONumber, vessel.Type, vessel.Status,
+            vessel.Name, vessel.IMONumber, vessel.FlagCountry, vessel.Type, vessel.Status,
             vessel.Longitude, vessel.Latitude,
             vessel.Heading, vessel.SpeedKnots, vessel.FuelLevel, vessel.FuelCapacity,
         )

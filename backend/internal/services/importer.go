@@ -164,7 +164,7 @@ func (s *ImporterService) ImportVessels(ctx context.Context, reader io.Reader) (
     }
 
     // Validate required headers
-    requiredHeaders := []string{"name", "imo_number", "type", "status", "latitude", "longitude"}
+    requiredHeaders := []string{"name", "imo_number", "flag_country", "type", "status", "latitude", "longitude"}
     for _, required := range requiredHeaders {
         if _, ok := headerMap[required]; !ok {
             return 0, fmt.Errorf("missing required header: %s", required)
@@ -219,6 +219,7 @@ func (s *ImporterService) ImportVessels(ctx context.Context, reader io.Reader) (
         vessel := models.Vessel{
             Name:         strings.TrimSpace(record[headerMap["name"]]),
             IMONumber:    strings.TrimSpace(record[headerMap["imo_number"]]),
+            FlagCountry:  strings.TrimSpace(record[headerMap["flag_country"]]),
             Type:         strings.TrimSpace(record[headerMap["type"]]),
             Status:       strings.TrimSpace(record[headerMap["status"]]),
             Latitude:     lat,

@@ -766,7 +766,6 @@ const VesselForm = ({ formData, onChange }: VesselFormProps) => (
         className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
       >
         <option value="">Select Status</option>
-        <option value="IDLE">Idle</option>
         <option value="AT_SEA">At Sea</option>
         <option value="DOCKED">Docked</option>
         <option value="ANCHORED">Anchored</option>

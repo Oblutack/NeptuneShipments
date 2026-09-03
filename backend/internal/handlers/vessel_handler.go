@@ -50,9 +50,11 @@ func (h *VesselHandler) CreateVessel(c *fiber.Ctx) error {
         return c.Status(400).JSON(fiber.Map{"error": err.Error()})
     }
 
-    // Set default values
+    // Set default values. "IDLE" isn't a real vessel_status value - the
+    // enum is AT_SEA, DOCKED, ANCHORED, MAINTENANCE, DISTRESS - so this
+    // used to fail on every create that didn't pass a status explicitly.
     if vessel.Status == "" {
-        vessel.Status = "IDLE"
+        vessel.Status = "DOCKED"
     }
 
     if err := h.repo.Create(c.Context(), &vessel); err != nil {
@@ -133,10 +135,10 @@ func (h *VesselHandler) DownloadVesselsTemplate(c *fiber.Ctx) error {
     writer := csv.NewWriter(c.Response().BodyWriter())
     defer writer.Flush()
 
-    headers := []string{"name", "imo_number", "type", "status", "latitude", "longitude", "heading", "speed_knots", "fuel_level", "fuel_capacity"}
+    headers := []string{"name", "imo_number", "flag_country", "type", "status", "latitude", "longitude", "heading", "speed_knots", "fuel_level", "fuel_capacity"}
     writer.Write(headers)
 
-    example := []string{"MV Example", "IMO1234567", "CONTAINER", "IDLE", "51.5074", "-0.1278", "90", "15.5", "80", "100"}
+    example := []string{"MV Example", "IMO1234567", "GB", "CONTAINER", "DOCKED", "51.5074", "-0.1278", "90", "15.5", "80", "100"}
     writer.Write(example)
 
     return nil
