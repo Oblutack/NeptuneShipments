@@ -252,7 +252,13 @@ func (e *Engine) moveVessel(ctx context.Context, v models.Vessel) {
 
 		// Update ETA
 		e.shipmentRepo.UpdateETAForVessel(ctx, v.ID, *v.CurrentRouteID, newProgress, v.SpeedKnots)
-		
+
+		// Component wear needs to happen on every tick a vessel is
+		// actually moving, not just while free-roaming below - almost
+		// every vessel has a route (AssignRoute sets one on every
+		// shipment creation), so degradation used to essentially never
+		// run during a normal voyage.
+		e.applyMechanicalWear(ctx, v)
 		return
 	}
 
@@ -260,40 +266,42 @@ func (e *Engine) moveVessel(ctx context.Context, v models.Vessel) {
 	newLat, newLon := navigation.CalculateNextPosition(
 		v.Latitude, v.Longitude, v.SpeedKnots, v.Heading, 5.0,
 	)
-	// Note: We should probably update fuel here too for Strategy B, 
+	// Note: We should probably update fuel here too for Strategy B,
 	// but let's stick to Strategy A for now.
 	e.vesselRepo.UpdatePosition(ctx, v.ID, newLat, newLon)
 
-	// 1. Degrade components by 0.1% per tick
-    if err := e.componentRepo.DegradeComponents(ctx, v.ID, 0.1); err != nil {
-        log.Printf("Failed to degrade components for %s: %v", v.Name, err)
-        // Continue execution - don't stop simulation for this
-    }
+	e.applyMechanicalWear(ctx, v)
+}
 
-    // 2. Check for critical failures
-    hasCriticalFailure, err := e.componentRepo.CheckCriticalFailure(ctx, v.ID)
-    if err != nil {
-        log.Printf("Failed to check critical failure for %s: %v", v.Name, err)
-        // Continue execution
-    }
+// applyMechanicalWear degrades a moving vessel's components a little each
+// tick and puts it into DISTRESS if that results in a critical failure.
+// Shared between both movement strategies above - see the comment where
+// it's called from the route-following branch for why that matters.
+func (e *Engine) applyMechanicalWear(ctx context.Context, v models.Vessel) {
+	if err := e.componentRepo.DegradeComponents(ctx, v.ID, 0.1); err != nil {
+		log.Printf("Failed to degrade components for %s: %v", v.Name, err)
+		return
+	}
 
-    // 3. If critical failure detected, set vessel to distress
-    if hasCriticalFailure {
-        log.Printf("🔥 %s has a CRITICAL MECHANICAL FAILURE at (%.4f, %.4f)!", v.Name, newLat, newLon)
-        if err := e.vesselRepo.SetDistress(ctx, v.ID); err != nil {
-            log.Printf("Failed to set distress for %s: %v", v.Name, err)
-        }
+	hasCriticalFailure, err := e.componentRepo.CheckCriticalFailure(ctx, v.ID)
+	if err != nil {
+		log.Printf("Failed to check critical failure for %s: %v", v.Name, err)
+		return
+	}
 
+	if hasCriticalFailure {
+		log.Printf("🔥 %s has a CRITICAL MECHANICAL FAILURE!", v.Name)
+		if err := e.vesselRepo.SetDistress(ctx, v.ID); err != nil {
+			log.Printf("Failed to set distress for %s: %v", v.Name, err)
+			return
+		}
 		e.broadcastAlert(
-            "CRITICAL",
-            v.Name+" has experienced a critical mechanical failure!",
-            v.ID,
-            v.Name,
-        )
-
-		
-        return
-    }
+			"CRITICAL",
+			v.Name+" has experienced a critical mechanical failure!",
+			v.ID,
+			v.Name,
+		)
+	}
 }
 
 // checkBerthActivation checks if a vessel with a SCHEDULED allocation is near its destination port

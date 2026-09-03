@@ -246,13 +246,13 @@ func (r *VesselRepository) GetAll(ctx context.Context) ([]models.Vessel, error) 
 // GetByID finds a vessel by its UUID
 func (r *VesselRepository) GetByID(ctx context.Context, id string) (*models.Vessel, error) {
 	query := `
-		SELECT id, name, imo_number, flag_country, type, status, 
+		SELECT id, name, imo_number, flag_country, type, status,
 		       capacity_teu, capacity_barrels,
 		       ST_Y(location::geometry) as latitude,
 		       ST_X(location::geometry) as longitude,
 		       heading, speed_knots, last_updated, created_at,
-               -- Added these two:
-               current_route_id, route_progress
+               current_route_id, route_progress,
+               fuel_level, fuel_capacity
 		FROM vessels
 		WHERE id = $1
 	`
@@ -262,8 +262,8 @@ func (r *VesselRepository) GetByID(ctx context.Context, id string) (*models.Vess
 		&v.CapacityTEU, &v.CapacityBarrels,
 		&v.Latitude, &v.Longitude,
 		&v.Heading, &v.SpeedKnots, &v.LastUpdated, &v.CreatedAt,
-        // Added these two:
         &v.CurrentRouteID, &v.RouteProgress,
+        &v.FuelLevel, &v.FuelCapacity,
 	)
 	if err != nil {
 		return nil, err
@@ -430,7 +430,7 @@ func (r *VesselRepository) RefuelVessel(ctx context.Context, id string) error {
 		SET 
 			fuel_level = fuel_capacity, -- Fill it up
 			status = 'AT_SEA',          -- Clear DISTRESS status
-			speed_knots = 5000.0        -- Restart engine (Fast speed for demo)
+			speed_knots = 18.0          -- Restart engine at a real cruising speed
 		WHERE id = $1
 	`
 	_, err := r.db.Exec(ctx, query, id)
@@ -444,8 +444,8 @@ func (r *VesselRepository) AssignRoute(ctx context.Context, vesselID, routeID st
 		SET 
 			current_route_id = $1, 
 			route_progress = 0.0, 
-			status = 'AT_SEA', 
-			speed_knots = 1500.0, -- Fast for demo
+			status = 'AT_SEA',
+			speed_knots = 18.0, -- real cruising speed, not the simulator tick rate
 			fuel_level = fuel_capacity, -- <--- REFUEL HERE!
 			location = (SELECT ST_StartPoint(path::geometry)::geography FROM routes WHERE id = $1)
 		WHERE id = $2
