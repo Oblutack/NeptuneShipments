@@ -8,11 +8,22 @@ import {
   type Vessel,
   type Port,
 } from "../api/apiSlice";
-import { Ship, Anchor, Network } from "lucide-react";
-import { useState } from "react";
+import { Ship, Anchor, Network, Radio } from "lucide-react";
+import { useMemo, useState } from "react";
 import { PortInspector } from "./PortInspector";
+import { useAISTraffic, type AISVessel } from "./useAISTraffic";
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
+
+// Minimal shape actually consumed from the Map component's onClick event -
+// avoids depending on react-map-gl/mapbox-gl's exact exported event type
+// name, which varies across versions and re-export paths.
+interface MapClickFeaturesEvent {
+  features?: Array<{
+    layer?: { id?: string };
+    properties?: Record<string, unknown> | null;
+  }>;
+}
 
 const STORM_DATA: GeoJSON.FeatureCollection = {
   type: "FeatureCollection",
@@ -87,6 +98,32 @@ export const GlobalMap = ({
   const [clickedShipId, setClickedShipId] = useState<string | null>(null);
   const clickedShip = vessels?.find((v) => v.id === clickedShipId);
 
+  // REAL AIS traffic overlay - off by default (thousands of real ships is
+  // a lot to render alongside the simulated fleet unless asked for).
+  // Connects to the standalone AIS Ship Tracker project, not this app's
+  // own backend - see useAISTraffic.ts.
+  const [showAISTraffic, setShowAISTraffic] = useState(false);
+  const { vessels: aisVessels, status: aisStatus } =
+    useAISTraffic(showAISTraffic);
+  const [clickedAISVessel, setClickedAISVessel] = useState<AISVessel | null>(
+    null,
+  );
+
+  const aisGeoJSON = useMemo<GeoJSON.FeatureCollection>(
+    () => ({
+      type: "FeatureCollection",
+      features: aisVessels.map((v) => ({
+        type: "Feature",
+        properties: { mmsi: v.mmsi },
+        geometry: {
+          type: "Point",
+          coordinates: [v.longitude, v.latitude],
+        },
+      })),
+    }),
+    [aisVessels],
+  );
+
   // Queries
   const { data: networkData } = useGetNetworkMeshQuery(undefined, {
     skip: !showNetwork,
@@ -125,12 +162,40 @@ export const GlobalMap = ({
           "high-color": "rgb(200, 200, 250)",
           "horizon-blend": 0.2,
         }}
-        onClick={() => {
+        interactiveLayerIds={showAISTraffic ? ["ais-traffic-circles"] : []}
+        onClick={(e: MapClickFeaturesEvent) => {
+          const hit = e.features?.find(
+            (f) => f.layer?.id === "ais-traffic-circles",
+          );
+          if (hit) {
+            const mmsi = hit.properties?.mmsi as number;
+            setClickedAISVessel(
+              aisVessels.find((v) => v.mmsi === mmsi) ?? null,
+            );
+            return;
+          }
           // Optional: Click empty space to deselect
           // if (onShipClick) onShipClick(null);
         }}
       >
         <NavigationControl position="top-right" />
+
+        {/* REAL AIS TRAFFIC (from the standalone AIS Ship Tracker) */}
+        {showAISTraffic && aisVessels.length > 0 && (
+          <Source id="ais-traffic-source" type="geojson" data={aisGeoJSON}>
+            <Layer
+              id="ais-traffic-circles"
+              type="circle"
+              paint={{
+                "circle-radius": 3,
+                "circle-color": "#22d3ee",
+                "circle-opacity": 0.85,
+                "circle-stroke-width": 1,
+                "circle-stroke-color": "#083344",
+              }}
+            />
+          </Source>
+        )}
 
         {/* LAYERS */}
         {showWeather && (
@@ -291,6 +356,24 @@ export const GlobalMap = ({
           >
             <Network size={12} /> Lanes
           </button>
+          <button
+            onClick={() => setShowAISTraffic(!showAISTraffic)}
+            title="Real ships from the AIS Ship Tracker (must be running separately on :8090)"
+            className={`flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all ${showAISTraffic ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 shadow-lg shadow-cyan-500/10" : "bg-slate-800 text-slate-500 hover:bg-slate-700"}`}
+          >
+            <span className="flex items-center gap-2">
+              <Radio size={12} /> AIS Live
+            </span>
+            {showAISTraffic && (
+              <span className="text-[10px] font-mono opacity-80">
+                {aisStatus === "live"
+                  ? aisVessels.length
+                  : aisStatus === "connecting"
+                    ? "..."
+                    : "off"}
+              </span>
+            )}
+          </button>
 
           <div className="h-px bg-slate-700 my-1"></div>
           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">
@@ -405,6 +488,58 @@ export const GlobalMap = ({
                 NO ROUTE
               </span>
             )}
+          </div>
+        )}
+
+        {/* AIS VESSEL INFO PANEL - a real ship, not part of the simulated fleet */}
+        {clickedAISVessel && (
+          <div className="absolute top-4 right-16 z-10 bg-slate-900/50 backdrop-blur-xl p-4 rounded-2xl border border-cyan-500/30 shadow-2xl max-w-[220px]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-bold text-cyan-500 uppercase tracking-widest flex items-center gap-1">
+                <Radio size={10} /> Real AIS Vessel
+              </span>
+              <button
+                onClick={() => setClickedAISVessel(null)}
+                className="text-slate-500 hover:text-white transition-colors"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-1.5 text-xs">
+              <div className="font-bold text-white text-sm">
+                {clickedAISVessel.name || `MMSI ${clickedAISVessel.mmsi}`}
+              </div>
+              <div className="text-slate-400">
+                {clickedAISVessel.type_label || "Unknown type"}
+                {clickedAISVessel.flag ? ` · ${clickedAISVessel.flag}` : ""}
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Speed:</span>
+                <span className="font-mono text-slate-200">
+                  {clickedAISVessel.sog.toFixed(1)} kn
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Destination:</span>
+                <span className="text-slate-200 truncate ml-2">
+                  {clickedAISVessel.destination || "-"}
+                </span>
+              </div>
+              <div className="text-[10px] text-slate-600 pt-1">
+                MMSI {clickedAISVessel.mmsi} · trail/route in the dedicated
+                tracker
+              </div>
+            </div>
           </div>
         )}
       </Map>
