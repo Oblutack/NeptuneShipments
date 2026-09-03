@@ -535,6 +535,23 @@ export const GlobalMap = ({
                   {clickedAISVessel.destination || "-"}
                 </span>
               </div>
+              {clickedAISVessel.length_m && clickedAISVessel.beam_m && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Size:</span>
+                  <span className="font-mono text-slate-200">
+                    {clickedAISVessel.length_m}m &times;{" "}
+                    {clickedAISVessel.beam_m}m
+                  </span>
+                </div>
+              )}
+              {clickedAISVessel.draught_m && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Draught:</span>
+                  <span className="font-mono text-slate-200">
+                    {clickedAISVessel.draught_m}m
+                  </span>
+                </div>
+              )}
               <div className="text-[10px] text-slate-600 pt-1">
                 MMSI {clickedAISVessel.mmsi} · trail/route in the dedicated
                 tracker

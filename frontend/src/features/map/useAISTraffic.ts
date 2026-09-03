@@ -12,6 +12,9 @@ export interface AISVessel {
   type_label?: string;
   flag?: string;
   destination?: string;
+  length_m?: number;
+  beam_m?: number;
+  draught_m?: number;
   latitude: number;
   longitude: number;
   cog: number;
