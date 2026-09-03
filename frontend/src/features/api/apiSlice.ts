@@ -493,6 +493,19 @@ export const apiSlice = createApi({
         "Crew",
       ],
     }),
+    // Covers assign, transfer, and remove alike - pass vesselId: null to
+    // remove a crew member from their current vessel.
+    assignCrew: builder.mutation<
+      { message: string },
+      { crewId: string; vesselId: string | null }
+    >({
+      query: ({ crewId, vesselId }) => ({
+        url: `/crew/${crewId}/assign`,
+        method: "PUT",
+        body: { vessel_id: vesselId },
+      }),
+      invalidatesTags: ["Crew"],
+    }),
     getFinancialStats: builder.query<FinancialStats, void>({
       query: () => "/finance/stats",
       providesTags: ["Shipments", "Vessels"], // Depends on both
@@ -578,4 +591,5 @@ export const {
   useCreatePortMutation,
   useUpdateShipmentMutation,
   useDeleteShipmentMutation,
+  useAssignCrewMutation,
 } = apiSlice;

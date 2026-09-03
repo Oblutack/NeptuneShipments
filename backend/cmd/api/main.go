@@ -191,6 +191,7 @@ func main() {
 	// Crew
 	crew := api.Group("/crew")
     crew.Get("/", crewHandler.GetAllCrew)
+    crew.Put("/:id/assign", requireAdmin, crewHandler.AssignCrew)
 
 	// Finance
     finance := api.Group("/finance")

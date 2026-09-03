@@ -141,8 +141,11 @@ func (r *CrewRepository) GetByVesselID(ctx context.Context, vesselID string) ([]
     return crew, nil
 }
 
-// AssignToVessel assigns a crew member to a vessel
-func (r *CrewRepository) AssignToVessel(ctx context.Context, crewID string, vesselID string) error {
+// AssignToVessel sets (or, with vesselID == nil, clears) a crew member's
+// vessel assignment. Handles assign, transfer (just a re-assign to a
+// different vessel), and remove (assign to nil) with the same query -
+// vessel_id is nullable, backed by ON DELETE SET NULL on the FK.
+func (r *CrewRepository) AssignToVessel(ctx context.Context, crewID string, vesselID *string) error {
     query := `
         UPDATE crew
         SET vessel_id = $2, updated_at = NOW()

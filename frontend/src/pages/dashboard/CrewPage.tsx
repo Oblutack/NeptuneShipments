@@ -2,10 +2,11 @@ import { useState, useMemo } from "react";
 import {
   useGetCrewQuery,
   useGetVesselsQuery,
+  useAssignCrewMutation,
 } from "../../features/api/apiSlice";
 import { VesselSelector } from "../../features/crew/VesselSelector";
 import { CrewRoster } from "../../features/crew/CrewRoster";
-import { Users, Loader2 } from "lucide-react";
+import { Users, Loader2, X } from "lucide-react";
 
 export const CrewPage = () => {
   const [selectedVesselId, setSelectedVesselId] = useState<string | null>(null);
@@ -52,20 +53,18 @@ export const CrewPage = () => {
     return vessels.find((v) => v.id === selectedVesselId)?.name || null;
   }, [selectedVesselId, vessels]);
 
-  // Handlers (to be implemented)
-  const handleAssign = (crewId: string) => {
-    console.log("Assign crew:", crewId);
-    // TODO: Implement assign crew modal/logic
-  };
+  const [assignCrew] = useAssignCrewMutation();
+  const [assignModalCrewId, setAssignModalCrewId] = useState<string | null>(
+    null,
+  );
 
-  const handleTransfer = (crewId: string) => {
-    console.log("Transfer crew:", crewId);
-    // TODO: Implement transfer crew modal/logic
-  };
+  // Assign and transfer are the same action (pick a vessel, assign into
+  // it) - both just open the same picker modal.
+  const handleAssign = (crewId: string) => setAssignModalCrewId(crewId);
+  const handleTransfer = (crewId: string) => setAssignModalCrewId(crewId);
 
   const handleRemove = (crewId: string) => {
-    console.log("Remove crew:", crewId);
-    // TODO: Implement remove crew logic
+    assignCrew({ crewId, vesselId: null });
   };
 
   if (crewLoading || vesselsLoading) {
@@ -147,6 +146,73 @@ export const CrewPage = () => {
               onRemove={handleRemove}
             />
           </div>
+        </div>
+      </div>
+
+      {assignModalCrewId && (
+        <AssignVesselModal
+          vessels={vessels || []}
+          onClose={() => setAssignModalCrewId(null)}
+          onConfirm={(vesselId) => {
+            assignCrew({ crewId: assignModalCrewId, vesselId });
+            setAssignModalCrewId(null);
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+interface AssignVesselModalProps {
+  vessels: { id: string; name: string }[];
+  onClose: () => void;
+  onConfirm: (vesselId: string) => void;
+}
+
+const AssignVesselModal = ({
+  vessels,
+  onClose,
+  onConfirm,
+}: AssignVesselModalProps) => {
+  const [selected, setSelected] = useState(vessels[0]?.id || "");
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-white">Assign to Vessel</h3>
+          <button
+            onClick={onClose}
+            className="text-slate-500 hover:text-white transition-colors"
+          >
+            <X size={20} />
+          </button>
+        </div>
+        <select
+          value={selected}
+          onChange={(e) => setSelected(e.target.value)}
+          className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          {vessels.map((v) => (
+            <option key={v.id} value={v.id}>
+              {v.name}
+            </option>
+          ))}
+        </select>
+        <div className="flex gap-3">
+          <button
+            onClick={onClose}
+            className="flex-1 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2.5 rounded-xl font-medium transition-all"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => selected && onConfirm(selected)}
+            disabled={!selected}
+            className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-4 py-2.5 rounded-xl font-medium transition-all disabled:opacity-50"
+          >
+            Confirm
+          </button>
         </div>
       </div>
     </div>
