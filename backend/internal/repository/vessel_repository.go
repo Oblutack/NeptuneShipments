@@ -475,10 +475,10 @@ func (r *VesselRepository) GetIDByIMO(ctx context.Context, imo string) (string, 
 // GetNearbyPort checks if vessel is within 10km of any port
 func (r *VesselRepository) GetNearbyPort(ctx context.Context, lat, lon float64) (*models.Port, error) {
 	query := `
-		SELECT 
-			id, 
-			name, 
-			locode, 
+		SELECT
+			id,
+			name,
+			un_locode,
 			country,
 			ST_Y(location::geometry) as latitude,
 			ST_X(location::geometry) as longitude

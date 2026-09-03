@@ -439,7 +439,7 @@ func (s *ImporterService) ImportShipments(filePath string) error {
                 if err == nil {
                     // C. Create Route
                     routeName := fmt.Sprintf("%s -> %s (Imported)", row[2], row[3])
-                    routeID, _ := s.routeRepo.Create(ctx, routeName, pathJSON)
+                    routeID, _ := s.routeRepo.Create(ctx, routeName, originID, destID, pathJSON)
                     
                     // D. Assign to Vessel
                     s.vesselRepo.AssignRoute(ctx, *vesselIDPtr, routeID)

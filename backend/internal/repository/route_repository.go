@@ -37,15 +37,22 @@ func (r *RouteRepository) GetByID(ctx context.Context, id string) (*models.Route
 	return &route, nil
 }
 
-// Create saves a new route geometry and returns its ID
-func (r *RouteRepository) Create(ctx context.Context, name string, geoJSON []byte) (string, error) {
+// Create saves a new route geometry and returns its ID.
+// Route names are only unique per port pair (see routes_name_key), so a
+// second shipment between the same two ports reuses the existing route
+// instead of failing with a duplicate-key error.
+func (r *RouteRepository) Create(ctx context.Context, name, originPortID, destPortID string, geoJSON []byte) (string, error) {
 	query := `
-		INSERT INTO routes (name, path)
-		VALUES ($1, ST_LineMerge(ST_GeomFromGeoJSON($2)))
+		INSERT INTO routes (name, origin_port_id, destination_port_id, path)
+		VALUES ($1, $2, $3, ST_LineMerge(ST_GeomFromGeoJSON($4)))
+		ON CONFLICT (name) DO UPDATE SET
+			origin_port_id = EXCLUDED.origin_port_id,
+			destination_port_id = EXCLUDED.destination_port_id,
+			path = EXCLUDED.path
 		RETURNING id
 	`
 	var id string
-	err := r.db.GetPool().QueryRow(ctx, query, name, geoJSON).Scan(&id)
+	err := r.db.GetPool().QueryRow(ctx, query, name, originPortID, destPortID, geoJSON).Scan(&id)
 	return id, err
 }
 
