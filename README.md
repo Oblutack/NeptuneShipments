@@ -66,6 +66,61 @@ NeptuneOS integrates critical operational domains — fleet tracking, route opti
 
 ## System Architecture
 
+High-level view of how the pieces fit together — the React frontend talks
+to the Go backend over REST (polling) and a JWT-authenticated WebSocket for
+alerts; the backend's simulation engine is the real driver of fleet state,
+reading/writing Postgres directly on every tick; the AIS Ship Tracker is a
+separate, optional service that overlays real ship positions onto the same
+map without sharing a database.
+
+```mermaid
+flowchart TB
+    subgraph Client["Frontend — React 19 + TypeScript + Vite"]
+        Pages["Dashboard Pages\n(Fleet, Cargo, Crew, Finance, ...)"]
+        RTK["RTK Query\napiSlice.ts"]
+        GlobalMap["GlobalMap\nMapbox GL globe"]
+        WSHook["useWebSocket\nfleet alerts"]
+        AISHook["useAISTraffic\noptional live overlay"]
+    end
+
+    subgraph Server["Backend — Go + Fiber (wired by hand in main.go)"]
+        Handlers["HTTP Handlers\nvessels / ports / shipments / crew / ..."]
+        AuthMW["JWT Auth + RequireRole"]
+        Repos["Repository Layer (pgx)"]
+        SimEngine["Simulation Engine\n5s tick: movement, fuel burn,\ncomponent wear, DISTRESS, berth activation"]
+        Hub["WebSocket Hub\n/ws/fleet"]
+    end
+
+    subgraph Postgres["PostgreSQL + PostGIS + pgRouting"]
+        Core[("vessels, ports, routes,\nshipments, crew, berths")]
+        OceanGraph[("ocean_network graph\n(Dijkstra routing)")]
+    end
+
+    subgraph Tracker["AIS Ship Tracker — separate repo, optional (:8090)"]
+        AISFeed["aisstream.io feed"]
+        AISStore["In-memory vessel store"]
+        AISWs["/ws + /api/ports"]
+    end
+
+    Pages --> RTK
+    RTK -- "HTTP, 2-5s polling" --> Handlers
+    WSHook -- "WebSocket, JWT in query" --> Hub
+    GlobalMap -.-> AISHook
+    AISHook -. "WebSocket, optional" .-> AISWs
+
+    Handlers --> AuthMW
+    Handlers --> Repos
+    Handlers -- "route calc" --> OceanGraph
+    Repos --> Core
+    SimEngine --> Repos
+    SimEngine -. "raw SQL (berth activation)" .-> Core
+    SimEngine --> Hub
+    Hub -- "FLEET_UPDATE / ALERT" --> WSHook
+
+    AISFeed --> AISStore
+    AISStore --> AISWs
+```
+
 ### Technology Stack
 
 | Layer                 | Technology                  | Purpose                                           |
