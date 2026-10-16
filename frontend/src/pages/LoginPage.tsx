@@ -31,59 +31,54 @@ export const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background Decoration */}
-      <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1494412574643-35d32468817e?q=80&w=2670&auto=format&fit=crop')] bg-cover bg-center opacity-10 pointer-events-none"></div>
-
-      {/* Gradient Orbs */}
-      <div className="absolute top-0 left-0 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl"></div>
-      <div className="absolute bottom-0 right-0 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl"></div>
-
-      <div className="relative z-10 w-full max-w-md bg-slate-900/50 backdrop-blur-xl border border-slate-800 p-10 rounded-3xl shadow-2xl">
-        <div className="text-center mb-10">
-          <div className="flex justify-center mb-6">
-            <div className="p-4 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl shadow-lg shadow-blue-500/30">
-              <Globe className="text-white w-10 h-10" />
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+      <div className="w-full max-w-sm bg-slate-900 border border-slate-800 p-8 rounded-lg">
+        <div className="text-center mb-8">
+          <div className="flex justify-center mb-4">
+            <div className="p-2.5 bg-blue-600 rounded-lg">
+              <Globe className="text-white" size={24} />
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
-          <p className="text-slate-400 text-sm">Sign in to Neptune Command</p>
+          <h1 className="text-xl font-semibold text-white mb-1">
+            Welcome Back
+          </h1>
+          <p className="text-slate-500 text-sm">Sign in to Neptune Command</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-semibold text-slate-300 mb-3">
+            <label className="block text-xs font-medium text-slate-400 mb-1.5">
               Email
             </label>
             <div className="relative">
               <Mail
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
-                size={20}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+                size={16}
               />
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-slate-950/50 border border-slate-700 rounded-xl py-4 pl-12 pr-4 text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                className="w-full bg-slate-950 border border-slate-700 rounded-md py-2.5 pl-9 pr-3 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 placeholder="admin@neptune.com"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-slate-300 mb-3">
+            <label className="block text-xs font-medium text-slate-400 mb-1.5">
               Password
             </label>
             <div className="relative">
               <Lock
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"
-                size={20}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+                size={16}
               />
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-slate-950/50 border border-slate-700 rounded-xl py-4 pl-12 pr-4 text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                className="w-full bg-slate-950 border border-slate-700 rounded-md py-2.5 pl-9 pr-3 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                 placeholder="••••••••"
               />
             </div>
@@ -92,10 +87,10 @@ export const LoginPage = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold py-4 rounded-xl transition-all flex items-center justify-center shadow-lg shadow-blue-500/30 hover:shadow-blue-500/40 disabled:opacity-50 disabled:cursor-not-allowed mt-8"
+            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm py-2.5 rounded-md transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed mt-6"
           >
             {isLoading ? (
-              <Loader2 className="animate-spin" size={24} />
+              <Loader2 className="animate-spin" size={18} />
             ) : (
               "Sign In"
             )}
