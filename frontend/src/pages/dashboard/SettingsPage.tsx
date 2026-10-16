@@ -17,6 +17,7 @@ import {
   Mail,
   Building,
 } from "lucide-react";
+import { PageHeader } from "../../components/ui/PageHeader";
 
 export const SettingsPage = () => {
   const dispatch = useDispatch();
@@ -29,7 +30,7 @@ export const SettingsPage = () => {
         "Are you sure you want to reset all simulation data? This action cannot be undone.",
       )
     ) {
-      console.log("🔄 Resetting simulation data...");
+      console.log("Resetting simulation data...");
       // TODO: Call backend API to reset data
     }
   };
@@ -38,85 +39,76 @@ export const SettingsPage = () => {
     if (
       window.confirm("Clear local cache? You may need to refresh the page.")
     ) {
-      console.log("🗑️ Clearing local cache...");
+      console.log("Clearing local cache...");
       localStorage.clear();
       window.location.reload();
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-8">
-      <div className="max-w-[1800px] mx-auto space-y-8">
-        {/* ✨ Modern Header */}
-        <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-slate-600 to-slate-500 rounded-2xl shadow-lg shadow-slate-500/20">
-            <SettingsIcon className="text-white" size={32} />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-white tracking-tight">
-              Settings
-            </h1>
-            <p className="text-slate-400 text-sm mt-1">
-              Manage your account and preferences
-            </p>
-          </div>
-        </div>
+    <>
+      <PageHeader
+        icon={SettingsIcon}
+        title="Settings"
+        subtitle="Manage your account and preferences"
+      />
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* ========== SECTION 1: PROFILE ========== */}
-          <div className="lg:col-span-2 bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-            <div className="bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border-b border-slate-800 px-6 py-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-500/20 rounded-lg">
-                  <User className="text-blue-400" size={20} />
-                </div>
-                <h2 className="text-xl font-bold text-white">
+          <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
+            <div className="border-b border-slate-800 px-5 py-3.5">
+              <div className="flex items-center gap-2">
+                <User className="text-slate-500" size={16} />
+                <h2 className="text-sm font-semibold text-white">
                   Profile Information
                 </h2>
               </div>
             </div>
 
-            <div className="p-6">
-              <div className="flex items-start gap-6">
+            <div className="p-5">
+              <div className="flex items-start gap-5">
                 {/* Avatar */}
                 <div className="shrink-0">
-                  <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center text-white text-3xl font-bold shadow-lg shadow-blue-500/30">
+                  <div className="w-20 h-20 bg-slate-800 border border-slate-700 rounded-full flex items-center justify-center text-slate-300 text-2xl font-semibold">
                     {user?.full_name?.charAt(0).toUpperCase() || "U"}
                   </div>
-                  <div className="flex items-center justify-center gap-1 mt-2 text-xs text-green-400 bg-green-900/30 px-3 py-1 rounded-xl border border-green-500/30">
+                  <div className="flex items-center justify-center gap-1 mt-2 text-xs text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-md">
                     <CheckCircle2 size={12} />
                     Verified
                   </div>
                 </div>
 
                 {/* User Details */}
-                <div className="flex-1 space-y-4">
+                <div className="flex-1 space-y-3.5">
                   <div>
-                    <label className="text-xs text-slate-500 uppercase tracking-wider font-bold mb-1 block">
+                    <label className="text-xs text-slate-500 uppercase tracking-wide font-medium mb-1 block">
                       Username
                     </label>
                     <div className="flex items-center gap-2 text-white">
-                      <User size={16} className="text-slate-500" />
-                      <span className="font-semibold">{user?.full_name}</span>
+                      <User size={15} className="text-slate-500" />
+                      <span className="font-medium text-sm">
+                        {user?.full_name}
+                      </span>
                     </div>
                   </div>
 
                   <div>
-                    <label className="text-xs text-slate-500 uppercase tracking-wider font-bold mb-1 block">
+                    <label className="text-xs text-slate-500 uppercase tracking-wide font-medium mb-1 block">
                       Email
                     </label>
-                    <div className="flex items-center gap-2 text-slate-300">
-                      <Mail size={16} className="text-slate-500" />
+                    <div className="flex items-center gap-2 text-slate-300 text-sm">
+                      <Mail size={15} className="text-slate-500" />
                       <span>{user?.email || "Not provided"}</span>
                     </div>
                   </div>
 
                   <div>
-                    <label className="text-xs text-slate-500 uppercase tracking-wider font-bold mb-1 block">
+                    <label className="text-xs text-slate-500 uppercase tracking-wide font-medium mb-1 block">
                       Company
                     </label>
-                    <div className="flex items-center gap-2 text-slate-300">
-                      <Building size={16} className="text-slate-500" />
+                    <div className="flex items-center gap-2 text-slate-300 text-sm">
+                      <Building size={15} className="text-slate-500" />
                       <span>
                         {user?.company_name || "Neptune Shipping Co."}
                       </span>
@@ -124,16 +116,16 @@ export const SettingsPage = () => {
                   </div>
 
                   <div>
-                    <label className="text-xs text-slate-500 uppercase tracking-wider font-bold mb-1 block">
+                    <label className="text-xs text-slate-500 uppercase tracking-wide font-medium mb-1 block">
                       Role
                     </label>
                     <div className="flex items-center gap-2">
-                      <Shield size={16} className="text-slate-500" />
+                      <Shield size={15} className="text-slate-500" />
                       <span
-                        className={`px-3 py-1 rounded-xl text-xs font-bold ${
+                        className={`px-2 py-0.5 rounded text-xs font-medium ${
                           user?.role === "ADMIN"
-                            ? "bg-purple-900/30 text-purple-300 border border-purple-500/50"
-                            : "bg-blue-900/30 text-blue-300 border border-blue-500/50"
+                            ? "bg-purple-500/10 text-purple-400"
+                            : "bg-blue-500/10 text-blue-400"
                         }`}
                       >
                         {user?.role}
@@ -146,24 +138,24 @@ export const SettingsPage = () => {
           </div>
 
           {/* ========== SECTION 2: APP PREFERENCES ========== */}
-          <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-            <div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-b border-slate-800 px-6 py-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-500/20 rounded-lg">
-                  <SettingsIcon className="text-purple-400" size={20} />
-                </div>
-                <h2 className="text-xl font-bold text-white">Preferences</h2>
+          <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
+            <div className="border-b border-slate-800 px-5 py-3.5">
+              <div className="flex items-center gap-2">
+                <SettingsIcon className="text-slate-500" size={16} />
+                <h2 className="text-sm font-semibold text-white">
+                  Preferences
+                </h2>
               </div>
             </div>
 
-            <div className="p-6">
-              <div className="space-y-6">
+            <div className="p-5">
+              <div className="space-y-5">
                 {/* Unit System Toggle */}
                 <div>
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center justify-between mb-1.5">
                     <div className="flex items-center gap-2">
-                      <Ruler size={16} className="text-slate-500" />
-                      <span className="text-sm font-semibold text-white">
+                      <Ruler size={15} className="text-slate-500" />
+                      <span className="text-sm font-medium text-white">
                         Unit System
                       </span>
                     </div>
@@ -180,11 +172,11 @@ export const SettingsPage = () => {
                 </div>
 
                 {/* Notifications Toggle */}
-                <div className="pt-6 border-t border-slate-800">
-                  <div className="flex items-center justify-between mb-2">
+                <div className="pt-5 border-t border-slate-800">
+                  <div className="flex items-center justify-between mb-1.5">
                     <div className="flex items-center gap-2">
-                      <Bell size={16} className="text-slate-500" />
-                      <span className="text-sm font-semibold text-white">
+                      <Bell size={15} className="text-slate-500" />
+                      <span className="text-sm font-medium text-white">
                         Real-time Alerts
                       </span>
                     </div>
@@ -205,47 +197,47 @@ export const SettingsPage = () => {
         </div>
 
         {/* ========== SECTION 3: DANGER ZONE ========== */}
-        <div className="lg:col-span-3 bg-red-900/10 backdrop-blur-xl border border-red-500/50 rounded-2xl overflow-hidden shadow-xl">
-          <div className="bg-gradient-to-r from-red-500/10 to-rose-500/10 border-b border-red-500/30 px-6 py-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-500/20 rounded-lg">
-                <AlertTriangle className="text-red-400" size={20} />
-              </div>
-              <h2 className="text-xl font-bold text-red-400">Danger Zone</h2>
+        <div className="bg-slate-900 border-l-2 border-red-500 rounded-lg overflow-hidden">
+          <div className="border-b border-slate-800 px-5 py-3.5">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="text-red-400" size={16} />
+              <h2 className="text-sm font-semibold text-red-400">
+                Danger Zone
+              </h2>
             </div>
           </div>
 
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="p-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {/* Reset Simulation */}
-              <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-4">
-                <h3 className="font-bold text-white mb-2 flex items-center gap-2">
-                  <Trash2 size={16} className="text-red-400" />
+              <div className="bg-slate-950 border border-slate-800 rounded-lg p-4">
+                <h3 className="font-medium text-white text-sm mb-1.5 flex items-center gap-2">
+                  <Trash2 size={14} className="text-red-400" />
                   Reset Simulation
                 </h3>
-                <p className="text-xs text-slate-400 mb-4">
+                <p className="text-xs text-slate-500 mb-3.5">
                   Clears all vessels, shipments, and routes. Cannot be undone.
                 </p>
                 <button
                   onClick={handleResetSimulation}
-                  className="w-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-lg shadow-red-500/20"
+                  className="w-full bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
                 >
                   Reset Data
                 </button>
               </div>
 
               {/* Clear Cache */}
-              <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-4">
-                <h3 className="font-bold text-white mb-2 flex items-center gap-2">
-                  <Trash2 size={16} className="text-orange-400" />
+              <div className="bg-slate-950 border border-slate-800 rounded-lg p-4">
+                <h3 className="font-medium text-white text-sm mb-1.5 flex items-center gap-2">
+                  <Trash2 size={14} className="text-orange-400" />
                   Clear Local Cache
                 </h3>
-                <p className="text-xs text-slate-400 mb-4">
+                <p className="text-xs text-slate-500 mb-3.5">
                   Removes stored preferences and session data. Page will reload.
                 </p>
                 <button
                   onClick={handleClearCache}
-                  className="w-full bg-gradient-to-r from-orange-600 to-orange-500 hover:from-orange-500 hover:to-orange-400 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-lg shadow-orange-500/20"
+                  className="w-full bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
                 >
                   Clear Cache
                 </button>
@@ -254,7 +246,7 @@ export const SettingsPage = () => {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
@@ -269,15 +261,13 @@ const ToggleSwitch = ({
   return (
     <button
       onClick={onChange}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-all shadow-lg ${
-        enabled
-          ? "bg-gradient-to-r from-blue-600 to-cyan-600 shadow-blue-500/30"
-          : "bg-slate-700"
+      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+        enabled ? "bg-blue-600" : "bg-slate-700"
       }`}
     >
       <span
-        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-md ${
-          enabled ? "translate-x-6" : "translate-x-1"
+        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+          enabled ? "translate-x-5" : "translate-x-1"
         }`}
       />
     </button>
