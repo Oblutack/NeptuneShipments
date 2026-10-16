@@ -8,10 +8,11 @@ import {
   type Vessel,
   type Port,
 } from "../api/apiSlice";
-import { Ship, Anchor, Network, Radio } from "lucide-react";
+import { Ship, Anchor, Network, Radio, Waves } from "lucide-react";
 import { useMemo, useState } from "react";
 import { PortInspector } from "./PortInspector";
 import { useAISTraffic, type AISVessel } from "./useAISTraffic";
+import { useMarineWeather } from "./useMarineWeather";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { haversineDistanceKm, AIS_PORT_PROXIMITY_KM } from "../../lib/geo";
 
@@ -26,28 +27,6 @@ interface MapClickFeaturesEvent {
     properties?: Record<string, unknown> | null;
   }>;
 }
-
-const STORM_DATA: GeoJSON.FeatureCollection = {
-  type: "FeatureCollection",
-  features: [
-    {
-      type: "Feature",
-      properties: { name: "Typhoon Cobra", severity: "High" },
-      geometry: {
-        type: "Polygon",
-        coordinates: [
-          [
-            [-40.0, 35.0],
-            [-30.0, 35.0],
-            [-25.0, 25.0],
-            [-45.0, 25.0],
-            [-40.0, 35.0],
-          ],
-        ],
-      },
-    },
-  ],
-};
 
 // Generates a consistent color from a string ID
 const stringToColor = (str: string) => {
@@ -88,7 +67,14 @@ export const GlobalMap = ({
 
   const activeRouteId = activeShip?.current_route_id;
 
-  const [showWeather, setShowWeather] = useState(true);
+  // Real current sea-state (wave height, swell, period) from Open-Meteo
+  // Marine, per port - off by default like the other optional layers, so
+  // it costs nothing until toggled on.
+  const [showSeaState, setShowSeaState] = useState(false);
+  const { weatherByPort, status: seaStateStatus } = useMarineWeather(
+    ports,
+    showSeaState,
+  );
   const [showNetwork, setShowNetwork] = useState(false);
   const [filterType, setFilterType] = useState<"ALL" | "TANKER" | "CONTAINER">(
     "ALL",
@@ -215,21 +201,6 @@ export const GlobalMap = ({
           </Source>
         )}
 
-        {/* LAYERS */}
-        {showWeather && (
-          <Source id="storm-source" type="geojson" data={STORM_DATA}>
-            <Layer
-              id="storm-fill"
-              type="fill"
-              paint={{ "fill-color": "#ef4444", "fill-opacity": 0.3 }}
-            />
-            <Layer
-              id="storm-outline"
-              type="line"
-              paint={{ "line-color": "#b91c1c", "line-width": 2 }}
-            />
-          </Source>
-        )}
 
         {showNetwork && networkData && (
           <Source id="network-source" type="geojson" data={networkData}>
@@ -280,34 +251,58 @@ export const GlobalMap = ({
         )}
 
         {/* PORTS */}
-        {ports?.map((port) => (
-          <Marker
-            key={port.id}
-            longitude={port.longitude}
-            latitude={port.latitude}
-            anchor="bottom"
-          >
-            <div
-              className="group relative flex flex-col items-center cursor-pointer"
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedPortId(port.id);
-              }}
+        {ports?.map((port) => {
+          const weather = weatherByPort.get(port.id);
+          const waveHeight = weather?.waveHeightM;
+          const seaStateColor =
+            waveHeight == null
+              ? null
+              : waveHeight < 0.5
+                ? "bg-emerald-400"
+                : waveHeight < 1.5
+                  ? "bg-amber-400"
+                  : "bg-red-500";
+
+          return (
+            <Marker
+              key={port.id}
+              longitude={port.longitude}
+              latitude={port.latitude}
+              anchor="bottom"
             >
-              <Anchor
-                size={18}
-                className={`transition-colors ${
-                  selectedPortId === port.id
-                    ? "text-orange-300"
-                    : "text-orange-500/80 hover:text-orange-300"
-                }`}
-              />
-              <div className="absolute bottom-full mb-1 hidden group-hover:block bg-slate-900 text-white text-[10px] py-1 px-2 rounded border border-slate-700 whitespace-nowrap z-50">
-                {port.name}
+              <div
+                className="group relative flex flex-col items-center cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedPortId(port.id);
+                }}
+              >
+                <Anchor
+                  size={18}
+                  className={`transition-colors ${
+                    selectedPortId === port.id
+                      ? "text-orange-300"
+                      : "text-orange-500/80 hover:text-orange-300"
+                  }`}
+                />
+                {showSeaState && seaStateColor && (
+                  <div
+                    className={`absolute -top-1 -right-1 w-2 h-2 rounded-full border border-slate-950 ${seaStateColor}`}
+                  />
+                )}
+                <div className="absolute bottom-full mb-1 hidden group-hover:block bg-slate-900 text-white text-[10px] py-1 px-2 rounded border border-slate-700 whitespace-nowrap z-50">
+                  {port.name}
+                  {showSeaState && waveHeight != null && (
+                    <span className="text-slate-400">
+                      {" "}
+                      &middot; {waveHeight.toFixed(1)}m waves
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
-          </Marker>
-        ))}
+            </Marker>
+          );
+        })}
 
         {/* VESSELS */}
         {filteredVessels?.map((ship) => {
@@ -360,13 +355,16 @@ export const GlobalMap = ({
             Layers
           </span>
           <button
-            onClick={() => setShowWeather(!showWeather)}
-            className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${showWeather ? "bg-red-500/15 text-red-400" : "bg-slate-800 text-slate-500 hover:bg-slate-700"}`}
+            onClick={() => setShowSeaState(!showSeaState)}
+            title="Real wave height and swell per port, from Open-Meteo Marine"
+            className={`flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${showSeaState ? "bg-cyan-500/15 text-cyan-400" : "bg-slate-800 text-slate-500 hover:bg-slate-700"}`}
           >
-            <div
-              className={`w-1.5 h-1.5 rounded-full ${showWeather ? "bg-red-500" : "bg-slate-600"}`}
-            ></div>{" "}
-            Storms
+            <span className="flex items-center gap-2">
+              <Waves size={12} /> Sea State
+            </span>
+            {showSeaState && seaStateStatus === "loading" && (
+              <span className="text-[10px] opacity-70">...</span>
+            )}
           </button>
           <button
             onClick={() => setShowNetwork(!showNetwork)}
@@ -572,6 +570,7 @@ export const GlobalMap = ({
           port={selectedPort}
           onClose={() => setSelectedPortId(null)}
           realShipsNearby={realShipsNearSelectedPort}
+          seaState={showSeaState ? weatherByPort.get(selectedPort.id) : undefined}
         />
       )}
     </div>

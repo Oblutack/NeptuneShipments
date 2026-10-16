@@ -13,8 +13,10 @@ import {
   MapPin,
   Building,
   Radio,
+  Waves,
 } from "lucide-react";
 import { AIS_PORT_PROXIMITY_KM } from "../../lib/geo";
+import type { MarineWeather } from "./useMarineWeather";
 
 interface PortInspectorProps {
   port: Port;
@@ -23,12 +25,17 @@ interface PortInspectorProps {
   // Live layer is off, so there's no real data to show (distinct from 0,
   // which would mean "checked, none nearby").
   realShipsNearby?: number | null;
+  // Real current sea state for this port - undefined means the Sea State
+  // layer is off; fields inside can still be null if this port has no
+  // ocean-model coverage (e.g. it sits up a river).
+  seaState?: MarineWeather;
 }
 
 export const PortInspector = ({
   port,
   onClose,
   realShipsNearby,
+  seaState,
 }: PortInspectorProps) => {
   const { data, isLoading, error } = useGetPortTerminalsQuery(port.id);
 
@@ -78,6 +85,50 @@ export const PortInspector = ({
               {realShipsNearby}
             </span>
           </div>
+        </div>
+      )}
+
+      {/* REAL SEA STATE - only rendered when the Sea State layer is on */}
+      {seaState && (
+        <div className="px-4 pt-3 shrink-0">
+          {seaState.waveHeightM != null ? (
+            <div className="bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2.5">
+              <div className="flex items-center gap-2 mb-2">
+                <Waves size={14} className="text-blue-400" />
+                <span className="text-xs text-slate-300">
+                  Current sea state (live)
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div>
+                  <p className="text-sm font-semibold text-white tabular-nums">
+                    {seaState.waveHeightM.toFixed(1)}m
+                  </p>
+                  <p className="text-[10px] text-slate-500">Wave height</p>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-white tabular-nums">
+                    {seaState.swellWaveHeightM != null
+                      ? `${seaState.swellWaveHeightM.toFixed(1)}m`
+                      : "—"}
+                  </p>
+                  <p className="text-[10px] text-slate-500">Swell</p>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-white tabular-nums">
+                    {seaState.wavePeriodS != null
+                      ? `${seaState.wavePeriodS.toFixed(1)}s`
+                      : "—"}
+                  </p>
+                  <p className="text-[10px] text-slate-500">Period</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-slate-800/50 border border-slate-700 rounded-lg px-3 py-2.5 text-xs text-slate-500">
+              No marine forecast coverage at this port's coordinates.
+            </div>
+          )}
         </div>
       )}
 
