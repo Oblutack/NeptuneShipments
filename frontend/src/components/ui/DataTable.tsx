@@ -43,12 +43,12 @@ export function DataTable<TData, TValue>({
             <tr key={headerGroup.id}>
               {headerGroup.headers.map((header) => {
                 return (
-                  <th key={header.id} className="px-4 py-3">
+                  <th key={header.id} className="px-4 py-3 group">
                     {header.isPlaceholder ? null : (
                       <div
                         className={
                           header.column.getCanSort()
-                            ? "cursor-pointer select-none flex items-center gap-2 hover:text-white"
+                            ? "cursor-pointer select-none flex items-center gap-1.5 hover:text-white"
                             : ""
                         }
                         onClick={header.column.getToggleSortingHandler()}
@@ -58,7 +58,14 @@ export function DataTable<TData, TValue>({
                           header.getContext(),
                         )}
                         {header.column.getCanSort() && (
-                          <ArrowUpDown size={14} className="opacity-50" />
+                          <ArrowUpDown
+                            size={12}
+                            className={
+                              header.column.getIsSorted()
+                                ? "opacity-100 text-blue-400"
+                                : "opacity-0 group-hover:opacity-40 transition-opacity"
+                            }
+                          />
                         )}
                       </div>
                     )}

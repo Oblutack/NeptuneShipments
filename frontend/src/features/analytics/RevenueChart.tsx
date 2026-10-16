@@ -57,7 +57,7 @@ export const RevenueChart = () => {
             <p className="text-xs text-slate-500">Last 7 days</p>
           </div>
           <div className="text-right">
-            <div className="text-xl font-semibold text-white">
+            <div className="text-xl font-semibold text-white tabular-nums">
               ${totalRevenue.toLocaleString()}
             </div>
             <div className="flex items-center gap-1 text-xs text-emerald-400 mt-1">
@@ -131,7 +131,7 @@ export const RevenueChart = () => {
         <div className="grid grid-cols-2 gap-4 mt-6 pt-4 border-t border-slate-800">
           <div>
             <p className="text-xs text-slate-500 mb-1">Avg Daily</p>
-            <p className="text-base font-semibold text-white">
+            <p className="text-base font-semibold text-white tabular-nums">
               $
               {avgDailyRevenue.toLocaleString(undefined, {
                 maximumFractionDigits: 0,
@@ -140,7 +140,7 @@ export const RevenueChart = () => {
           </div>
           <div>
             <p className="text-xs text-slate-500 mb-1">Peak Day</p>
-            <p className="text-base font-semibold text-white">
+            <p className="text-base font-semibold text-white tabular-nums">
               ${Math.max(...revenueData.map((d) => d.revenue)).toLocaleString()}
             </p>
           </div>

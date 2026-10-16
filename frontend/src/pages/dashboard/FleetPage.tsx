@@ -51,7 +51,11 @@ export const FleetPage = () => {
     {
       accessorKey: "speed_knots",
       header: "Speed",
-      cell: ({ row }) => `${row.original.speed_knots.toFixed(1)} kn`,
+      cell: ({ row }) => (
+        <span className="tabular-nums">
+          {row.original.speed_knots.toFixed(1)} kn
+        </span>
+      ),
     },
     {
       id: "fuel",
@@ -69,7 +73,7 @@ export const FleetPage = () => {
                 style={{ width: `${Math.max(pct, 2)}%` }}
               />
             </div>
-            <span className="text-xs text-slate-400 w-9 text-right">
+            <span className="text-xs text-slate-400 w-9 text-right tabular-nums">
               {pct.toFixed(0)}%
             </span>
           </div>

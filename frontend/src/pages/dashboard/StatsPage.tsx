@@ -103,7 +103,7 @@ export const StatsPage = () => {
                   {kpi.label}
                 </span>
               </div>
-              <div className="text-2xl font-semibold text-white">
+              <div className="text-2xl font-semibold text-white tabular-nums">
                 {kpi.value}{" "}
                 {kpi.unit && (
                   <span className="text-sm text-slate-500 font-normal">
