@@ -3,11 +3,13 @@ import { useLoginMutation } from "../features/api/apiSlice";
 import { useDispatch } from "react-redux";
 import { setCredentials } from "../features/auth/authSlice";
 import { useNavigate } from "react-router-dom";
-import { Lock, Mail, Loader2, Globe, AlertCircle } from "lucide-react";
+import { Lock, Mail, Loader2, Globe, AlertCircle, ShieldCheck } from "lucide-react";
 
 export const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [totpCode, setTotpCode] = useState("");
+  const [needsTotp, setNeedsTotp] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [login, { isLoading }] = useLoginMutation();
@@ -18,16 +20,24 @@ export const LoginPage = () => {
     e.preventDefault();
     setError(null);
     try {
-      // Call API
-      const userData = await login({ email, password }).unwrap();
+      const userData = await login({
+        email,
+        password,
+        ...(needsTotp && totpCode ? { totp_code: totpCode } : {}),
+      }).unwrap();
 
-      // Save to Redux & LocalStorage
       dispatch(setCredentials(userData));
-
-      // Redirect based on role (For now, just go to Dashboard)
       navigate("/dashboard");
     } catch (err) {
       console.error("Login Error:", err);
+      const apiError = err as { data?: { error?: string; totp_required?: boolean } };
+      if (apiError?.data?.totp_required) {
+        setNeedsTotp(true);
+        setError(
+          needsTotp ? "Invalid code. Try again." : null,
+        );
+        return;
+      }
       setError("Login failed. Check your credentials and try again.");
     }
   };
@@ -55,43 +65,72 @@ export const LoginPage = () => {
             </div>
           )}
 
-          <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1.5">
-              Email
-            </label>
-            <div className="relative">
-              <Mail
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
-                size={16}
-              />
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-md py-2.5 pl-9 pr-3 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                placeholder="admin@neptune.com"
-              />
-            </div>
-          </div>
+          {!needsTotp ? (
+            <>
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">
+                  Email
+                </label>
+                <div className="relative">
+                  <Mail
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+                    size={16}
+                  />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-md py-2.5 pl-9 pr-3 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    placeholder="admin@neptune.com"
+                  />
+                </div>
+              </div>
 
-          <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1.5">
-              Password
-            </label>
-            <div className="relative">
-              <Lock
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
-                size={16}
-              />
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-md py-2.5 pl-9 pr-3 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                placeholder="••••••••"
-              />
+              <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1.5">
+                  Password
+                </label>
+                <div className="relative">
+                  <Lock
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+                    size={16}
+                  />
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-md py-2.5 pl-9 pr-3 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                    placeholder="••••••••"
+                  />
+                </div>
+              </div>
+            </>
+          ) : (
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5">
+                Two-Factor Code
+              </label>
+              <div className="relative">
+                <ShieldCheck
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500"
+                  size={16}
+                />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoFocus
+                  value={totpCode}
+                  onChange={(e) => setTotpCode(e.target.value)}
+                  maxLength={6}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-md py-2.5 pl-9 pr-3 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors tracking-widest"
+                  placeholder="123456"
+                />
+              </div>
+              <p className="text-xs text-slate-500 mt-1.5">
+                Enter the 6-digit code from your authenticator app.
+              </p>
             </div>
-          </div>
+          )}
 
           <button
             type="submit"
@@ -100,6 +139,8 @@ export const LoginPage = () => {
           >
             {isLoading ? (
               <Loader2 className="animate-spin" size={18} />
+            ) : needsTotp ? (
+              "Verify"
             ) : (
               "Sign In"
             )}

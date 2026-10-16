@@ -77,6 +77,7 @@ export interface User {
   full_name: string;
   company_name?: string;
   role: "ADMIN" | "CLIENT";
+  totp_enabled?: boolean;
 }
 
 export interface AuthResponse {
@@ -436,12 +437,27 @@ export const apiSlice = createApi({
       query: (id) => `/routes/${id}`,
     }),
     // Login
-    login: builder.mutation<AuthResponse, { email: string; password: string }>({
+    login: builder.mutation<
+      AuthResponse,
+      { email: string; password: string; totp_code?: string }
+    >({
       query: (credentials) => ({
         url: "/auth/login",
         method: "POST",
         body: credentials,
       }),
+    }),
+    setupTOTP: builder.mutation<
+      { secret: string; otp_url: string; qr_image: string },
+      void
+    >({
+      query: () => ({ url: "/auth/totp/setup", method: "POST" }),
+    }),
+    verifyTOTP: builder.mutation<{ message: string }, { code: string }>({
+      query: (body) => ({ url: "/auth/totp/verify", method: "POST", body }),
+    }),
+    disableTOTP: builder.mutation<{ message: string }, { code: string }>({
+      query: (body) => ({ url: "/auth/totp/disable", method: "POST", body }),
     }),
     getTanks: builder.query<Tank[], string>({
       query: (vesselId) => `/vessels/${vesselId}/tanks`,
@@ -581,6 +597,9 @@ export const {
   useGetVesselByIdQuery,
   useGetRouteByIdQuery,
   useLoginMutation,
+  useSetupTOTPMutation,
+  useVerifyTOTPMutation,
+  useDisableTOTPMutation,
   useGetTanksQuery,
   useRefuelVesselMutation,
   useGetNetworkMeshQuery,

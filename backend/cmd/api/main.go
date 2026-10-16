@@ -233,6 +233,11 @@ func main() {
 	// Audit log (admin-only, read-only)
 	api.Get("/audit", requireAdmin, auditHandler.GetAuditLog)
 
+	// 2FA - any authenticated user can set this up on their own account
+	api.Post("/auth/totp/setup", authHandler.SetupTOTP)
+	api.Post("/auth/totp/verify", authHandler.VerifyTOTP)
+	api.Post("/auth/totp/disable", authHandler.DisableTOTP)
+
 	// Crew
 	crew := api.Group("/crew")
     crew.Get("/", crewHandler.GetAllCrew)

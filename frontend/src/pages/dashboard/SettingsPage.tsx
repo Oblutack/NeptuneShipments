@@ -12,14 +12,22 @@ import {
   Bell,
   Ruler,
   AlertTriangle,
+  AlertCircle,
   CheckCircle2,
   Trash2,
   Shield,
+  ShieldCheck,
   Mail,
   Building,
+  Loader2,
 } from "lucide-react";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
+import {
+  useSetupTOTPMutation,
+  useVerifyTOTPMutation,
+  useDisableTOTPMutation,
+} from "../../features/api/apiSlice";
 
 export const SettingsPage = () => {
   const dispatch = useDispatch();
@@ -192,6 +200,9 @@ export const SettingsPage = () => {
           </div>
         </div>
 
+        {/* ========== SECTION 2.5: SECURITY (2FA) ========== */}
+        <TwoFactorCard initiallyEnabled={!!user?.totp_enabled} />
+
         {/* ========== SECTION 3: DANGER ZONE ========== */}
         <div className="bg-slate-900 border-l-2 border-red-500 rounded-lg overflow-hidden">
           <div className="border-b border-slate-800 px-5 py-3.5">
@@ -264,6 +275,216 @@ export const SettingsPage = () => {
         />
       )}
     </>
+  );
+};
+
+// Two-Factor Authentication Card
+const TwoFactorCard = ({ initiallyEnabled }: { initiallyEnabled: boolean }) => {
+  const [enabled, setEnabled] = useState(initiallyEnabled);
+  const [stage, setStage] = useState<"idle" | "setup" | "disable">("idle");
+  const [code, setCode] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const [setupTOTP, { data: setupData, isLoading: isSettingUp }] =
+    useSetupTOTPMutation();
+  const [verifyTOTP, { isLoading: isVerifying }] = useVerifyTOTPMutation();
+  const [disableTOTP, { isLoading: isDisabling }] = useDisableTOTPMutation();
+
+  const handleStartSetup = async () => {
+    setError(null);
+    setStage("setup");
+    try {
+      await setupTOTP().unwrap();
+    } catch {
+      setError("Failed to start 2FA setup. Please try again.");
+      setStage("idle");
+    }
+  };
+
+  const handleVerify = async () => {
+    setError(null);
+    try {
+      await verifyTOTP({ code }).unwrap();
+      setEnabled(true);
+      setStage("idle");
+      setCode("");
+    } catch {
+      setError("Invalid code. Please check your authenticator app and try again.");
+    }
+  };
+
+  const handleDisable = async () => {
+    setError(null);
+    try {
+      await disableTOTP({ code }).unwrap();
+      setEnabled(false);
+      setStage("idle");
+      setCode("");
+    } catch {
+      setError("Invalid code.");
+    }
+  };
+
+  return (
+    <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
+      <div className="border-b border-slate-800 px-5 py-3.5">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="text-slate-500" size={16} />
+          <h2 className="text-sm font-semibold text-white">
+            Two-Factor Authentication
+          </h2>
+        </div>
+      </div>
+
+      <div className="p-5">
+        {error && (
+          <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 text-red-300 text-sm p-3 rounded-md mb-4">
+            <AlertCircle size={16} className="shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {stage === "idle" && !enabled && (
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-slate-400 max-w-md">
+              Add an extra layer of security to your account with a TOTP
+              authenticator app (Google Authenticator, Authy, 1Password...).
+            </p>
+            <button
+              onClick={handleStartSetup}
+              disabled={isSettingUp}
+              className="shrink-0 ml-4 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50"
+            >
+              Enable 2FA
+            </button>
+          </div>
+        )}
+
+        {stage === "idle" && enabled && (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-emerald-400 bg-emerald-500/10 px-3 py-2 rounded-md">
+              <CheckCircle2 size={16} />
+              Two-factor authentication is enabled
+            </div>
+            <button
+              onClick={() => setStage("disable")}
+              className="shrink-0 ml-4 bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+            >
+              Disable 2FA
+            </button>
+          </div>
+        )}
+
+        {stage === "setup" && (
+          <div className="space-y-4">
+            {isSettingUp || !setupData ? (
+              <div className="flex items-center gap-3 py-4">
+                <Loader2 className="animate-spin text-blue-400" size={20} />
+                <span className="text-slate-400 text-sm">
+                  Generating your 2FA secret...
+                </span>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm text-slate-400">
+                  Scan this QR code with your authenticator app, or enter the
+                  key manually.
+                </p>
+                <div className="flex items-start gap-5">
+                  {setupData.qr_image && (
+                    <img
+                      src={setupData.qr_image}
+                      alt="2FA setup QR code"
+                      className="w-36 h-36 rounded-md border border-slate-800 bg-white p-2"
+                    />
+                  )}
+                  <div className="flex-1 space-y-3">
+                    <div>
+                      <label className="text-xs text-slate-500 uppercase tracking-wide font-medium mb-1 block">
+                        Manual Entry Key
+                      </label>
+                      <code className="block text-xs text-slate-300 bg-slate-950 border border-slate-800 rounded-md px-3 py-2 break-all">
+                        {setupData.secret}
+                      </code>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 mb-1.5">
+                        Enter the 6-digit code to confirm
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={code}
+                        onChange={(e) => setCode(e.target.value)}
+                        placeholder="123456"
+                        className="w-full max-w-[160px] bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-sm text-white tracking-widest focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setStage("idle");
+                      setCode("");
+                      setError(null);
+                    }}
+                    className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleVerify}
+                    disabled={isVerifying || code.length !== 6}
+                    className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50"
+                  >
+                    {isVerifying ? "Verifying..." : "Verify & Enable"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {stage === "disable" && (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-400">
+              Enter your current 2FA code to confirm disabling two-factor
+              authentication.
+            </p>
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="123456"
+              className="w-full max-w-[160px] bg-slate-950 border border-slate-700 rounded-md px-3 py-2 text-sm text-white tracking-widest focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setStage("idle");
+                  setCode("");
+                  setError(null);
+                }}
+                className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDisable}
+                disabled={isDisabling || code.length !== 6}
+                className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors disabled:opacity-50"
+              >
+                {isDisabling ? "Disabling..." : "Confirm Disable"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 
