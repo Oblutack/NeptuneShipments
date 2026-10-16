@@ -22,6 +22,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { DataTable } from "../../components/ui/DataTable";
+import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 
 export const MaintenancePage = () => {
   const { data: vessels, isLoading: loadingVessels } = useGetVesselsQuery(
@@ -275,19 +276,14 @@ const ComponentInspector = ({ vesselId }: { vesselId: string }) => {
   const { data, isLoading, error } = useGetComponentsQuery(vesselId);
   const [performMaintenance, { isLoading: isMaintaining }] =
     usePerformMaintenanceMutation();
+  const [maintainTargetId, setMaintainTargetId] = useState<string | null>(
+    null,
+  );
 
-  const handleMaintenance = async (componentId: string) => {
-    if (
-      window.confirm(
-        "Perform maintenance? This will restore the component to 100% health.",
-      )
-    ) {
-      try {
-        await performMaintenance(componentId).unwrap();
-      } catch {
-        alert("Maintenance failed. Please try again.");
-      }
-    }
+  const handleMaintenance = async () => {
+    if (!maintainTargetId) return;
+    await performMaintenance(maintainTargetId).unwrap();
+    setMaintainTargetId(null);
   };
 
   if (isLoading) {
@@ -368,11 +364,21 @@ const ComponentInspector = ({ vesselId }: { vesselId: string }) => {
           <ComponentCard
             key={component.id}
             component={component}
-            onMaintain={handleMaintenance}
+            onMaintain={setMaintainTargetId}
             isMaintaining={isMaintaining}
           />
         ))}
       </div>
+
+      {maintainTargetId && (
+        <ConfirmDialog
+          title="Perform Maintenance"
+          message="This will restore the component to 100% health."
+          confirmLabel="Perform Maintenance"
+          onConfirm={handleMaintenance}
+          onCancel={() => setMaintainTargetId(null)}
+        />
+      )}
     </div>
   );
 };

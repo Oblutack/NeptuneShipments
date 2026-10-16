@@ -3,11 +3,12 @@ import { useLoginMutation } from "../features/api/apiSlice";
 import { useDispatch } from "react-redux";
 import { setCredentials } from "../features/auth/authSlice";
 import { useNavigate } from "react-router-dom";
-import { Lock, Mail, Loader2, Globe } from "lucide-react";
+import { Lock, Mail, Loader2, Globe, AlertCircle } from "lucide-react";
 
 export const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const [login, { isLoading }] = useLoginMutation();
   const dispatch = useDispatch();
@@ -15,6 +16,7 @@ export const LoginPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     try {
       // Call API
       const userData = await login({ email, password }).unwrap();
@@ -26,7 +28,7 @@ export const LoginPage = () => {
       navigate("/dashboard");
     } catch (err) {
       console.error("Login Error:", err);
-      alert("Login Failed: Check your credentials");
+      setError("Login failed. Check your credentials and try again.");
     }
   };
 
@@ -46,6 +48,13 @@ export const LoginPage = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {error && (
+            <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 text-red-300 text-sm p-3 rounded-md">
+              <AlertCircle size={18} className="shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
           <div>
             <label className="block text-xs font-medium text-slate-400 mb-1.5">
               Email

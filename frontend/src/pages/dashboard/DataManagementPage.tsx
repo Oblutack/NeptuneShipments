@@ -34,6 +34,7 @@ import {
 import { DataTable } from "../../components/ui/DataTable";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { StatusBadge } from "../../components/ui/StatusBadge";
+import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { toast } from "react-toastify";
 
 type Tab = "vessels" | "ports" | "shipments";
@@ -44,6 +45,7 @@ const DataManagementPage = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState<EditableItem>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   const vesselFileRef = useRef<HTMLInputElement>(null);
   const portFileRef = useRef<HTMLInputElement>(null);
@@ -70,14 +72,6 @@ const DataManagementPage = () => {
 
   // Handlers (keep existing handlers)
   const handleDelete = async (id: string) => {
-    if (
-      !window.confirm(
-        "⚠️ Are you sure you want to delete this item? This action cannot be undone.",
-      )
-    ) {
-      return;
-    }
-
     try {
       if (activeTab === "vessels") {
         await deleteVessel(id).unwrap();
@@ -86,11 +80,13 @@ const DataManagementPage = () => {
         await deletePort(id).unwrap();
         toast.success("✅ Port deleted successfully");
       }
+      setDeleteTargetId(null);
     } catch (error) {
       const err = error as { data?: { error?: string }; message?: string };
       toast.error(
         `❌ Delete failed: ${err.data?.error || err.message || "Unknown error"}`,
       );
+      throw error;
     }
   };
 
@@ -249,7 +245,7 @@ const DataManagementPage = () => {
             <Pencil size={15} />
           </button>
           <button
-            onClick={() => handleDelete(row.original.id)}
+            onClick={() => setDeleteTargetId(row.original.id)}
             className="p-1.5 hover:bg-red-500/15 text-red-400 rounded-md transition-colors"
             title="Delete Vessel"
           >
@@ -318,7 +314,7 @@ const DataManagementPage = () => {
             <Pencil size={15} />
           </button>
           <button
-            onClick={() => handleDelete(row.original.id)}
+            onClick={() => setDeleteTargetId(row.original.id)}
             className="p-1.5 hover:bg-red-500/15 text-red-400 rounded-md transition-colors"
             title="Delete Port"
           >
@@ -532,6 +528,17 @@ const DataManagementPage = () => {
             setEditingItem(null);
           }}
           onSubmit={handleSubmit}
+        />
+      )}
+
+      {deleteTargetId && (
+        <ConfirmDialog
+          title="Delete Item"
+          message="Are you sure you want to delete this item? This action cannot be undone."
+          confirmLabel="Delete"
+          variant="danger"
+          onConfirm={() => handleDelete(deleteTargetId)}
+          onCancel={() => setDeleteTargetId(null)}
         />
       )}
     </>

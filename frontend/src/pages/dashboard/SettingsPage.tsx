@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { selectCurrentUser } from "../../features/auth/authSlice";
 import {
@@ -18,31 +19,26 @@ import {
   Building,
 } from "lucide-react";
 import { PageHeader } from "../../components/ui/PageHeader";
+import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 
 export const SettingsPage = () => {
   const dispatch = useDispatch();
   const user = useSelector(selectCurrentUser);
   const preferences = useSelector(selectPreferences);
+  const [confirmAction, setConfirmAction] = useState<"reset" | "cache" | null>(
+    null,
+  );
 
   const handleResetSimulation = () => {
-    if (
-      window.confirm(
-        "Are you sure you want to reset all simulation data? This action cannot be undone.",
-      )
-    ) {
-      console.log("Resetting simulation data...");
-      // TODO: Call backend API to reset data
-    }
+    console.log("Resetting simulation data...");
+    // TODO: Call backend API to reset data
+    setConfirmAction(null);
   };
 
   const handleClearCache = () => {
-    if (
-      window.confirm("Clear local cache? You may need to refresh the page.")
-    ) {
-      console.log("Clearing local cache...");
-      localStorage.clear();
-      window.location.reload();
-    }
+    console.log("Clearing local cache...");
+    localStorage.clear();
+    window.location.reload();
   };
 
   return (
@@ -219,7 +215,7 @@ export const SettingsPage = () => {
                   Clears all vessels, shipments, and routes. Cannot be undone.
                 </p>
                 <button
-                  onClick={handleResetSimulation}
+                  onClick={() => setConfirmAction("reset")}
                   className="w-full bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
                 >
                   Reset Data
@@ -236,7 +232,7 @@ export const SettingsPage = () => {
                   Removes stored preferences and session data. Page will reload.
                 </p>
                 <button
-                  onClick={handleClearCache}
+                  onClick={() => setConfirmAction("cache")}
                   className="w-full bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
                 >
                   Clear Cache
@@ -246,6 +242,27 @@ export const SettingsPage = () => {
           </div>
         </div>
       </div>
+
+      {confirmAction === "reset" && (
+        <ConfirmDialog
+          title="Reset Simulation"
+          message="Are you sure you want to reset all simulation data? This action cannot be undone."
+          confirmLabel="Reset Data"
+          variant="danger"
+          onConfirm={handleResetSimulation}
+          onCancel={() => setConfirmAction(null)}
+        />
+      )}
+
+      {confirmAction === "cache" && (
+        <ConfirmDialog
+          title="Clear Local Cache"
+          message="Clear local cache? You may need to refresh the page."
+          confirmLabel="Clear Cache"
+          onConfirm={handleClearCache}
+          onCancel={() => setConfirmAction(null)}
+        />
+      )}
     </>
   );
 };
