@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/Oblutack/NeptuneShipments/backend/internal/database"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/handlers"
@@ -15,6 +17,7 @@ import (
 	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/limiter"
 	"github.com/gofiber/websocket/v2"
 	"github.com/joho/godotenv"
 )
@@ -89,12 +92,26 @@ func main() {
 	// Initialize Fiber
 	app := fiber.New()
 
-	//CORS
+	// CORS - allowed origins come from config, not a hardcoded string, so
+	// this doesn't need a code change to deploy anywhere but localhost.
+	allowedOrigins := os.Getenv("CORS_ORIGINS")
+	if allowedOrigins == "" {
+		allowedOrigins = "http://localhost:5173,http://127.0.0.1:5173"
+	}
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: "http://localhost:5173, http://127.0.0.1:5173",
-		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
-		AllowMethods:     "GET, POST, PUT, DELETE, OPTIONS",              
-    	AllowCredentials: true,
+		AllowOrigins:     allowedOrigins,
+		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
+		AllowMethods:     "GET, POST, PUT, DELETE, OPTIONS",
+		AllowCredentials: true,
+	}))
+
+	// Global rate limit - generous, just there to blunt abuse/scraping.
+	app.Use(limiter.New(limiter.Config{
+		Max:        120,
+		Expiration: 1 * time.Minute,
+		LimitReached: func(c *fiber.Ctx) error {
+			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{"error": "Too many requests"})
+		},
 	}))
 
 	// Health check
@@ -114,6 +131,10 @@ func main() {
 	// /vessels/template for why.
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
+		if os.Getenv("ENVIRONMENT") == "production" {
+			log.Fatal("JWT_SECRET must be set when ENVIRONMENT=production")
+		}
+		log.Println("Warning: JWT_SECRET not set, using an insecure default for local dev only")
 		jwtSecret = "neptune_secret_key_12345"
 	}
 	requireAuth := jwtware.New(jwtware.Config{
@@ -134,8 +155,20 @@ func main() {
 		},
 	})
 
+	// Tighter limit on login specifically - brute-force protection.
+	loginLimiter := limiter.New(limiter.Config{
+		Max:        10,
+		Expiration: 1 * time.Minute,
+		KeyGenerator: func(c *fiber.Ctx) string {
+			return c.IP()
+		},
+		LimitReached: func(c *fiber.Ctx) error {
+			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{"error": "Too many login attempts, try again shortly"})
+		},
+	})
+
 	// PUBLIC ROUTES
-	api.Post("/auth/login", authHandler.Login)
+	api.Post("/auth/login", loginLimiter, authHandler.Login)
 	api.Get("/shipments/:trackingNumber", shipmentHandler.GetShipmentByTracking)
 
 	// Fiber matches GET routes at the same path depth in registration
@@ -217,9 +250,13 @@ func main() {
 	allocations.Post("/", requireAdmin, allocationHandler.CreateAllocation)
 	allocations.Get("/unassigned", allocationHandler.GetUnassignedVessels)
 
+	wsOrigins := strings.Split(allowedOrigins, ",")
+	for i := range wsOrigins {
+		wsOrigins[i] = strings.TrimSpace(wsOrigins[i])
+	}
 	app.Use("/ws", func(c *fiber.Ctx) error {
     // Set CORS headers for WebSocket
-    c.Set("Access-Control-Allow-Origin", "http://localhost:5173")
+    c.Set("Access-Control-Allow-Origin", wsOrigins[0])
     c.Set("Access-Control-Allow-Credentials", "true")
     c.Set("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization")
     
@@ -241,7 +278,7 @@ func main() {
 	// param variant since a browser's native WebSocket API can't set an
 	// Authorization header on the handshake.
 	app.Get("/ws/fleet", requireAuthWS, websocket.New(wsHandler.HandleFleetStream, websocket.Config{
-		Origins: []string{"http://localhost:5173", "http://127.0.0.1:5173"},
+		Origins: wsOrigins,
 	}))
 
 	simEngine := simulator.NewEngine(vesselRepo, shipmentRepo, componentRepo, allocationRepo, hub)
