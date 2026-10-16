@@ -17,6 +17,7 @@ import { FinancePage } from "./pages/dashboard/FinancePage";
 import { BerthScheduler } from "./features/port/BerthScheduler";
 import { SchedulerLanding } from "./features/port/SchedulerLanding";
 import DataManagementPage from './pages/dashboard/DataManagementPage';
+import { ActivityLogPage } from "./pages/dashboard/ActivityLogPage";
 import { PageHeader } from "./components/ui/PageHeader";
 import { Map as MapIcon } from "lucide-react";
 import 'react-toastify/dist/ReactToastify.css';
@@ -66,6 +67,7 @@ function App() {
             <Route path="maintenance" element={<MaintenancePage />} />
             <Route path="finance" element={<FinancePage />} />
             <Route path="data" element={<DataManagementPage />} />
+            <Route path="activity" element={<ActivityLogPage />} />
             <Route path="scheduler" element={<SchedulerLanding />} />
             <Route path="ports/:portId/schedule" element={<BerthScheduler />} />
           </Route>

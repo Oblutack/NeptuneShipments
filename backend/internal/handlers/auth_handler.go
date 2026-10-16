@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"os"
 	"time"
 
 	"github.com/Oblutack/NeptuneShipments/backend/internal/models"
@@ -12,11 +11,15 @@ import (
 )
 
 type AuthHandler struct {
-	repo *repository.UserRepository
+	repo      *repository.UserRepository
+	jwtSecret string
 }
 
-func NewAuthHandler(repo *repository.UserRepository) *AuthHandler {
-	return &AuthHandler{repo: repo}
+// jwtSecret is passed in rather than re-read from the environment here, so
+// there is exactly one place (main.go) that decides the signing key and
+// enforces that it's actually set in production.
+func NewAuthHandler(repo *repository.UserRepository, jwtSecret string) *AuthHandler {
+	return &AuthHandler{repo: repo, jwtSecret: jwtSecret}
 }
 
 func (h *AuthHandler) Login(c *fiber.Ctx) error {
@@ -40,18 +43,14 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	}
 
 	// Generate JWT
-	secret := os.Getenv("JWT_SECRET")
-	if secret == "" {
-		secret = "neptune_secret_key_12345" 
-	}
-
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": user.ID,
+		"email":   user.Email,
 		"role":    user.Role,
-		"exp":     time.Now().Add(time.Hour * 24).Unix(), 
+		"exp":     time.Now().Add(time.Hour * 24).Unix(),
 	})
 
-	t, err := token.SignedString([]byte(secret))
+	t, err := token.SignedString([]byte(h.jwtSecret))
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Could not generate token"})
 	}

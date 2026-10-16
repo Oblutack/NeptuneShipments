@@ -206,6 +206,16 @@ export interface FinancialStats {
   avg_revenue_per_job: number;
 }
 
+export interface AuditLogEntry {
+  id: string;
+  actor_id: string | null;
+  actor_email: string;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  created_at: string;
+}
+
 export interface BerthAllocation {
   id: string;
   vessel_id: string;
@@ -510,6 +520,12 @@ export const apiSlice = createApi({
       query: () => "/finance/stats",
       providesTags: ["Shipments", "Vessels"], // Depends on both
     }),
+    getAuditLog: builder.query<
+      { entries: AuditLogEntry[]; count: number },
+      void
+    >({
+      query: () => "/audit",
+    }),
     getPortSchedule: builder.query<
       ScheduleResponse,
       { portId: string; startDate?: string; endDate?: string }
@@ -577,6 +593,7 @@ export const {
   useGetCrewQuery,
   useGetCrewByVesselQuery,
   useGetFinancialStatsQuery,
+  useGetAuditLogQuery,
   useUpdateVesselMutation,
   useDeleteVesselMutation,
   useUploadVesselCSVMutation,

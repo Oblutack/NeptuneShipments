@@ -11,6 +11,7 @@ import {
   Receipt,
   Wrench,
   Calendar,
+  ShieldCheck,
 } from "lucide-react";
 import { useDispatch } from "react-redux";
 import { logout } from "../features/auth/authSlice";
@@ -51,6 +52,16 @@ export const Sidebar = () => {
         { icon: Users, label: "Crew Management", path: "/dashboard/crew" },
         { icon: Receipt, label: "Financials", path: "/dashboard/finance" },
         { icon: Database, label: "Data Management", path: "/dashboard/data" },
+      ],
+    },
+    {
+      title: "ADMIN",
+      items: [
+        {
+          icon: ShieldCheck,
+          label: "Activity Log",
+          path: "/dashboard/activity",
+        },
       ],
     },
   ];

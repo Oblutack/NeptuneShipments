@@ -36,6 +36,18 @@ func main() {
 	}
 	defer db.Close()
 
+	// Resolved once, here, and passed into whatever needs it - the one
+	// place that decides the signing key and enforces it's actually set
+	// in production.
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		if os.Getenv("ENVIRONMENT") == "production" {
+			log.Fatal("JWT_SECRET must be set when ENVIRONMENT=production")
+		}
+		log.Println("Warning: JWT_SECRET not set, using an insecure default for local dev only")
+		jwtSecret = "neptune_secret_key_12345"
+	}
+
 	pdfService := services.NewPDFService()
 
 	hub := internalWs.NewHub()
@@ -56,6 +68,7 @@ func main() {
 	crewRepo := repository.NewCrewRepository(db)
 	financeRepo := repository.NewFinanceRepository(db)
 	allocationRepo := repository.NewAllocationRepository(db)
+	auditRepo := repository.NewAuditRepository(db)
 
 	importerService := services.NewImporterService(
     portRepo,
@@ -79,7 +92,7 @@ func main() {
 		pdfService,
 	)
 
-	authHandler := handlers.NewAuthHandler(userRepo)
+	authHandler := handlers.NewAuthHandler(userRepo, jwtSecret)
 	tankHandler := handlers.NewTankHandler(tankRepo)
 	routeHandler := handlers.NewRouteHandler(routeRepo, routingEngineRepo)
 	terminalHandler := handlers.NewTerminalHandler(terminalRepo)
@@ -87,7 +100,8 @@ func main() {
 	crewHandler := handlers.NewCrewHandler(crewRepo)
 	financeHandler := handlers.NewFinanceHandler(financeRepo)
 	wsHandler := handlers.NewWebSocketHandler(hub, vesselRepo)
-	allocationHandler := handlers.NewAllocationHandler(allocationRepo) 
+	allocationHandler := handlers.NewAllocationHandler(allocationRepo)
+	auditHandler := handlers.NewAuditHandler(auditRepo)
 
 	// Initialize Fiber
 	app := fiber.New()
@@ -129,14 +143,6 @@ func main() {
 	// needs it applied explicitly rather than through the usual
 	// api.Use(...) split further down - see the comment on
 	// /vessels/template for why.
-	jwtSecret := os.Getenv("JWT_SECRET")
-	if jwtSecret == "" {
-		if os.Getenv("ENVIRONMENT") == "production" {
-			log.Fatal("JWT_SECRET must be set when ENVIRONMENT=production")
-		}
-		log.Println("Warning: JWT_SECRET not set, using an insecure default for local dev only")
-		jwtSecret = "neptune_secret_key_12345"
-	}
 	requireAuth := jwtware.New(jwtware.Config{
 		SigningKey: jwtware.SigningKey{Key: []byte(jwtSecret)},
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
@@ -144,6 +150,9 @@ func main() {
 		},
 	})
 	requireAdmin := middleware.RequireRole("ADMIN")
+	audit := func(action, entityType string) fiber.Handler {
+		return middleware.AuditLog(auditRepo, action, entityType)
+	}
 
 	// Browsers can't set custom headers on a native WebSocket handshake,
 	// so /ws/fleet takes its token as a query param instead of a header.
@@ -194,37 +203,40 @@ func main() {
 	// PRIVATE ROUTES
 	// Vessels
 	vessels := api.Group("/vessels")
-	vessels.Post("/", requireAdmin, vesselHandler.CreateVessel)
+	vessels.Post("/", requireAdmin, audit("CREATE", "vessel"), vesselHandler.CreateVessel)
 	vessels.Get("/", vesselHandler.GetAllVessels)
-	vessels.Put("/:id", requireAdmin, vesselHandler.UpdateVessel)
-	vessels.Delete("/:id", requireAdmin, vesselHandler.DeleteVessel)
-	vessels.Post("/import", requireAdmin, vesselHandler.UploadVesselsCSV)
+	vessels.Put("/:id", requireAdmin, audit("UPDATE", "vessel"), vesselHandler.UpdateVessel)
+	vessels.Delete("/:id", requireAdmin, audit("DELETE", "vessel"), vesselHandler.DeleteVessel)
+	vessels.Post("/import", requireAdmin, audit("IMPORT", "vessel"), vesselHandler.UploadVesselsCSV)
 	vessels.Get("/:vesselId/tanks", tankHandler.GetTanks)
 	vessels.Get("/:vesselId/shipments", shipmentHandler.GetShipmentsByVessel)
 	vessels.Get("/:vesselId/components", componentHandler.GetComponents)
 	vessels.Get("/:id/crew", crewHandler.GetCrewByVessel)
-	vessels.Post("/:id/refuel", requireAdmin, vesselHandler.RefuelVessel)
+	vessels.Post("/:id/refuel", requireAdmin, audit("REFUEL", "vessel"), vesselHandler.RefuelVessel)
 
 	// Ports
 	ports := api.Group("/ports")
 	ports.Get("/", portHandler.GetAllPorts)
 	ports.Get("/stats", portHandler.GetPortStats)
-	ports.Post("/", requireAdmin, portHandler.CreatePort)
-	ports.Put("/:id", requireAdmin, portHandler.UpdatePort)
-	ports.Delete("/:id", requireAdmin, portHandler.DeletePort)
-	ports.Post("/import", requireAdmin, portHandler.UploadPortsCSV)
+	ports.Post("/", requireAdmin, audit("CREATE", "port"), portHandler.CreatePort)
+	ports.Put("/:id", requireAdmin, audit("UPDATE", "port"), portHandler.UpdatePort)
+	ports.Delete("/:id", requireAdmin, audit("DELETE", "port"), portHandler.DeletePort)
+	ports.Post("/import", requireAdmin, audit("IMPORT", "port"), portHandler.UploadPortsCSV)
 	ports.Get("/template", portHandler.DownloadPortsTemplate)
 	ports.Get("/:portId/terminals", terminalHandler.GetPortTerminals)
 
 
 	// Components
 	components := api.Group("/components")
-    components.Post("/:id/maintain", requireAdmin, componentHandler.PerformMaintenance)
+    components.Post("/:id/maintain", requireAdmin, audit("MAINTAIN", "component"), componentHandler.PerformMaintenance)
+
+	// Audit log (admin-only, read-only)
+	api.Get("/audit", requireAdmin, auditHandler.GetAuditLog)
 
 	// Crew
 	crew := api.Group("/crew")
     crew.Get("/", crewHandler.GetAllCrew)
-    crew.Put("/:id/assign", requireAdmin, crewHandler.AssignCrew)
+    crew.Put("/:id/assign", requireAdmin, audit("ASSIGN", "crew"), crewHandler.AssignCrew)
 
 	// Finance
     finance := api.Group("/finance")
@@ -238,8 +250,8 @@ func main() {
 	shipments.Post("/", shipmentHandler.CreateShipment)
 	shipments.Get("/", shipmentHandler.GetAllShipments)
 	shipments.Get("/:trackingNumber/bol", shipmentHandler.DownloadBOL)
-	shipments.Delete("/:id", requireAdmin, shipmentHandler.DeleteShipment)
-	shipments.Put("/:id", requireAdmin, shipmentHandler.UpdateShipment)
+	shipments.Delete("/:id", requireAdmin, audit("DELETE", "shipment"), shipmentHandler.DeleteShipment)
+	shipments.Put("/:id", requireAdmin, audit("UPDATE", "shipment"), shipmentHandler.UpdateShipment)
 
 	// Berth allocations
 	// NOTE: these three used to be registered on `app` instead of `api`,
@@ -247,7 +259,7 @@ func main() {
 	// with no token. Moved under the protected group like everything else.
 	ports.Get("/:portId/schedule", allocationHandler.GetSchedule)
 	allocations := api.Group("/allocations")
-	allocations.Post("/", requireAdmin, allocationHandler.CreateAllocation)
+	allocations.Post("/", requireAdmin, audit("CREATE", "allocation"), allocationHandler.CreateAllocation)
 	allocations.Get("/unassigned", allocationHandler.GetUnassignedVessels)
 
 	wsOrigins := strings.Split(allowedOrigins, ",")
