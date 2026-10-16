@@ -104,27 +104,20 @@ export const ShipmentForm = () => {
   const isLoading = portsLoading || vesselsLoading;
 
   return (
-    <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-xl overflow-hidden h-fit">
+    <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden h-fit">
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-b border-slate-800 px-6 py-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-purple-500/20 rounded-lg">
-            <Package className="text-purple-400" size={20} />
-          </div>
-          <div>
-            <h3 className="text-xl font-bold text-white">New Booking</h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Create a new shipment booking
-            </p>
-          </div>
+      <div className="border-b border-slate-800 px-5 py-3.5">
+        <div className="flex items-center gap-2">
+          <Package className="text-slate-500" size={16} />
+          <h3 className="text-sm font-semibold text-white">New Booking</h3>
         </div>
       </div>
 
-      <div className="p-6">
+      <div className="p-5">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-12 gap-3">
-            <Loader2 className="animate-spin text-purple-400" size={32} />
-            <span className="text-slate-300 font-medium">
+            <Loader2 className="animate-spin text-blue-400" size={28} />
+            <span className="text-slate-400 font-medium">
               Loading form data...
             </span>
           </div>
@@ -132,15 +125,15 @@ export const ShipmentForm = () => {
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Status Messages */}
             {submitStatus === "success" && (
-              <div className="flex items-center gap-2 bg-green-900/20 border border-green-500 text-green-200 p-4 rounded">
-                <CheckCircle2 size={20} />
+              <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-sm p-3 rounded-md">
+                <CheckCircle2 size={18} />
                 <span>Shipment created successfully!</span>
               </div>
             )}
 
             {submitStatus === "error" && (
-              <div className="flex items-center gap-2 bg-red-900/20 border border-red-500 text-red-200 p-4 rounded">
-                <AlertCircle size={20} />
+              <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 text-red-300 text-sm p-3 rounded-md">
+                <AlertCircle size={18} />
                 <span>{errorMessage}</span>
               </div>
             )}
@@ -150,7 +143,7 @@ export const ShipmentForm = () => {
               <div>
                 <label
                   htmlFor="tracking_number"
-                  className="block text-sm font-medium text-slate-300 mb-2"
+                  className="block text-xs font-medium text-slate-400 mb-1.5"
                 >
                   Tracking Number <span className="text-red-400">*</span>
                 </label>
@@ -162,7 +155,7 @@ export const ShipmentForm = () => {
                   onChange={handleChange}
                   placeholder="TRK-123456"
                   required
-                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
@@ -170,7 +163,7 @@ export const ShipmentForm = () => {
               <div>
                 <label
                   htmlFor="customer_name"
-                  className="block text-sm font-medium text-slate-300 mb-2"
+                  className="block text-xs font-medium text-slate-400 mb-1.5"
                 >
                   Customer Name <span className="text-red-400">*</span>
                 </label>
@@ -182,7 +175,7 @@ export const ShipmentForm = () => {
                   onChange={handleChange}
                   placeholder="John Doe"
                   required
-                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
@@ -190,7 +183,7 @@ export const ShipmentForm = () => {
               <div>
                 <label
                   htmlFor="origin_port_id"
-                  className="block text-sm font-medium text-slate-300 mb-2"
+                  className="block text-xs font-medium text-slate-400 mb-1.5"
                 >
                   Origin Port <span className="text-red-400">*</span>
                 </label>
@@ -200,7 +193,7 @@ export const ShipmentForm = () => {
                   value={formData.origin_port_id}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">Select origin port</option>
                   {ports?.map((port) => (
@@ -215,7 +208,7 @@ export const ShipmentForm = () => {
               <div>
                 <label
                   htmlFor="destination_port_id"
-                  className="block text-sm font-medium text-slate-300 mb-2"
+                  className="block text-xs font-medium text-slate-400 mb-1.5"
                 >
                   Destination Port <span className="text-red-400">*</span>
                 </label>
@@ -225,7 +218,7 @@ export const ShipmentForm = () => {
                   value={formData.destination_port_id}
                   onChange={handleChange}
                   required
-                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">Select destination port</option>
                   {ports?.map((port) => (
@@ -240,7 +233,7 @@ export const ShipmentForm = () => {
               <div>
                 <label
                   htmlFor="vessel_id"
-                  className="block text-sm font-medium text-slate-300 mb-2"
+                  className="block text-xs font-medium text-slate-400 mb-1.5"
                 >
                   Assign Vessel{" "}
                   <span className="text-slate-500">(Optional)</span>
@@ -250,7 +243,7 @@ export const ShipmentForm = () => {
                   name="vessel_id"
                   value={formData.vessel_id}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">No vessel assigned yet</option>
                   {vessels?.map((vessel) => (
@@ -265,7 +258,7 @@ export const ShipmentForm = () => {
               <div>
                 <label
                   htmlFor="container_number"
-                  className="block text-sm font-medium text-slate-300 mb-2"
+                  className="block text-xs font-medium text-slate-400 mb-1.5"
                 >
                   Container Number
                 </label>
@@ -277,7 +270,7 @@ export const ShipmentForm = () => {
                   onChange={handleChange}
                   placeholder="MSKU1234567"
                   maxLength={11}
-                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
 
@@ -285,7 +278,7 @@ export const ShipmentForm = () => {
               <div>
                 <label
                   htmlFor="weight_kg"
-                  className="block text-sm font-medium text-slate-300 mb-2"
+                  className="block text-xs font-medium text-slate-400 mb-1.5"
                 >
                   Weight (kg)
                 </label>
@@ -298,7 +291,7 @@ export const ShipmentForm = () => {
                   placeholder="1000"
                   min="0"
                   step="0.01"
-                  className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
             </div>
@@ -307,7 +300,7 @@ export const ShipmentForm = () => {
             <div>
               <label
                 htmlFor="description"
-                className="block text-sm font-medium text-slate-300 mb-2"
+                className="block text-xs font-medium text-slate-400 mb-1.5"
               >
                 Description
               </label>
@@ -318,7 +311,7 @@ export const ShipmentForm = () => {
                 onChange={handleChange}
                 placeholder="Enter shipment details..."
                 rows={3}
-                className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 resize-none"
               />
             </div>
 
@@ -326,7 +319,7 @@ export const ShipmentForm = () => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:bg-slate-700 disabled:from-slate-700 disabled:to-slate-700 disabled:cursor-not-allowed text-white font-bold py-3 px-6 rounded-xl transition-all shadow-lg shadow-purple-500/20 flex items-center justify-center gap-2"
+              className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-white font-medium text-sm py-2.5 px-6 rounded-md transition-colors flex items-center justify-center gap-2"
             >
               {isSubmitting ? (
                 <>
