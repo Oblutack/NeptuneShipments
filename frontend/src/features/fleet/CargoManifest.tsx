@@ -54,9 +54,9 @@ export const CargoManifest = ({ vesselId }: CargoManifestProps) => {
   // Loading State
   if (isLoading) {
     return (
-      <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-2xl p-12 flex items-center justify-center gap-3">
-        <Loader2 className="animate-spin text-blue-400" size={28} />
-        <span className="text-slate-300 font-medium">
+      <div className="bg-slate-900 border border-slate-800 rounded-lg p-12 flex items-center justify-center gap-3">
+        <Loader2 className="animate-spin text-blue-400" size={24} />
+        <span className="text-slate-400 font-medium">
           Loading cargo manifest...
         </span>
       </div>
@@ -66,12 +66,12 @@ export const CargoManifest = ({ vesselId }: CargoManifestProps) => {
   // Error State
   if (error) {
     return (
-      <div className="bg-red-900/20 border border-red-500/50 rounded-2xl p-8 text-red-200">
-        <div className="flex items-center gap-3 mb-3">
-          <AlertTriangle className="text-red-400" size={24} />
-          <p className="font-bold text-lg">Failed to load cargo manifest</p>
+      <div className="bg-slate-900 border-l-2 border-red-500 rounded-lg p-6 text-red-200">
+        <div className="flex items-center gap-2 mb-2">
+          <AlertTriangle className="text-red-400" size={18} />
+          <p className="font-semibold">Failed to load cargo manifest</p>
         </div>
-        <p className="text-sm text-red-400/80">Please try again later</p>
+        <p className="text-sm text-red-400/70">Please try again later</p>
       </div>
     );
   }
@@ -79,14 +79,14 @@ export const CargoManifest = ({ vesselId }: CargoManifestProps) => {
   // Empty State
   if (!data || data.count === 0) {
     return (
-      <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-2xl p-16 text-center">
-        <div className="p-6 bg-slate-800/50 rounded-2xl inline-block mb-6">
-          <Package className="text-slate-600" size={64} />
+      <div className="bg-slate-900 border border-slate-800 rounded-lg p-16 text-center">
+        <div className="p-5 bg-slate-800/50 rounded-lg inline-block mb-5">
+          <Package className="text-slate-600" size={48} />
         </div>
-        <h3 className="text-2xl font-bold text-white mb-2">
+        <h3 className="text-lg font-semibold text-white mb-1.5">
           No Cargo Manifest Found
         </h3>
-        <p className="text-slate-400">
+        <p className="text-slate-500 text-sm">
           This vessel has no assigned shipments for tracking
         </p>
       </div>
@@ -94,27 +94,22 @@ export const CargoManifest = ({ vesselId }: CargoManifestProps) => {
   }
 
   return (
-    <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
+    <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border-b border-slate-800 px-6 py-4">
+      <div className="border-b border-slate-800 px-5 py-3.5">
         <div className="flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-500/20 rounded-lg">
-              <Container className="text-blue-400" size={20} />
-            </div>
-            <div>
-              <h3 className="text-xl font-bold text-white">Cargo Manifest</h3>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Shipment tracking and manifest details
-              </p>
-            </div>
+          <div className="flex items-center gap-2">
+            <Container className="text-slate-500" size={16} />
+            <h3 className="text-sm font-semibold text-white">
+              Cargo Manifest
+            </h3>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-bold text-blue-400 bg-blue-900/30 px-4 py-2 rounded-xl border border-blue-500/30">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-slate-400 bg-slate-800 px-2.5 py-1 rounded-md">
               {data.count} Shipment{data.count !== 1 ? "s" : ""}
             </span>
-            <span className="text-xs font-bold text-green-400 bg-green-900/30 px-4 py-2 rounded-xl border border-green-500/30 flex items-center gap-2">
-              <DollarSign size={14} />${calculateTotalValue().toLocaleString()}
+            <span className="text-xs font-medium text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-md flex items-center gap-1">
+              <DollarSign size={12} />${calculateTotalValue().toLocaleString()}
             </span>
           </div>
         </div>
@@ -124,15 +119,15 @@ export const CargoManifest = ({ vesselId }: CargoManifestProps) => {
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-slate-800/50 text-slate-400 text-xs uppercase tracking-wider">
-              <th className="px-6 py-3 text-left font-bold w-8"></th>
-              <th className="px-6 py-3 text-left font-bold">Tracking #</th>
-              <th className="px-6 py-3 text-left font-bold">Container</th>
-              <th className="px-6 py-3 text-left font-bold">Customer</th>
-              <th className="px-6 py-3 text-left font-bold">Route</th>
-              <th className="px-6 py-3 text-right font-bold">Weight</th>
-              <th className="px-6 py-3 text-right font-bold">Value</th>
-              <th className="px-6 py-3 text-left font-bold">Description</th>
+            <tr className="bg-slate-900 text-slate-500 text-xs uppercase tracking-wide">
+              <th className="px-4 py-3 text-left font-semibold w-8"></th>
+              <th className="px-4 py-3 text-left font-semibold">Tracking #</th>
+              <th className="px-4 py-3 text-left font-semibold">Container</th>
+              <th className="px-4 py-3 text-left font-semibold">Customer</th>
+              <th className="px-4 py-3 text-left font-semibold">Route</th>
+              <th className="px-4 py-3 text-right font-semibold">Weight</th>
+              <th className="px-4 py-3 text-right font-semibold">Value</th>
+              <th className="px-4 py-3 text-left font-semibold">Description</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800">
@@ -145,11 +140,11 @@ export const CargoManifest = ({ vesselId }: CargoManifestProps) => {
                 <>
                   <tr
                     key={shipment.id}
-                    className={`hover:bg-slate-800/30 transition-colors ${hasManifest ? "cursor-pointer" : ""}`}
+                    className={`hover:bg-slate-800/50 transition-colors ${hasManifest ? "cursor-pointer" : ""}`}
                     onClick={() => hasManifest && toggleRow(shipment.id)}
                   >
                     {/* Expand Icon */}
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3">
                       {hasManifest ? (
                         isExpanded ? (
                           <ChevronDown size={16} className="text-blue-400" />
@@ -162,7 +157,7 @@ export const CargoManifest = ({ vesselId }: CargoManifestProps) => {
                     </td>
 
                     {/* Tracking Number */}
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <Package size={14} className="text-blue-400" />
                         <span className="font-mono font-bold text-white">
@@ -172,7 +167,7 @@ export const CargoManifest = ({ vesselId }: CargoManifestProps) => {
                     </td>
 
                     {/* Container Number */}
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3">
                       <span className="font-mono text-xs text-slate-300">
                         {shipment.container_number || (
                           <span className="text-slate-600">—</span>
@@ -181,7 +176,7 @@ export const CargoManifest = ({ vesselId }: CargoManifestProps) => {
                     </td>
 
                     {/* Customer */}
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <User size={12} className="text-slate-500" />
                         <span className="text-slate-300">
@@ -191,7 +186,7 @@ export const CargoManifest = ({ vesselId }: CargoManifestProps) => {
                     </td>
 
                     {/* Route */}
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3">
                       <div className="flex items-center gap-2 text-xs">
                         <MapPin size={12} className="text-orange-400" />
                         <span className="text-slate-400">
@@ -206,7 +201,7 @@ export const CargoManifest = ({ vesselId }: CargoManifestProps) => {
                     </td>
 
                     {/* Weight */}
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <Scale size={12} className="text-slate-500" />
                         <span className="font-mono text-slate-300">
@@ -217,7 +212,7 @@ export const CargoManifest = ({ vesselId }: CargoManifestProps) => {
                     </td>
 
                     {/* Value */}
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <DollarSign size={12} className="text-green-500" />
                         <span className="font-mono text-green-400 font-bold">
@@ -230,7 +225,7 @@ export const CargoManifest = ({ vesselId }: CargoManifestProps) => {
                     </td>
 
                     {/* Description */}
-                    <td className="px-6 py-4">
+                    <td className="px-4 py-3">
                       <div className="flex items-start gap-2 max-w-xs">
                         <FileText
                           size={12}
@@ -251,22 +246,20 @@ export const CargoManifest = ({ vesselId }: CargoManifestProps) => {
                   {isExpanded && hasManifest && (
                     <tr
                       key={`${shipment.id}-details`}
-                      className="bg-gradient-to-r from-slate-900/50 to-slate-950/50"
+                      className="bg-slate-950/50"
                     >
-                      <td colSpan={8} className="px-6 py-6">
+                      <td colSpan={8} className="px-4 py-5">
                         <div className="ml-8">
-                          <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-800">
-                            <div className="p-1.5 bg-blue-500/20 rounded-lg">
-                              <Package size={14} className="text-blue-400" />
-                            </div>
-                            <h4 className="text-xs font-bold text-white uppercase tracking-wide">
+                          <div className="flex items-center gap-2 mb-3 pb-2.5 border-b border-slate-800">
+                            <Package size={14} className="text-slate-500" />
+                            <h4 className="text-xs font-semibold text-white uppercase tracking-wide">
                               Manifest Items ({shipment.manifest_items.length})
                             </h4>
                           </div>
-                          <div className="bg-slate-900/70 backdrop-blur-sm rounded-xl border border-slate-700 overflow-hidden shadow-lg">
+                          <div className="bg-slate-950 rounded-lg border border-slate-800 overflow-hidden">
                             <table className="w-full text-xs">
                               <thead>
-                                <tr className="bg-slate-800/50 text-slate-400 uppercase tracking-wider">
+                                <tr className="bg-slate-900 text-slate-500 uppercase tracking-wide">
                                   <th className="px-4 py-3 text-left font-semibold">
                                     SKU
                                   </th>
@@ -335,7 +328,7 @@ export const CargoManifest = ({ vesselId }: CargoManifestProps) => {
       </div>
 
       {/* Footer Summary */}
-      <div className="bg-slate-950 border-t border-slate-800 px-6 py-4">
+      <div className="bg-slate-950 border-t border-slate-800 px-4 py-3">
         <div className="flex justify-between items-center text-xs">
           <span className="text-slate-500">
             Total Cargo:{" "}

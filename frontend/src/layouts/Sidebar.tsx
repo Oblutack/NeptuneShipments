@@ -56,45 +56,45 @@ export const Sidebar = () => {
   ];
 
   return (
-    <aside className="w-64 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 border-r border-slate-800/50 flex flex-col h-screen fixed left-0 top-0 z-50 shadow-xl">
+    <aside className="w-64 bg-slate-950 border-r border-slate-800 flex flex-col h-screen fixed left-0 top-0 z-50">
       {/* Brand */}
-      <div className="h-16 flex items-center px-6 border-b border-slate-800/50 bg-slate-900/50 backdrop-blur-xl">
-        <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl mr-3 shadow-lg shadow-blue-500/20">
-          <Globe className="text-white" size={20} />
+      <div className="h-14 flex items-center px-5 border-b border-slate-800">
+        <div className="p-1.5 bg-blue-600 rounded-md mr-2.5">
+          <Globe className="text-white" size={16} />
         </div>
-        <span className="font-bold text-white tracking-tight text-lg">
-          Neptune<span className="text-slate-400">OS</span>
+        <span className="font-semibold text-white tracking-tight text-[15px]">
+          Neptune<span className="text-slate-500">OS</span>
         </span>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-6 px-3 overflow-y-auto">
+      <nav className="flex-1 py-5 px-3 overflow-y-auto">
         {navSections.map((section, idx) => (
-          <div key={section.title} className={idx > 0 ? "mt-6" : ""}>
-            <h3 className="text-xs font-bold text-slate-500 px-4 mb-2 tracking-wider">
+          <div key={section.title} className={idx > 0 ? "mt-5" : ""}>
+            <h3 className="text-[10px] font-semibold text-slate-600 px-3 mb-1.5 tracking-wider">
               {section.title}
             </h3>
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               {section.items.map((item) => (
                 <NavLink
                   key={item.path}
                   to={item.path}
                   end={item.path === "/dashboard"}
                   className={({ isActive }) =>
-                    `flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all text-sm font-medium group ${
+                    `flex items-center gap-2.5 px-3 py-2 rounded-md transition-colors text-sm font-medium border-l-2 ${
                       isActive
-                        ? "bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg shadow-blue-500/30"
-                        : "text-slate-400 hover:bg-slate-800/50 hover:text-white"
+                        ? "bg-blue-500/10 text-white border-blue-500"
+                        : "text-slate-400 hover:bg-slate-900 hover:text-white border-transparent"
                     }`
                   }
                 >
                   {({ isActive }) => (
                     <>
                       <item.icon
-                        size={18}
+                        size={16}
                         className={
                           isActive
-                            ? "text-white"
+                            ? "text-blue-400"
                             : "text-slate-500 group-hover:text-white transition-colors"
                         }
                       />
@@ -109,26 +109,22 @@ export const Sidebar = () => {
       </nav>
 
       {/* Footer Actions */}
-      <div className="p-4 border-t border-slate-800/50 bg-slate-900/50 backdrop-blur-xl space-y-1">
+      <div className="p-3 border-t border-slate-800 space-y-0.5">
         <NavLink
           to="/dashboard/settings"
           className={({ isActive }) =>
-            `flex items-center gap-3 w-full px-4 py-2.5 rounded-xl transition-all text-sm font-medium group ${
+            `flex items-center gap-2.5 w-full px-3 py-2 rounded-md transition-colors text-sm font-medium ${
               isActive
-                ? "bg-gradient-to-r from-slate-700 to-slate-600 text-white shadow-lg"
-                : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+                ? "bg-slate-800 text-white"
+                : "text-slate-400 hover:text-white hover:bg-slate-900"
             }`
           }
         >
           {({ isActive }) => (
             <>
               <Settings
-                size={18}
-                className={
-                  isActive
-                    ? "text-white"
-                    : "text-slate-500 group-hover:text-white transition-colors"
-                }
+                size={16}
+                className={isActive ? "text-white" : "text-slate-500"}
               />
               Settings
             </>
@@ -136,12 +132,9 @@ export const Sidebar = () => {
         </NavLink>
         <button
           onClick={() => dispatch(logout())}
-          className="flex items-center gap-3 w-full px-4 py-2.5 text-red-400 hover:bg-red-900/20 hover:text-red-300 rounded-xl transition-all text-sm font-medium group"
+          className="flex items-center gap-2.5 w-full px-3 py-2 text-slate-400 hover:bg-red-500/10 hover:text-red-400 rounded-md transition-colors text-sm font-medium"
         >
-          <LogOut
-            size={18}
-            className="group-hover:scale-110 transition-transform"
-          />
+          <LogOut size={16} />
           Sign Out
         </button>
       </div>

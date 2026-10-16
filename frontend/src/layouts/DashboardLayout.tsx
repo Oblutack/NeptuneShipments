@@ -12,11 +12,8 @@ export const DashboardLayout = () => {
       <Sidebar />
 
       {/* 2. Main Content Area (Scrollable) */}
-      <div className="flex-1 ml-64">
-        {/* We can put a global Header here later if we want */}
-
-        {/* Render the specific page content here */}
-        <div className="p-8">
+      <div className="flex-1 ml-64 min-h-screen">
+        <div className="max-w-[1800px] mx-auto p-6">
           <Outlet />
         </div>
       </div>

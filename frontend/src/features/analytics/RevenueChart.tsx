@@ -29,17 +29,20 @@ const growthRate =
 
 export const RevenueChart = () => {
   return (
-    <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+    <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border-b border-slate-800 px-6 py-4">
+      <div className="border-b border-slate-800 px-5 py-3.5">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-500/20 rounded-lg">
-              <TrendingUp className="text-blue-400" size={20} />
-            </div>
-            <h3 className="text-xl font-bold text-white">Revenue Trend</h3>
+          <div className="flex items-center gap-2">
+            <TrendingUp className="text-slate-500" size={16} />
+            <h3 className="text-sm font-semibold text-white">
+              Revenue Trend
+            </h3>
+            <span className="text-[10px] text-slate-600 font-medium bg-slate-800 px-1.5 py-0.5 rounded">
+              SIMULATED
+            </span>
           </div>
-          <select className="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 px-3 py-2 rounded-lg transition-colors cursor-pointer">
+          <select className="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 px-2.5 py-1.5 rounded-md transition-colors cursor-pointer">
             <option>Last 7 Days</option>
             <option>Last 30 Days</option>
             <option>Last 90 Days</option>
@@ -47,17 +50,17 @@ export const RevenueChart = () => {
         </div>
       </div>
 
-      <div className="p-6">
+      <div className="p-5">
         {/* Stats Header */}
         <div className="flex justify-between items-start mb-6">
           <div>
             <p className="text-xs text-slate-500">Last 7 days</p>
           </div>
           <div className="text-right">
-            <div className="text-2xl font-bold text-white">
+            <div className="text-xl font-semibold text-white">
               ${totalRevenue.toLocaleString()}
             </div>
-            <div className="flex items-center gap-1 text-xs text-green-400 mt-1">
+            <div className="flex items-center gap-1 text-xs text-emerald-400 mt-1">
               <TrendingUp size={12} />+{growthRate.toFixed(1)}% week
             </div>
           </div>
@@ -125,10 +128,10 @@ export const RevenueChart = () => {
         </ResponsiveContainer>
 
         {/* Footer Stats */}
-        <div className="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-slate-800">
+        <div className="grid grid-cols-2 gap-4 mt-6 pt-4 border-t border-slate-800">
           <div>
             <p className="text-xs text-slate-500 mb-1">Avg Daily</p>
-            <p className="text-lg font-bold text-white">
+            <p className="text-base font-semibold text-white">
               $
               {avgDailyRevenue.toLocaleString(undefined, {
                 maximumFractionDigits: 0,
@@ -137,7 +140,7 @@ export const RevenueChart = () => {
           </div>
           <div>
             <p className="text-xs text-slate-500 mb-1">Peak Day</p>
-            <p className="text-lg font-bold text-white">
+            <p className="text-base font-semibold text-white">
               ${Math.max(...revenueData.map((d) => d.revenue)).toLocaleString()}
             </p>
           </div>
@@ -165,7 +168,7 @@ const CustomTooltip = ({ active, payload }: TooltipProps) => {
   const data = payload[0].payload;
 
   return (
-    <div className="bg-slate-950/95 backdrop-blur-sm border border-blue-500/50 rounded-lg px-4 py-3 shadow-xl">
+    <div className="bg-slate-950 border border-slate-700 rounded-md px-3 py-2.5 shadow-lg">
       <p className="text-xs text-slate-400 mb-2 font-bold">{data.day}</p>
       <div className="space-y-1">
         <div className="flex items-center gap-2">

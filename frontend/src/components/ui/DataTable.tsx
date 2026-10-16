@@ -12,6 +12,7 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   onRowClick?: (row: TData) => void;
+  isRowSelected?: (row: TData) => boolean;
 }
 
 /* eslint-disable react-hooks/incompatible-library */
@@ -19,6 +20,7 @@ export function DataTable<TData, TValue>({
   columns,
   data,
   onRowClick,
+  isRowSelected,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
 
@@ -34,14 +36,14 @@ export function DataTable<TData, TValue>({
   });
 
   return (
-    <div className="rounded-md border border-slate-800 overflow-hidden">
+    <div className="rounded-lg border border-slate-800 overflow-hidden">
       <table className="w-full text-sm text-left">
-        <thead className="bg-slate-900 text-slate-400 uppercase font-bold">
+        <thead className="bg-slate-900 text-slate-500 text-xs uppercase font-semibold tracking-wide">
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
               {headerGroup.headers.map((header) => {
                 return (
-                  <th key={header.id} className="px-6 py-4">
+                  <th key={header.id} className="px-4 py-3">
                     {header.isPlaceholder ? null : (
                       <div
                         className={
@@ -66,17 +68,20 @@ export function DataTable<TData, TValue>({
             </tr>
           ))}
         </thead>
-        <tbody className="divide-y divide-slate-800 bg-slate-900/50">
+        <tbody className="divide-y divide-slate-800 bg-slate-900">
           {table.getRowModel().rows?.length ? (
             table.getRowModel().rows.map((row) => (
               <tr
                 key={row.id}
-                data-state={row.getIsSelected() && "selected"}
-                className="hover:bg-slate-800/50 transition-colors cursor-pointer"
+                className={`transition-colors cursor-pointer ${
+                  isRowSelected?.(row.original)
+                    ? "bg-blue-500/10 hover:bg-blue-500/15"
+                    : "hover:bg-slate-800/50"
+                }`}
                 onClick={() => onRowClick && onRowClick(row.original)}
               >
                 {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="px-6 py-4 text-slate-300">
+                  <td key={cell.id} className="px-4 py-3 text-slate-300">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}

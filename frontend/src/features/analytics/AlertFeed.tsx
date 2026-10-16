@@ -47,34 +47,34 @@ export const AlertFeed = ({ vessels }: AlertFeedProps) => {
   });
 
   return (
-    <div className="bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+    <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
       {/* Header */}
-      <div className="bg-gradient-to-r from-yellow-500/10 to-amber-500/10 border-b border-slate-800 px-6 py-4">
+      <div className="border-b border-slate-800 px-5 py-3.5">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-yellow-500/20 rounded-lg">
-              <AlertTriangle className="text-yellow-400" size={20} />
-            </div>
-            <h3 className="text-xl font-bold text-white">System Alerts</h3>
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="text-slate-500" size={16} />
+            <h3 className="text-sm font-semibold text-white">
+              System Alerts
+            </h3>
           </div>
-          <span className="text-xs font-bold text-yellow-400 bg-yellow-900/30 px-4 py-2 rounded-xl border border-yellow-500/30">
+          <span className="text-xs font-medium text-slate-400 bg-slate-800 px-2.5 py-1 rounded-md">
             {alerts.length} Active
           </span>
         </div>
       </div>
 
       {/* Alert List */}
-      <div className="p-6">
-        <div className="space-y-3 max-h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900">
+      <div className="p-3">
+        <div className="space-y-2 max-h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900">
           {alerts.length === 0 ? (
             <div className="text-center py-12">
-              <div className="p-6 bg-slate-800/50 rounded-2xl inline-block mb-4">
-                <Info className="text-slate-600" size={48} />
+              <div className="p-5 bg-slate-800/50 rounded-lg inline-block mb-4">
+                <Info className="text-slate-600" size={40} />
               </div>
-              <h3 className="text-lg font-bold text-white mb-2">
+              <h3 className="text-base font-semibold text-white mb-1">
                 No active alerts
               </h3>
-              <p className="text-sm text-slate-400">All systems operational</p>
+              <p className="text-sm text-slate-500">All systems operational</p>
             </div>
           ) : (
             alerts.map((alert) => <AlertCard key={alert.id} alert={alert} />)
@@ -91,35 +91,27 @@ const AlertCard = ({ alert }: { alert: Alert }) => {
 
   return (
     <div
-      className={`p-4 rounded-xl border transition-all hover:shadow-lg ${
-        isCritical
-          ? "bg-red-900/20 border-red-500/50 hover:border-red-500 hover:shadow-red-500/10"
-          : "bg-blue-900/20 border-blue-500/50 hover:border-blue-500 hover:shadow-blue-500/10"
+      className={`p-3 rounded-md bg-slate-950/50 border-l-2 ${
+        isCritical ? "border-red-500" : "border-blue-500"
       }`}
     >
       <div className="flex items-start gap-3">
         {/* Icon */}
-        <div
-          className={`p-2 rounded-full shrink-0 ${
-            isCritical ? "bg-red-900/50" : "bg-blue-900/50"
-          }`}
-        >
-          {isCritical ? (
-            <AlertTriangle className="text-red-400 animate-pulse" size={18} />
-          ) : (
-            <Anchor className="text-blue-400" size={18} />
-          )}
-        </div>
+        {isCritical ? (
+          <AlertTriangle className="text-red-400 shrink-0 mt-0.5" size={16} />
+        ) : (
+          <Anchor className="text-blue-400 shrink-0 mt-0.5" size={16} />
+        )}
 
         {/* Content */}
         <div className="flex-1 min-w-0">
           {/* Alert Type Badge */}
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-1.5">
             <span
-              className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
+              className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${
                 isCritical
-                  ? "bg-red-500/30 text-red-200"
-                  : "bg-blue-500/30 text-blue-200"
+                  ? "bg-red-500/15 text-red-400"
+                  : "bg-blue-500/15 text-blue-400"
               }`}
             >
               {alert.type}
@@ -130,23 +122,21 @@ const AlertCard = ({ alert }: { alert: Alert }) => {
           </div>
 
           {/* Message */}
-          <p className="text-sm text-white mb-2">{alert.message}</p>
+          <p className="text-sm text-white mb-1.5">{alert.message}</p>
 
           {/* Vessel Details */}
-          <div className="flex items-center gap-4 text-xs text-slate-400">
+          <div className="flex items-center gap-3 text-xs text-slate-500">
             <span className="flex items-center gap-1">
-              <Ship size={12} />
+              <Ship size={11} />
               {alert.vessel.imo_number}
             </span>
-            <span className="text-slate-600">|</span>
             <span>{alert.vessel.type}</span>
-            <span className="text-slate-600">|</span>
             <span>{alert.vessel.speed_knots.toFixed(1)} kn</span>
           </div>
 
           {/* Critical Action Button */}
           {isCritical && (
-            <button className="mt-3 text-xs bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white px-4 py-2 rounded-lg font-bold transition-all shadow-lg shadow-red-500/20">
+            <button className="mt-2.5 text-xs bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded-md font-medium transition-colors">
               Request Assistance
             </button>
           )}
