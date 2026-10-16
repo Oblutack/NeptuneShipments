@@ -13,6 +13,7 @@ import { useMemo, useState } from "react";
 import { PortInspector } from "./PortInspector";
 import { useAISTraffic, type AISVessel } from "./useAISTraffic";
 import { StatusBadge } from "../../components/ui/StatusBadge";
+import { haversineDistanceKm, AIS_PORT_PROXIMITY_KM } from "../../lib/geo";
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 
@@ -109,6 +110,22 @@ export const GlobalMap = ({
   const [clickedAISVessel, setClickedAISVessel] = useState<AISVessel | null>(
     null,
   );
+
+  // Real ship count near the selected port, from real AIS positions - only
+  // computed while the AIS layer is actually on, since otherwise there's no
+  // real data to show (not "0", which would look like a real observation).
+  const realShipsNearSelectedPort = useMemo(() => {
+    if (!showAISTraffic || !selectedPort) return null;
+    return aisVessels.filter(
+      (v) =>
+        haversineDistanceKm(
+          v.latitude,
+          v.longitude,
+          selectedPort.latitude,
+          selectedPort.longitude,
+        ) <= AIS_PORT_PROXIMITY_KM,
+    ).length;
+  }, [showAISTraffic, selectedPort, aisVessels]);
 
   const aisGeoJSON = useMemo<GeoJSON.FeatureCollection>(
     () => ({
@@ -554,6 +571,7 @@ export const GlobalMap = ({
         <PortInspector
           port={selectedPort}
           onClose={() => setSelectedPortId(null)}
+          realShipsNearby={realShipsNearSelectedPort}
         />
       )}
     </div>

@@ -12,14 +12,24 @@ import {
   Ship,
   MapPin,
   Building,
+  Radio,
 } from "lucide-react";
+import { AIS_PORT_PROXIMITY_KM } from "../../lib/geo";
 
 interface PortInspectorProps {
   port: Port;
   onClose: () => void;
+  // Real AIS ship count within range of this port - null means the AIS
+  // Live layer is off, so there's no real data to show (distinct from 0,
+  // which would mean "checked, none nearby").
+  realShipsNearby?: number | null;
 }
 
-export const PortInspector = ({ port, onClose }: PortInspectorProps) => {
+export const PortInspector = ({
+  port,
+  onClose,
+  realShipsNearby,
+}: PortInspectorProps) => {
   const { data, isLoading, error } = useGetPortTerminalsQuery(port.id);
 
   return (
@@ -53,6 +63,23 @@ export const PortInspector = ({ port, onClose }: PortInspectorProps) => {
           </button>
         </div>
       </div>
+
+      {/* REAL AIS TRAFFIC - only rendered when the AIS layer is actually on */}
+      {realShipsNearby !== null && realShipsNearby !== undefined && (
+        <div className="px-4 pt-4 shrink-0">
+          <div className="flex items-center justify-between bg-cyan-500/10 border border-cyan-500/20 rounded-lg px-3 py-2.5">
+            <div className="flex items-center gap-2">
+              <Radio size={14} className="text-cyan-400" />
+              <span className="text-xs text-cyan-200">
+                Real ships within {AIS_PORT_PROXIMITY_KM}km
+              </span>
+            </div>
+            <span className="text-lg font-semibold text-white tabular-nums">
+              {realShipsNearby}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* CONTENT */}
       <div className="relative flex-1 overflow-hidden">
