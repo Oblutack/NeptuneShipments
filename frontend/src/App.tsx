@@ -17,7 +17,9 @@ import { FinancePage } from "./pages/dashboard/FinancePage";
 import { BerthScheduler } from "./features/port/BerthScheduler";
 import { SchedulerLanding } from "./features/port/SchedulerLanding";
 import DataManagementPage from './pages/dashboard/DataManagementPage';
-import 'react-toastify/dist/ReactToastify.css'; 
+import { PageHeader } from "./components/ui/PageHeader";
+import { Map as MapIcon } from "lucide-react";
+import 'react-toastify/dist/ReactToastify.css';
 
 // Wrapper for Map Page to handle data fetching
 const MapPage = () => {
@@ -27,15 +29,19 @@ const MapPage = () => {
   const { data: ports } = useGetPortsQuery();
 
   return (
-    <div className="space-y-6">
-      {/* 1. The Map */}
-      <div className="h-150">
-        <GlobalMap vessels={vessels} ports={ports} onShipClick={() => {}} />
+    <>
+      <PageHeader
+        icon={MapIcon}
+        title="Live Map"
+        subtitle="Global fleet position and port activity"
+      />
+      <div className="space-y-4">
+        <div className="h-150">
+          <GlobalMap vessels={vessels} ports={ports} onShipClick={() => {}} />
+        </div>
+        <MapCommandDeck />
       </div>
-
-      {/* 2. The Command Deck (New) */}
-      <MapCommandDeck />
-    </div>
+    </>
   );
 };
 

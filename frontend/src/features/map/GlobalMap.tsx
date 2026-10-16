@@ -12,6 +12,7 @@ import { Ship, Anchor, Network, Radio } from "lucide-react";
 import { useMemo, useState } from "react";
 import { PortInspector } from "./PortInspector";
 import { useAISTraffic, type AISVessel } from "./useAISTraffic";
+import { StatusBadge } from "../../components/ui/StatusBadge";
 
 const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 
@@ -146,7 +147,7 @@ export const GlobalMap = ({
   });
 
   return (
-    <div className="w-full rounded-xl overflow-hidden shadow-2xl border border-slate-700 relative bg-gray-900 h-[600px]">
+    <div className="w-full rounded-lg overflow-hidden border border-slate-800 relative bg-slate-950 h-[600px]">
       <Map
         mapLib={mapboxgl}
         initialViewState={{
@@ -284,7 +285,7 @@ export const GlobalMap = ({
                     : "text-orange-500/80 hover:text-orange-300"
                 }`}
               />
-              <div className="absolute bottom-full mb-1 hidden group-hover:block bg-black/80 text-white text-[10px] p-1 px-2 rounded border border-orange-500/30 whitespace-nowrap z-50">
+              <div className="absolute bottom-full mb-1 hidden group-hover:block bg-slate-900 text-white text-[10px] py-1 px-2 rounded border border-slate-700 whitespace-nowrap z-50">
                 {port.name}
               </div>
             </div>
@@ -337,13 +338,13 @@ export const GlobalMap = ({
         })}
 
         {/* CONTROLS */}
-        <div className="absolute top-4 left-4 z-10 flex flex-col gap-2 bg-slate-900/50 backdrop-blur-xl p-4 rounded-2xl border border-slate-800 shadow-2xl">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">
+        <div className="absolute top-4 left-4 z-10 flex flex-col gap-1.5 bg-slate-900/90 p-3.5 rounded-lg border border-slate-800 w-44">
+          <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-0.5">
             Layers
           </span>
           <button
             onClick={() => setShowWeather(!showWeather)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all ${showWeather ? "bg-red-500/20 text-red-400 border border-red-500/50 shadow-lg shadow-red-500/10" : "bg-slate-800 text-slate-500 hover:bg-slate-700"}`}
+            className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${showWeather ? "bg-red-500/15 text-red-400" : "bg-slate-800 text-slate-500 hover:bg-slate-700"}`}
           >
             <div
               className={`w-1.5 h-1.5 rounded-full ${showWeather ? "bg-red-500" : "bg-slate-600"}`}
@@ -352,20 +353,20 @@ export const GlobalMap = ({
           </button>
           <button
             onClick={() => setShowNetwork(!showNetwork)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all ${showNetwork ? "bg-blue-500/20 text-blue-400 border border-blue-500/50 shadow-lg shadow-blue-500/10" : "bg-slate-800 text-slate-500 hover:bg-slate-700"}`}
+            className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${showNetwork ? "bg-blue-500/15 text-blue-400" : "bg-slate-800 text-slate-500 hover:bg-slate-700"}`}
           >
             <Network size={12} /> Lanes
           </button>
           <button
             onClick={() => setShowAISTraffic(!showAISTraffic)}
             title="Real ships from the AIS Ship Tracker (must be running separately on :8090)"
-            className={`flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all ${showAISTraffic ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 shadow-lg shadow-cyan-500/10" : "bg-slate-800 text-slate-500 hover:bg-slate-700"}`}
+            className={`flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${showAISTraffic ? "bg-cyan-500/15 text-cyan-400" : "bg-slate-800 text-slate-500 hover:bg-slate-700"}`}
           >
             <span className="flex items-center gap-2">
               <Radio size={12} /> AIS Live
             </span>
             {showAISTraffic && (
-              <span className="text-[10px] font-mono opacity-80">
+              <span className="text-[10px] font-mono opacity-80 tabular-nums">
                 {aisStatus === "live"
                   ? aisVessels.length
                   : aisStatus === "connecting"
@@ -375,44 +376,44 @@ export const GlobalMap = ({
             )}
           </button>
 
-          <div className="h-px bg-slate-700 my-1"></div>
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">
+          <div className="h-px bg-slate-800 my-1"></div>
+          <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-0.5">
             Filters
           </span>
           <div className="flex gap-1">
             <button
               onClick={() => setFilterType("ALL")}
-              className={`flex-1 px-2 py-1.5 rounded-lg text-[10px] font-bold transition-all ${filterType === "ALL" ? "bg-gradient-to-r from-white to-slate-200 text-black shadow-lg" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}
+              className={`flex-1 px-2 py-1.5 rounded text-[10px] font-semibold transition-colors ${filterType === "ALL" ? "bg-slate-200 text-slate-900" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}
             >
               ALL
             </button>
             <button
               onClick={() => setFilterType("TANKER")}
-              className={`flex-1 px-2 py-1.5 rounded-lg text-[10px] font-bold transition-all ${filterType === "TANKER" ? "bg-gradient-to-r from-yellow-600 to-amber-600 text-white shadow-lg shadow-yellow-500/20" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}
+              className={`flex-1 px-2 py-1.5 rounded text-[10px] font-semibold transition-colors ${filterType === "TANKER" ? "bg-amber-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}
             >
               OIL
             </button>
             <button
               onClick={() => setFilterType("CONTAINER")}
-              className={`flex-1 px-2 py-1.5 rounded-lg text-[10px] font-bold transition-all ${filterType === "CONTAINER" ? "bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg shadow-blue-500/20" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}
+              className={`flex-1 px-2 py-1.5 rounded text-[10px] font-semibold transition-colors ${filterType === "CONTAINER" ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400 hover:bg-slate-700"}`}
             >
               BOX
             </button>
           </div>
           <button
             onClick={() => setHideDocked(!hideDocked)}
-            className={`mt-1 flex items-center justify-between px-3 py-2 rounded-xl text-[10px] font-bold transition-all ${hideDocked ? "bg-slate-700 text-white border border-slate-600" : "text-slate-500 hover:bg-slate-800"}`}
+            className={`mt-1 flex items-center justify-between px-2.5 py-1.5 rounded-md text-[10px] font-semibold transition-colors ${hideDocked ? "bg-slate-700 text-white" : "text-slate-500 hover:bg-slate-800"}`}
           >
             <span>Hide Docked</span>
             {hideDocked && (
-              <div className="w-1.5 h-1.5 bg-green-400 rounded-full"></div>
+              <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full"></div>
             )}
           </button>
           <button
             onClick={() => setShowAllRoutes(!showAllRoutes)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
               showAllRoutes
-                ? "bg-orange-500/20 text-orange-400 border border-orange-500/50 shadow-lg shadow-orange-500/10"
+                ? "bg-orange-500/15 text-orange-400"
                 : "bg-slate-800 text-slate-500 hover:bg-slate-700"
             }`}
           >
@@ -425,9 +426,9 @@ export const GlobalMap = ({
 
         {/* SHIP INFO PANEL */}
         {clickedShip && (
-          <div className="absolute top-[348px] left-4 z-10 bg-slate-900/50 backdrop-blur-xl p-4 rounded-2xl border border-slate-800 shadow-2xl">
+          <div className="absolute top-[260px] left-4 z-10 bg-slate-900/90 p-3.5 rounded-lg border border-slate-800 w-44">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+              <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">
                 Ship Info
               </span>
               <button
@@ -449,26 +450,14 @@ export const GlobalMap = ({
             </div>
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Ship size={16} className="text-blue-400" />
-                <span className="text-sm font-bold text-white">
+                <Ship size={15} className="text-slate-500" />
+                <span className="text-sm font-medium text-white">
                   {clickedShip.name}
                 </span>
               </div>
               <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-400">Status:</span>
-                <span
-                  className={`font-bold px-3 py-1 rounded-xl border ${
-                    clickedShip.status === "AT_SEA"
-                      ? "bg-green-500/20 text-green-400 border-green-500/30"
-                      : clickedShip.status === "DOCKED"
-                        ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
-                        : clickedShip.status === "DISTRESS"
-                          ? "bg-red-500/20 text-red-400 border-red-500/30"
-                          : "bg-slate-500/20 text-slate-400 border-slate-500/30"
-                  }`}
-                >
-                  {clickedShip.status}
-                </span>
+                <span className="text-slate-500">Status:</span>
+                <StatusBadge status={clickedShip.status} />
               </div>
             </div>
           </div>
@@ -476,15 +465,15 @@ export const GlobalMap = ({
 
         {/* SELECTION INFO */}
         {activeShip && (
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/50 backdrop-blur-xl border border-blue-500/50 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3">
-            <Ship size={16} className="text-blue-400" />
-            <span className="font-bold text-sm">{activeShip.name}</span>
-            <span className="text-xs text-slate-400">|</span>
-            <span className="text-xs text-slate-300 font-mono">
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/90 border border-blue-500/40 text-white px-5 py-2.5 rounded-lg flex items-center gap-3">
+            <Ship size={15} className="text-blue-400" />
+            <span className="font-medium text-sm">{activeShip.name}</span>
+            <span className="text-xs text-slate-500">|</span>
+            <span className="text-xs text-slate-300 font-mono tabular-nums">
               {activeShip.speed_knots.toFixed(1)} KN
             </span>
             {!activeRouteId && (
-              <span className="text-xs text-yellow-400 bg-yellow-900/30 px-3 py-1 rounded-xl border border-yellow-500/30 font-bold ml-2">
+              <span className="text-xs text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded font-medium ml-1">
                 NO ROUTE
               </span>
             )}
@@ -493,9 +482,9 @@ export const GlobalMap = ({
 
         {/* AIS VESSEL INFO PANEL - a real ship, not part of the simulated fleet */}
         {clickedAISVessel && (
-          <div className="absolute top-4 right-16 z-10 bg-slate-900/50 backdrop-blur-xl p-4 rounded-2xl border border-cyan-500/30 shadow-2xl max-w-[220px]">
+          <div className="absolute top-4 right-16 z-10 bg-slate-900/90 p-3.5 rounded-lg border border-cyan-500/20 max-w-[220px]">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-bold text-cyan-500 uppercase tracking-widest flex items-center gap-1">
+              <span className="text-[10px] font-semibold text-cyan-500 uppercase tracking-wide flex items-center gap-1">
                 <Radio size={10} /> Real AIS Vessel
               </span>
               <button
