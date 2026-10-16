@@ -9,46 +9,46 @@ import (
 )
 
 type PortRepository struct {
-    db *database.Service
+	db *database.Service
 }
 
 func NewPortRepository(db *database.Service) *PortRepository {
-    return &PortRepository{db: db}
+	return &PortRepository{db: db}
 }
 
 // PortStat represents port statistics with docked vessel count
 type PortStat struct {
-    ID        string  `json:"id"`
-    Name      string  `json:"name"`
-    Locode    string  `json:"locode"`
-    Latitude  float64 `json:"latitude"`
-    Longitude float64 `json:"longitude"`
-    ShipCount int     `json:"ship_count"`
+	ID        string  `json:"id"`
+	Name      string  `json:"name"`
+	Locode    string  `json:"locode"`
+	Latitude  float64 `json:"latitude"`
+	Longitude float64 `json:"longitude"`
+	ShipCount int     `json:"ship_count"`
 }
 
 func (r *PortRepository) Create(ctx context.Context, port *models.Port) error {
-    query := `
+	query := `
         INSERT INTO ports (name, un_locode, country, location)
         VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326))
         RETURNING id, created_at
     `
 
-    err := r.db.GetPool().QueryRow(
-        ctx, query,
-        port.Name, port.UnLocode, port.Country,
-        port.Longitude, port.Latitude,
-    ).Scan(&port.ID, &port.CreatedAt)
+	err := r.db.GetPool().QueryRow(
+		ctx, query,
+		port.Name, port.UnLocode, port.Country,
+		port.Longitude, port.Latitude,
+	).Scan(&port.ID, &port.CreatedAt)
 
-    if err != nil {
-        return fmt.Errorf("failed to create port: %w", err)
-    }
+	if err != nil {
+		return fmt.Errorf("failed to create port: %w", err)
+	}
 
-    return nil
+	return nil
 }
 
 // ✅ NEW: Update updates all fields of an existing port
 func (r *PortRepository) Update(ctx context.Context, port *models.Port) error {
-    query := `
+	query := `
         UPDATE ports 
         SET 
             name = $1,
@@ -58,100 +58,100 @@ func (r *PortRepository) Update(ctx context.Context, port *models.Port) error {
         WHERE id = $6
     `
 
-    _, err := r.db.GetPool().Exec(
-        ctx, query,
-        port.Name, port.UnLocode, port.Country,
-        port.Longitude, port.Latitude,
-        port.ID,
-    )
+	_, err := r.db.GetPool().Exec(
+		ctx, query,
+		port.Name, port.UnLocode, port.Country,
+		port.Longitude, port.Latitude,
+		port.ID,
+	)
 
-    if err != nil {
-        return fmt.Errorf("failed to update port: %w", err)
-    }
+	if err != nil {
+		return fmt.Errorf("failed to update port: %w", err)
+	}
 
-    return nil
+	return nil
 }
 
 // ✅ NEW: Delete removes a port by ID
 // NOTE: This checks for dependencies before deletion
 func (r *PortRepository) Delete(ctx context.Context, id string) error {
-    // Check for dependencies
-    var terminalCount, routeCount int
+	// Check for dependencies
+	var terminalCount, routeCount int
 
-    // Check terminals
-    err := r.db.GetPool().QueryRow(ctx,
-        `SELECT COUNT(*) FROM terminals WHERE port_id = $1`,
-        id,
-    ).Scan(&terminalCount)
-    if err != nil {
-        return fmt.Errorf("failed to check terminals: %w", err)
-    }
+	// Check terminals
+	err := r.db.GetPool().QueryRow(ctx,
+		`SELECT COUNT(*) FROM terminals WHERE port_id = $1`,
+		id,
+	).Scan(&terminalCount)
+	if err != nil {
+		return fmt.Errorf("failed to check terminals: %w", err)
+	}
 
-    // Check routes
-    err = r.db.GetPool().QueryRow(ctx,
-        `SELECT COUNT(*) FROM routes WHERE origin_port_id = $1 OR destination_port_id = $1`,
-        id,
-    ).Scan(&routeCount)
-    if err != nil {
-        return fmt.Errorf("failed to check routes: %w", err)
-    }
+	// Check routes
+	err = r.db.GetPool().QueryRow(ctx,
+		`SELECT COUNT(*) FROM routes WHERE origin_port_id = $1 OR destination_port_id = $1`,
+		id,
+	).Scan(&routeCount)
+	if err != nil {
+		return fmt.Errorf("failed to check routes: %w", err)
+	}
 
-    // Return error if port has dependencies
-    if terminalCount > 0 || routeCount > 0 {
-        return fmt.Errorf(
-            "cannot delete port: has %d terminals and %d routes. Please remove them first",
-            terminalCount, routeCount,
-        )
-    }
+	// Return error if port has dependencies
+	if terminalCount > 0 || routeCount > 0 {
+		return fmt.Errorf(
+			"cannot delete port: has %d terminals and %d routes. Please remove them first",
+			terminalCount, routeCount,
+		)
+	}
 
-    // Proceed with deletion
-    query := `DELETE FROM ports WHERE id = $1`
-    result, err := r.db.GetPool().Exec(ctx, query, id)
-    if err != nil {
-        return fmt.Errorf("failed to delete port: %w", err)
-    }
+	// Proceed with deletion
+	query := `DELETE FROM ports WHERE id = $1`
+	result, err := r.db.GetPool().Exec(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete port: %w", err)
+	}
 
-    if result.RowsAffected() == 0 {
-        return fmt.Errorf("port not found")
-    }
+	if result.RowsAffected() == 0 {
+		return fmt.Errorf("port not found")
+	}
 
-    return nil
+	return nil
 }
 
 // BulkCreate inserts multiple ports in a transaction
 func (r *PortRepository) BulkCreate(ctx context.Context, ports []models.Port) error {
-    tx, err := r.db.GetPool().Begin(ctx)
-    if err != nil {
-        return fmt.Errorf("failed to begin transaction: %w", err)
-    }
-    defer tx.Rollback(ctx)
+	tx, err := r.db.GetPool().Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
 
-    query := `
+	query := `
         INSERT INTO ports (name, un_locode, country, location)
         VALUES ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326))
     `
 
-    for _, port := range ports {
-        _, err := tx.Exec(
-            ctx, query,
-            port.Name, port.UnLocode, port.Country,
-            port.Longitude, port.Latitude,
-        )
-        if err != nil {
-            return fmt.Errorf("failed to insert port %s: %w", port.Name, err)
-        }
-    }
+	for _, port := range ports {
+		_, err := tx.Exec(
+			ctx, query,
+			port.Name, port.UnLocode, port.Country,
+			port.Longitude, port.Latitude,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to insert port %s: %w", port.Name, err)
+		}
+	}
 
-    if err := tx.Commit(ctx); err != nil {
-        return fmt.Errorf("failed to commit transaction: %w", err)
-    }
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
 
-    return nil
+	return nil
 }
 
 // GetPortStats retrieves all ports with count of docked vessels within 10km
 func (r *PortRepository) GetPortStats(ctx context.Context) ([]PortStat, error) {
-    query := `
+	query := `
         SELECT 
             p.id,
             p.name,
@@ -165,38 +165,38 @@ func (r *PortRepository) GetPortStats(ctx context.Context) ([]PortStat, error) {
         ORDER BY ship_count DESC, p.name ASC
     `
 
-    rows, err := r.db.GetPool().Query(ctx, query)
-    if err != nil {
-        return nil, fmt.Errorf("failed to fetch port stats: %w", err)
-    }
-    defer rows.Close()
+	rows, err := r.db.GetPool().Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch port stats: %w", err)
+	}
+	defer rows.Close()
 
-    var stats []PortStat
-    for rows.Next() {
-        var stat PortStat
-        err := rows.Scan(
-            &stat.ID,
-            &stat.Name,
-            &stat.Locode,
-            &stat.Latitude,
-            &stat.Longitude,
-            &stat.ShipCount,
-        )
-        if err != nil {
-            return nil, fmt.Errorf("failed to scan port stat: %w", err)
-        }
-        stats = append(stats, stat)
-    }
+	var stats []PortStat
+	for rows.Next() {
+		var stat PortStat
+		err := rows.Scan(
+			&stat.ID,
+			&stat.Name,
+			&stat.Locode,
+			&stat.Latitude,
+			&stat.Longitude,
+			&stat.ShipCount,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan port stat: %w", err)
+		}
+		stats = append(stats, stat)
+	}
 
-    if stats == nil {
-        stats = []PortStat{}
-    }
+	if stats == nil {
+		stats = []PortStat{}
+	}
 
-    return stats, nil
+	return stats, nil
 }
 
 func (r *PortRepository) GetAll(ctx context.Context) ([]models.Port, error) {
-    query := `
+	query := `
         SELECT 
             id,
             name,
@@ -209,35 +209,35 @@ func (r *PortRepository) GetAll(ctx context.Context) ([]models.Port, error) {
         ORDER BY name ASC
     `
 
-    rows, err := r.db.GetPool().Query(ctx, query)
-    if err != nil {
-        return nil, fmt.Errorf("failed to query ports: %w", err)
-    }
-    defer rows.Close()
+	rows, err := r.db.GetPool().Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query ports: %w", err)
+	}
+	defer rows.Close()
 
-    var ports []models.Port
-    for rows.Next() {
-        var p models.Port
-        err := rows.Scan(
-            &p.ID,
-            &p.Name,
-            &p.UnLocode,     
-            &p.Country,
-            &p.Latitude,
-            &p.Longitude,
-            &p.CreatedAt,
-        )
-        if err != nil {
-            return nil, fmt.Errorf("failed to scan port: %w", err)
-        }
-        ports = append(ports, p)
-    }
+	var ports []models.Port
+	for rows.Next() {
+		var p models.Port
+		err := rows.Scan(
+			&p.ID,
+			&p.Name,
+			&p.UnLocode,
+			&p.Country,
+			&p.Latitude,
+			&p.Longitude,
+			&p.CreatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan port: %w", err)
+		}
+		ports = append(ports, p)
+	}
 
-    if ports == nil {
-        ports = []models.Port{}
-    }
+	if ports == nil {
+		ports = []models.Port{}
+	}
 
-    return ports, nil
+	return ports, nil
 }
 
 // GetByID finds a port by UUID

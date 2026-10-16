@@ -25,14 +25,14 @@ func (r *RouteRepository) GetByID(ctx context.Context, id string) (*models.Route
 	var route models.Route
 	// We scan the path string directly into RawMessage bytes
 	var pathJSON []byte
-	
+
 	err := r.db.GetPool().QueryRow(ctx, query, id).Scan(
 		&route.ID, &route.Name, &route.OriginPortID, &route.DestinationPortID, &pathJSON, &route.CreatedAt,
 	)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	route.Path = pathJSON
 	return &route, nil
 }
@@ -57,7 +57,7 @@ func (r *RouteRepository) Create(ctx context.Context, name, originPortID, destPo
 }
 
 func (r *RouteRepository) CreateFromWKT(ctx context.Context, name, wkt, originPortID, destPortID string) error {
-    query := `
+	query := `
         INSERT INTO routes (name, path, origin_port_id, destination_port_id)
         VALUES ($1, ST_GeogFromText($2), $3, $4)
         ON CONFLICT (name) DO UPDATE SET 
@@ -65,8 +65,8 @@ func (r *RouteRepository) CreateFromWKT(ctx context.Context, name, wkt, originPo
             origin_port_id = EXCLUDED.origin_port_id,
             destination_port_id = EXCLUDED.destination_port_id
     `
-    _, err := r.db.GetPool().Exec(ctx, query, name, wkt, originPortID, destPortID)
-    return err
+	_, err := r.db.GetPool().Exec(ctx, query, name, wkt, originPortID, destPortID)
+	return err
 }
 
 // GetActiveRoutes returns paths for all vessels currently AT_SEA
@@ -92,12 +92,11 @@ func (r *RouteRepository) GetActiveRoutes(ctx context.Context) ([]byte, error) {
 	`
 	var geoJSON []byte
 	err := r.db.GetPool().QueryRow(ctx, query).Scan(&geoJSON)
-	
+
 	// Handle empty result (NULL) -> Return empty collection
 	if len(geoJSON) == 0 {
 		return []byte(`{"type": "FeatureCollection", "features": []}`), nil
 	}
-	
+
 	return geoJSON, err
 }
-

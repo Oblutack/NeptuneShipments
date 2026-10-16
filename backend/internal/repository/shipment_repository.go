@@ -25,7 +25,7 @@ func (r *ShipmentRepository) Create(ctx context.Context, s *models.Shipment) err
 		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		RETURNING id, created_at, updated_at
 	`
-	
+
 	// Default status if empty
 	if s.Status == "" {
 		s.Status = "PENDING"
@@ -42,7 +42,7 @@ func (r *ShipmentRepository) Create(ctx context.Context, s *models.Shipment) err
 
 // GetAll fetches all shipments
 func (r *ShipmentRepository) GetAll(ctx context.Context) ([]models.Shipment, error) {
-    query := `
+	query := `
         SELECT 
             s.id,
             s.tracking_number,
@@ -66,45 +66,45 @@ func (r *ShipmentRepository) GetAll(ctx context.Context) ([]models.Shipment, err
         ORDER BY s.created_at DESC
     `
 
-    rows, err := r.db.GetPool().Query(ctx, query)
-    if err != nil {
-        return nil, fmt.Errorf("failed to query shipments: %w", err)
-    }
-    defer rows.Close()
+	rows, err := r.db.GetPool().Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query shipments: %w", err)
+	}
+	defer rows.Close()
 
-    var shipments []models.Shipment
-    for rows.Next() {
-        var s models.Shipment
-        err := rows.Scan(
-            &s.ID,
-            &s.TrackingNumber,
-            &s.CustomerName,
-            &s.OriginPortID,
-            &s.DestinationPortID,
-            &s.VesselID,
-            &s.Description,
-            &s.ContainerNumber,
-            &s.WeightKG,
-            &s.Status,
-            &s.ManifestItems,
-            &s.ETA,
-            &s.CreatedAt,
-            &s.UpdatedAt,
-            &s.OriginPortName,      
-            &s.DestinationPortName, 
-        )
-        if err != nil {
-            return nil, fmt.Errorf("failed to scan shipment: %w", err)
-        }
-        shipments = append(shipments, s)
-    }
+	var shipments []models.Shipment
+	for rows.Next() {
+		var s models.Shipment
+		err := rows.Scan(
+			&s.ID,
+			&s.TrackingNumber,
+			&s.CustomerName,
+			&s.OriginPortID,
+			&s.DestinationPortID,
+			&s.VesselID,
+			&s.Description,
+			&s.ContainerNumber,
+			&s.WeightKG,
+			&s.Status,
+			&s.ManifestItems,
+			&s.ETA,
+			&s.CreatedAt,
+			&s.UpdatedAt,
+			&s.OriginPortName,
+			&s.DestinationPortName,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan shipment: %w", err)
+		}
+		shipments = append(shipments, s)
+	}
 
-    // ✅ FIX: Return empty array instead of nil
-    if shipments == nil {
-        shipments = []models.Shipment{}
-    }
+	// ✅ FIX: Return empty array instead of nil
+	if shipments == nil {
+		shipments = []models.Shipment{}
+	}
 
-    return shipments, nil
+	return shipments, nil
 }
 
 // GetByTrackingNumber finds a single shipment with Port names included
@@ -126,17 +126,17 @@ func (r *ShipmentRepository) GetByTrackingNumber(ctx context.Context, trackingNu
 		WHERE s.tracking_number = $1
 	`
 	var s models.Shipment
-	
+
 	// Scan must match the SELECT order exactly
 	err := r.db.GetPool().QueryRow(ctx, query, trackingNum).Scan(
-		&s.ID, &s.TrackingNumber, &s.CustomerName, 
+		&s.ID, &s.TrackingNumber, &s.CustomerName,
 		&s.OriginPortID, &s.DestinationPortID,
-		&s.VesselID, &s.Description, &s.ContainerNumber, 
+		&s.VesselID, &s.Description, &s.ContainerNumber,
 		&s.WeightKG, &s.Status, &s.ManifestItems, &s.ETA, &s.CreatedAt, &s.UpdatedAt,
 		&s.OriginPortName,      // <--- New scan target
 		&s.DestinationPortName, // <--- New scan target
 	)
-	
+
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +192,7 @@ func (r *ShipmentRepository) CreateOrUpdate(ctx context.Context, s *models.Shipm
 
 // GetByVesselID retrieves all shipments for a specific vessel with port names
 func (r *ShipmentRepository) GetByVesselID(ctx context.Context, vesselID string) ([]models.Shipment, error) {
-    query := `
+	query := `
         SELECT 
             s.id, s.tracking_number, s.customer_name, 
             s.origin_port_id, s.destination_port_id, 
@@ -208,36 +208,36 @@ func (r *ShipmentRepository) GetByVesselID(ctx context.Context, vesselID string)
         WHERE s.vessel_id = $1
         ORDER BY s.created_at DESC
     `
-    
-    rows, err := r.db.GetPool().Query(ctx, query, vesselID)
-    if err != nil {
-        return nil, err
-    }
-    defer rows.Close()
 
-    var shipments []models.Shipment
-    for rows.Next() {
-        var s models.Shipment
-        err := rows.Scan(
-            &s.ID, &s.TrackingNumber, &s.CustomerName,
-            &s.OriginPortID, &s.DestinationPortID,
-            &s.VesselID, &s.Description, &s.ContainerNumber,
-            &s.WeightKG, &s.Status, &s.ManifestItems, &s.ETA, &s.CreatedAt, &s.UpdatedAt,
-            &s.OriginPortName,
-            &s.DestinationPortName,
-        )
-        if err != nil {
-            return nil, err
-        }
-        shipments = append(shipments, s)
-    }
+	rows, err := r.db.GetPool().Query(ctx, query, vesselID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 
-    // Return empty array instead of nil if no shipments found
-    if shipments == nil {
-        shipments = []models.Shipment{}
-    }
+	var shipments []models.Shipment
+	for rows.Next() {
+		var s models.Shipment
+		err := rows.Scan(
+			&s.ID, &s.TrackingNumber, &s.CustomerName,
+			&s.OriginPortID, &s.DestinationPortID,
+			&s.VesselID, &s.Description, &s.ContainerNumber,
+			&s.WeightKG, &s.Status, &s.ManifestItems, &s.ETA, &s.CreatedAt, &s.UpdatedAt,
+			&s.OriginPortName,
+			&s.DestinationPortName,
+		)
+		if err != nil {
+			return nil, err
+		}
+		shipments = append(shipments, s)
+	}
 
-    return shipments, nil
+	// Return empty array instead of nil if no shipments found
+	if shipments == nil {
+		shipments = []models.Shipment{}
+	}
+
+	return shipments, nil
 }
 
 // Delete removes a shipment by ID
@@ -247,12 +247,12 @@ func (r *ShipmentRepository) Delete(ctx context.Context, id string) error {
 	if err != nil {
 		return fmt.Errorf("failed to delete shipment: %w", err)
 	}
-	
+
 	rowsAffected := result.RowsAffected()
 	if rowsAffected == 0 {
 		return fmt.Errorf("shipment not found")
 	}
-	
+
 	return nil
 }
 
@@ -275,18 +275,18 @@ func (r *ShipmentRepository) Update(ctx context.Context, s *models.Shipment) err
 		WHERE id = $11
 		RETURNING updated_at
 	`
-	
+
 	err := r.db.GetPool().QueryRow(
 		ctx, query,
 		s.CustomerName, s.OriginPortID, s.DestinationPortID,
 		s.VesselID, s.Description, s.ContainerNumber, s.WeightKG,
 		s.Status, s.ETA, s.ManifestItems, s.ID,
 	).Scan(&s.UpdatedAt)
-	
+
 	if err != nil {
 		return fmt.Errorf("failed to update shipment: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -299,16 +299,16 @@ func (r *ShipmentRepository) UpdateStatusByVessel(ctx context.Context, vesselID 
 		WHERE vessel_id = $2 
 		AND status = $3
 	`
-	
+
 	result, err := r.db.GetPool().Exec(ctx, query, toStatus, vesselID, fromStatus)
 	if err != nil {
 		return fmt.Errorf("failed to update shipment statuses for vessel: %w", err)
 	}
-	
+
 	rowsAffected := result.RowsAffected()
 	if rowsAffected > 0 {
 		fmt.Printf("✅ Updated %d shipment(s) from %s to %s for vessel %s\n", rowsAffected, fromStatus, toStatus, vesselID)
 	}
-	
+
 	return nil
 }

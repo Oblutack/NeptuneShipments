@@ -8,7 +8,7 @@ import (
 )
 
 type RouteHandler struct {
-	repo *repository.RouteRepository
+	repo        *repository.RouteRepository
 	routingRepo *repository.RoutingRepository
 }
 
@@ -39,7 +39,7 @@ func (h *RouteHandler) CalculateRoute(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{
-		"type": "Feature",
+		"type":     "Feature",
 		"geometry": path,
 	})
 }
@@ -58,10 +58,10 @@ func (h *RouteHandler) GetNetworkMesh(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to load network"})
 	}
-	
-    // We wrap it so the frontend receives a valid GeoJSON Feature
+
+	// We wrap it so the frontend receives a valid GeoJSON Feature
 	return c.JSON(fiber.Map{
-		"type": "Feature",
+		"type":     "Feature",
 		"geometry": json.RawMessage(meshJSON),
 	})
 }

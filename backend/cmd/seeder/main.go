@@ -14,96 +14,96 @@ import (
 )
 
 func main() {
-	if err := godotenv.Load("../../.env"); err != nil { 
-        godotenv.Load() 
-    }
+	if err := godotenv.Load("../../.env"); err != nil {
+		godotenv.Load()
+	}
 	dbService, err := database.New()
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer dbService.Close()
-	
-    // 1. Init Repos
+
+	// 1. Init Repos
 	portRepo := repository.NewPortRepository(dbService)
 	userRepo := repository.NewUserRepository(dbService)
 	vesselRepo := repository.NewVesselRepository(dbService.GetPool())
 	routeRepo := repository.NewRouteRepository(dbService)
-	shipmentRepo := repository.NewShipmentRepository(dbService) 
+	shipmentRepo := repository.NewShipmentRepository(dbService)
 
 	routingEngineRepo := repository.NewRoutingRepository(dbService)
 	crewRepo := repository.NewCrewRepository(dbService)
 
-    // 2. Init Importer
+	// 2. Init Importer
 	importer := services.NewImporterService(portRepo, userRepo, vesselRepo, routeRepo, shipmentRepo, routingEngineRepo, crewRepo)
 
-    log.Println("🌱 Starting Data Ingestion...")
+	log.Println("🌱 Starting Data Ingestion...")
 	ctx := context.Background()
 
-    // 3. Run Imports (Order matters!)
-    // Users first
+	// 3. Run Imports (Order matters!)
+	// Users first
 	if err := importer.ImportUsers("../data/users.csv"); err != nil {
 		log.Fatal(err)
 	}
-    // Ports
+	// Ports
 	if err := importPortsFromFile(ctx, importer, "../data/ports.csv"); err != nil {
-        log.Fatal(err)
-    }
-    // Routes
+		log.Fatal(err)
+	}
+	// Routes
 	if err := importer.ImportRoutes("../data/routes.csv"); err != nil {
 		log.Fatal(err)
 	}
-    // Vessels
+	// Vessels
 	if err := importVesselsFromFile(ctx, importer, "../data/vessels.csv"); err != nil {
-        log.Fatal(err)
-    }
+		log.Fatal(err)
+	}
 	// Shipments
 	if err := importer.ImportShipments("../data/shipments.csv"); err != nil {
 		log.Fatal(err)
 	}
 
-	if err := importer.ImportCrew("../data/crew.csv"); err != nil { 
-        log.Fatal(err)
-    }
+	if err := importer.ImportCrew("../data/crew.csv"); err != nil {
+		log.Fatal(err)
+	}
 
 	// Seed port infrastructure (terminals and berths)
 	seedPortInfrastructure(dbService.GetPool())
 
 	seedComponents(dbService.GetPool())
 
-    log.Println("🌱 Data Ingestion Complete!")
+	log.Println("🌱 Data Ingestion Complete!")
 }
 
 func importPortsFromFile(ctx context.Context, importer *services.ImporterService, filePath string) error {
-    file, err := os.Open(filePath)
-    if err != nil {
-        return fmt.Errorf("failed to open ports file: %w", err)
-    }
-    defer file.Close()
+	file, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to open ports file: %w", err)
+	}
+	defer file.Close()
 
-    count, err := importer.ImportPorts(ctx, file)
-    if err != nil {
-        return err
-    }
+	count, err := importer.ImportPorts(ctx, file)
+	if err != nil {
+		return err
+	}
 
-    log.Printf("✅ Imported %d ports", count)
-    return nil
+	log.Printf("✅ Imported %d ports", count)
+	return nil
 }
 
 // Helper function to import vessels from file
 func importVesselsFromFile(ctx context.Context, importer *services.ImporterService, filePath string) error {
-    file, err := os.Open(filePath)
-    if err != nil {
-        return fmt.Errorf("failed to open vessels file: %w", err)
-    }
-    defer file.Close()
+	file, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to open vessels file: %w", err)
+	}
+	defer file.Close()
 
-    count, err := importer.ImportVessels(ctx, file)
-    if err != nil {
-        return err
-    }
+	count, err := importer.ImportVessels(ctx, file)
+	if err != nil {
+		return err
+	}
 
-    log.Printf("✅ Imported %d vessels", count)
-    return nil
+	log.Printf("✅ Imported %d vessels", count)
+	return nil
 }
 
 // seedPortInfrastructure creates terminals and berths for all ports
@@ -146,7 +146,7 @@ func seedPortInfrastructure(pool *pgxpool.Pool) {
 
 		for _, term := range terminals {
 			var terminalID string
-			
+
 			// A. Check if Terminal exists first (to avoid ON CONFLICT errors if constraint is missing)
 			checkQuery := `SELECT id FROM terminals WHERE port_id = $1 AND name = $2`
 			err := pool.QueryRow(ctx, checkQuery, port.ID, term.name).Scan(&terminalID)
@@ -168,14 +168,14 @@ func seedPortInfrastructure(pool *pgxpool.Pool) {
 			// 4. Create 3 berths for each terminal
 			for i := 1; i <= 3; i++ {
 				berthName := fmt.Sprintf("Berth %d", i)
-				
+
 				// Using standard columns: name, length_meters
 				berthQuery := `
 					INSERT INTO berths (terminal_id, name, length_meters, is_occupied)
 					VALUES ($1, $2, 400.0, false)
 				`
 				// We skip ON CONFLICT here for simplicity, or we could do a similar check
-				// For the seeder, blind insert might create duplicates if ran twice, 
+				// For the seeder, blind insert might create duplicates if ran twice,
 				// but that's safer than crashing on missing constraints right now.
 				_, err := pool.Exec(ctx, berthQuery, terminalID, berthName)
 				if err != nil {
@@ -205,7 +205,7 @@ func seedComponents(pool *pgxpool.Pool) {
 		Name string
 	}
 	var vessels []VesselInfo
-	
+
 	for rows.Next() {
 		var v VesselInfo
 		rows.Scan(&v.ID, &v.Name)
@@ -228,15 +228,15 @@ func seedComponents(pool *pgxpool.Pool) {
 	// 3. Install Parts
 	for _, v := range vessels {
 		for _, part := range parts {
-            // Simulate wear: Randomize health slightly so they aren't all identical
-            // (In a real app, use math/rand, here we just use fixed values for simplicity)
-            
+			// Simulate wear: Randomize health slightly so they aren't all identical
+			// (In a real app, use math/rand, here we just use fixed values for simplicity)
+
 			_, err := pool.Exec(ctx, `
 				INSERT INTO components (vessel_id, name, type, health_percentage)
 				VALUES ($1, $2, $3, $4)
 				ON CONFLICT (vessel_id, name) DO NOTHING
 			`, v.ID, part.Name, part.Type, part.Health)
-			
+
 			if err != nil {
 				log.Printf("❌ Failed to install %s on %s: %v", part.Name, v.Name, err)
 			}

@@ -99,22 +99,22 @@ func (r *UserRepository) Create(ctx context.Context, u *models.User) error {
 		RETURNING id, created_at
 	`
 	err := r.db.GetPool().QueryRow(
-		ctx, query, 
+		ctx, query,
 		u.Email, u.PasswordHash, u.FullName, u.CompanyName, u.Role,
 	).Scan(&u.ID, &u.CreatedAt)
-	
+
 	return err
 }
 
 func (r *UserRepository) CreateOrUpdate(ctx context.Context, u *models.User) error {
-    query := `
+	query := `
         INSERT INTO users (email, password_hash, full_name, company_name, role)
         VALUES ($1, $2, $3, $4, $5)
         ON CONFLICT (email) DO UPDATE 
         SET full_name = EXCLUDED.full_name, company_name = EXCLUDED.company_name
         RETURNING id
     `
-    // We only update name/company on conflict, keeping password/role stable
-    err := r.db.GetPool().QueryRow(ctx, query, u.Email, u.PasswordHash, u.FullName, u.CompanyName, u.Role).Scan(&u.ID)
-    return err
+	// We only update name/company on conflict, keeping password/role stable
+	err := r.db.GetPool().QueryRow(ctx, query, u.Email, u.PasswordHash, u.FullName, u.CompanyName, u.Role).Scan(&u.ID)
+	return err
 }

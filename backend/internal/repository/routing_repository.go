@@ -18,7 +18,7 @@ func NewRoutingRepository(db *database.Service) *RoutingRepository {
 
 // CalculatePath finds the shortest water route between two points using pgRouting
 func (r *RoutingRepository) CalculatePath(ctx context.Context, startLat, startLon, endLat, endLon float64) (json.RawMessage, error) {
-	
+
 	query := `
 		WITH start_node AS (
 			SELECT id FROM ocean_network_vertices_pgr
@@ -44,11 +44,11 @@ func (r *RoutingRepository) CalculatePath(ctx context.Context, startLat, startLo
 
 	var geoJSON []byte
 	err := r.db.GetPool().QueryRow(ctx, query, startLat, startLon, endLat, endLon).Scan(&geoJSON)
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to calculate path: %w", err)
 	}
-	
+
 	// If no path found (e.g. asking to go to a landlocked lake), return null
 	if len(geoJSON) == 0 {
 		return nil, fmt.Errorf("no path found between coordinates")

@@ -11,11 +11,11 @@ import (
 
 type ShipmentHandler struct {
 	repo        *repository.ShipmentRepository
-	portRepo    *repository.PortRepository    
-	routingRepo *repository.RoutingRepository 
-	routeRepo   *repository.RouteRepository   
+	portRepo    *repository.PortRepository
+	routingRepo *repository.RoutingRepository
+	routeRepo   *repository.RouteRepository
 	vesselRepo  *repository.VesselRepository
-	pdfService  *services.PDFService 
+	pdfService  *services.PDFService
 }
 
 func NewShipmentHandler(
@@ -32,7 +32,7 @@ func NewShipmentHandler(
 		routingRepo: routingRepo,
 		routeRepo:   routeRepo,
 		vesselRepo:  vesselRepo,
-		pdfService: pdfService,
+		pdfService:  pdfService,
 	}
 }
 
@@ -158,91 +158,91 @@ func (h *ShipmentHandler) GetAllShipments(c *fiber.Ctx) error {
 }
 
 func (h *ShipmentHandler) DownloadBOL(c *fiber.Ctx) error {
-    trackingNum := c.Params("trackingNumber")
-    
-    // 1. Get Data
-    shipment, err := h.repo.GetByTrackingNumber(c.Context(), trackingNum)
-    if err != nil {
-        return c.Status(404).JSON(fiber.Map{"error": "Shipment not found"})
-    }
+	trackingNum := c.Params("trackingNumber")
 
-    // 2. Get Vessel Name (Optional check)
-    vesselName := "Unassigned"
-    if shipment.VesselID != nil {
-        vessel, _ := h.vesselRepo.GetByID(c.Context(), *shipment.VesselID)
-        if vessel != nil {
-            vesselName = vessel.Name
-        }
-    }
+	// 1. Get Data
+	shipment, err := h.repo.GetByTrackingNumber(c.Context(), trackingNum)
+	if err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Shipment not found"})
+	}
 
-    // 3. Generate PDF
-    pdfBytes, err := h.pdfService.GenerateBillOfLading(shipment, vesselName)
-    if err != nil {
-        return c.Status(500).JSON(fiber.Map{"error": "Failed to generate PDF"})
-    }
+	// 2. Get Vessel Name (Optional check)
+	vesselName := "Unassigned"
+	if shipment.VesselID != nil {
+		vessel, _ := h.vesselRepo.GetByID(c.Context(), *shipment.VesselID)
+		if vessel != nil {
+			vesselName = vessel.Name
+		}
+	}
 
-    // 4. Send File
-    c.Set("Content-Type", "application/pdf")
-    c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=BOL-%s.pdf", trackingNum))
-    return c.Send(pdfBytes)
+	// 3. Generate PDF
+	pdfBytes, err := h.pdfService.GenerateBillOfLading(shipment, vesselName)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to generate PDF"})
+	}
+
+	// 4. Send File
+	c.Set("Content-Type", "application/pdf")
+	c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=BOL-%s.pdf", trackingNum))
+	return c.Send(pdfBytes)
 }
 
 // GetShipmentsByVessel handles GET /api/vessels/:vesselId/shipments
 func (h *ShipmentHandler) GetShipmentsByVessel(c *fiber.Ctx) error {
-    vesselID := c.Params("vesselId")
-    
-    // Validate UUID format (optional but recommended)
-    if vesselID == "" {
-        return c.Status(400).JSON(fiber.Map{"error": "Vessel ID is required"})
-    }
+	vesselID := c.Params("vesselId")
 
-    shipments, err := h.repo.GetByVesselID(c.Context(), vesselID)
-    if err != nil {
-        return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch vessel manifest"})
-    }
+	// Validate UUID format (optional but recommended)
+	if vesselID == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "Vessel ID is required"})
+	}
 
-    // Return metadata with results
-    return c.JSON(fiber.Map{
-        "vessel_id": vesselID,
-        "count":     len(shipments),
-        "shipments": shipments,
-    })
+	shipments, err := h.repo.GetByVesselID(c.Context(), vesselID)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch vessel manifest"})
+	}
+
+	// Return metadata with results
+	return c.JSON(fiber.Map{
+		"vessel_id": vesselID,
+		"count":     len(shipments),
+		"shipments": shipments,
+	})
 }
 
 // DeleteShipment handles DELETE /api/shipments/:id
 func (h *ShipmentHandler) DeleteShipment(c *fiber.Ctx) error {
 	shipmentID := c.Params("id")
-	
+
 	if shipmentID == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "Shipment ID is required"})
 	}
-	
+
 	if err := h.repo.Delete(c.Context(), shipmentID); err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": err.Error()})
 	}
-	
+
 	return c.Status(200).JSON(fiber.Map{"message": "Shipment deleted successfully"})
 }
 
 // UpdateShipment handles PUT /api/shipments/:id
 func (h *ShipmentHandler) UpdateShipment(c *fiber.Ctx) error {
 	shipmentID := c.Params("id")
-	
+
 	if shipmentID == "" {
 		return c.Status(400).JSON(fiber.Map{"error": "Shipment ID is required"})
 	}
-	
+
 	var shipment models.Shipment
 	if err := c.BodyParser(&shipment); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
 	}
-	
+
 	// Set the ID from URL params
 	shipment.ID = shipmentID
-	
+
 	if err := h.repo.Update(c.Context(), &shipment); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
-	
+
 	return c.Status(200).JSON(shipment)
 }

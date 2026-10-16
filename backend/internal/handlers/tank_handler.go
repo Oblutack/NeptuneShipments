@@ -20,11 +20,11 @@ func (h *TankHandler) GetTanks(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch tanks"})
 	}
-	
+
 	// Ensure we return an empty array [] instead of null if no tanks found
 	if tanks == nil {
 		tanks = []models.Tank{}
 	}
-	
+
 	return c.JSON(tanks)
 }

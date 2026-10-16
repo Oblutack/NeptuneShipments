@@ -24,30 +24,29 @@ type Engine struct {
 
 // WebSocketMessage wraps all messages sent via WebSocket
 type WebSocketMessage struct {
-    Type    string      `json:"type"`    
-    Payload interface{} `json:"payload"`
+	Type    string      `json:"type"`
+	Payload interface{} `json:"payload"`
 }
 
 func NewEngine(vRepo *repository.VesselRepository, sRepo *repository.ShipmentRepository, componentRepo *repository.ComponentRepository, aRepo *repository.AllocationRepository, hub *websocket.Hub) *Engine {
-    return &Engine{
-        vesselRepo:     vRepo, 
-        shipmentRepo:   sRepo,
+	return &Engine{
+		vesselRepo:     vRepo,
+		shipmentRepo:   sRepo,
 		componentRepo:  componentRepo,
 		allocationRepo: aRepo,
 		hub:            hub,
 		alertsSent:     make(map[string]bool), // Initialize alert tracking
-    }
+	}
 }
 
 // AlertPayload represents a notification sent to clients
 type AlertPayload struct {
-    Level     string `json:"level"`     
-    Message   string `json:"message"`
-    Timestamp string `json:"timestamp"`
-    VesselID  string `json:"vessel_id"`
-    VesselName string `json:"vessel_name"`
+	Level      string `json:"level"`
+	Message    string `json:"message"`
+	Timestamp  string `json:"timestamp"`
+	VesselID   string `json:"vessel_id"`
+	VesselName string `json:"vessel_name"`
 }
-
 
 // broadcastAlert sends a notification to all connected clients
 func (e *Engine) broadcastAlert(level, message, vesselID, vesselName string) {
@@ -63,29 +62,29 @@ func (e *Engine) broadcastAlert(level, message, vesselID, vesselName string) {
 	// Mark this alert as sent
 	e.alertsSent[alertKey] = true
 
-    alert := AlertPayload{
-        Level:      level,
-        Message:    message,
-        Timestamp:  time.Now().Format(time.RFC3339),
-        VesselID:   vesselID,
-        VesselName: vesselName,
-    }
+	alert := AlertPayload{
+		Level:      level,
+		Message:    message,
+		Timestamp:  time.Now().Format(time.RFC3339),
+		VesselID:   vesselID,
+		VesselName: vesselName,
+	}
 
-    wsMessage := WebSocketMessage{
-        Type:    "ALERT",
-        Payload: alert,
-    }
+	wsMessage := WebSocketMessage{
+		Type:    "ALERT",
+		Payload: alert,
+	}
 
-    jsonData, err := json.Marshal(wsMessage)
-    if err != nil {
-        log.Printf("Failed to marshal alert: %v", err)
-        return
-    }
+	jsonData, err := json.Marshal(wsMessage)
+	if err != nil {
+		log.Printf("Failed to marshal alert: %v", err)
+		return
+	}
 
-    // Broadcast to all connected WebSocket clients
-    e.hub.Broadcast(jsonData)
+	// Broadcast to all connected WebSocket clients
+	e.hub.Broadcast(jsonData)
 
-    log.Printf("📢 Alert Broadcast: [%s] %s", level, message)
+	log.Printf("📢 Alert Broadcast: [%s] %s", level, message)
 }
 
 // clearAlertForVessel removes the alert tracking for a vessel (e.g., after refueling)
@@ -94,12 +93,11 @@ func (e *Engine) clearAlertForVessel(vesselID string) {
 	delete(e.alertsSent, "INFO:"+vesselID)
 }
 
-
 // Start begins the simulation loop in a background goroutine
 func (e *Engine) Start() {
 	// Ticker triggers every 5 seconds
 	ticker := time.NewTicker(5 * time.Second)
-	
+
 	go func() {
 		for range ticker.C {
 			e.tick()
@@ -111,7 +109,7 @@ func (e *Engine) Start() {
 // tick is one frame of the simulation
 func (e *Engine) tick() {
 	ctx := context.Background()
-	
+
 	// 1. Get all ships
 	// (In a real huge app, we would cache this in Redis)
 	vessels, err := e.vesselRepo.GetAll(ctx)
@@ -155,7 +153,7 @@ func (e *Engine) checkDistressRecovery(ctx context.Context, v models.Vessel) {
 
 	// Vessel can be recovered!
 	log.Printf("✅ %s has recovered from DISTRESS (Fuel: %.0f)", v.Name, v.FuelLevel)
-	
+
 	// Set to ANCHORED (safe state) with 0 speed
 	if err := e.vesselRepo.RecoverFromDistress(ctx, v.ID); err != nil {
 		log.Printf("Failed to recover %s: %v", v.Name, err)
@@ -197,12 +195,11 @@ func (e *Engine) moveVessel(ctx context.Context, v models.Vessel) {
 			// Fix 1: Use the repository method instead of raw SQL
 			e.vesselRepo.SetDistress(ctx, v.ID)
 
-			
-            e.broadcastAlert(
-                "CRITICAL",
-                v.Name+" has run out of fuel and is stranded at sea!",
-                v.ID,
-                v.Name,
+			e.broadcastAlert(
+				"CRITICAL",
+				v.Name+" has run out of fuel and is stranded at sea!",
+				v.ID,
+				v.Name,
 			)
 		}
 		return // Ship stops moving
@@ -210,7 +207,7 @@ func (e *Engine) moveVessel(ctx context.Context, v models.Vessel) {
 
 	// Strategy A: If on a route, follow the line
 	if v.CurrentRouteID != nil {
-		
+
 		// Case 1: Route is finished (Arrived)
 		if v.RouteProgress >= 1.0 {
 			if v.Status == "AT_SEA" {
@@ -219,17 +216,17 @@ func (e *Engine) moveVessel(ctx context.Context, v models.Vessel) {
 					log.Printf("Failed to dock %s: %v", v.Name, err)
 					return
 				}
-				
+
 				// Only log success after successful docking
 				log.Printf("🚢 Ship %s has arrived at destination!", v.Name)
 
 				e.broadcastAlert(
-                    "INFO",
-                    v.Name+" has successfully arrived at the destination port.",
-                    v.ID,
-                    v.Name,
+					"INFO",
+					v.Name+" has successfully arrived at the destination port.",
+					v.ID,
+					v.Name,
 				)
-                
+
 				// Update shipments to DELIVERED
 				e.shipmentRepo.UpdateETAForVessel(ctx, v.ID, *v.CurrentRouteID, 1.0, 0)
 			}

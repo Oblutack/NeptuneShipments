@@ -94,13 +94,13 @@ func TestVesselRepository_Delete_BlocksOnActiveShipment(t *testing.T) {
 	originID, destID := twoRealPortIDs(t, db)
 
 	shipment := &models.Shipment{
-		TrackingNumber:     "TRK-INTEGRATION-TEST-0002",
-		CustomerName:       "Integration Test",
-		OriginPortID:       originID,
-		DestinationPortID:  destID,
-		VesselID:           &v.ID,
-		Status:             "PENDING",
-		ManifestItems:      models.ManifestItems{},
+		TrackingNumber:    "TRK-INTEGRATION-TEST-0002",
+		CustomerName:      "Integration Test",
+		OriginPortID:      originID,
+		DestinationPortID: destID,
+		VesselID:          &v.ID,
+		Status:            "PENDING",
+		ManifestItems:     models.ManifestItems{},
 	}
 	if err := shipmentRepo.Create(context.Background(), shipment); err != nil {
 		t.Fatalf("failed to create throwaway shipment: %v", err)
@@ -149,14 +149,14 @@ func TestVesselRepository_BulkCreate_SetsFlagCountry(t *testing.T) {
 	repo := NewVesselRepository(db.GetPool())
 
 	vessels := []models.Vessel{{
-		Name:        "Integration Test Bulk Vessel",
-		IMONumber:   "IMOTEST0004",
-		FlagCountry: "GB",
-		Type:        "CONTAINER",
-		Status:      "DOCKED",
-		Latitude:    1,
-		Longitude:   1,
-		FuelLevel:   50,
+		Name:         "Integration Test Bulk Vessel",
+		IMONumber:    "IMOTEST0004",
+		FlagCountry:  "GB",
+		Type:         "CONTAINER",
+		Status:       "DOCKED",
+		Latitude:     1,
+		Longitude:    1,
+		FuelLevel:    50,
 		FuelCapacity: 100,
 	}}
 	if err := repo.BulkCreate(context.Background(), vessels); err != nil {

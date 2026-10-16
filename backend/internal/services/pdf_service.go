@@ -29,7 +29,7 @@ func (s *PDFService) GenerateBillOfLading(shipment *models.Shipment, vesselName 
 					Style: consts.Bold,
 					Size:  20,
 					Align: consts.Center,
-					Color: getDarkBlue(), 
+					Color: getDarkBlue(),
 				})
 				m.Text("Official Bill of Lading", props.Text{
 					Top:   12,
@@ -63,7 +63,7 @@ func (s *PDFService) GenerateBillOfLading(shipment *models.Shipment, vesselName 
 		m.Col(6, func() {
 			m.Text("BOOKING DATE:", props.Text{Top: 2, Style: consts.Bold})
 			m.Text(shipment.CreatedAt.Format("2006-01-02"), props.Text{Top: 8})
-			
+
 			m.Text("VESSEL:", props.Text{Top: 16, Style: consts.Bold})
 			m.Text(vesselName, props.Text{Top: 22})
 		})
@@ -106,12 +106,12 @@ func (s *PDFService) GenerateBillOfLading(shipment *models.Shipment, vesselName 
 		},
 	})
 
-	m.Row(20, func() {}) 
+	m.Row(20, func() {})
 
 	// 5. QR CODE & SIGNATURE
 	m.Row(40, func() {
 		m.Col(3, func() {
-			m.QrCode("http://localhost:5173/track?id="+shipment.TrackingNumber)
+			m.QrCode("http://localhost:5173/track?id=" + shipment.TrackingNumber)
 		})
 		m.Col(9, func() {
 			m.Text("CARRIER SIGNATURE", props.Text{Top: 25, Style: consts.Bold, Align: consts.Right})
@@ -119,19 +119,19 @@ func (s *PDFService) GenerateBillOfLading(shipment *models.Shipment, vesselName 
 		})
 	})
 
-    // Fix: Convert Buffer to Bytes using .Bytes()
+	// Fix: Convert Buffer to Bytes using .Bytes()
 	buffer, err := m.Output()
-    if err != nil {
-        return nil, err
-    }
-    return buffer.Bytes(), nil
+	if err != nil {
+		return nil, err
+	}
+	return buffer.Bytes(), nil
 }
 
 // Fix: Return a Color Struct, not 3 integers
 func getDarkBlue() color.Color {
 	return color.Color{
-        Red:   10,
-        Green: 20,
-        Blue:  50,
-    }
+		Red:   10,
+		Green: 20,
+		Blue:  50,
+	}
 }

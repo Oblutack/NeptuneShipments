@@ -29,7 +29,6 @@ func main() {
 		}
 	}
 
-	
 	db, err := database.New()
 	if err != nil {
 		log.Fatal("Failed to connect to database:", err)
@@ -51,14 +50,14 @@ func main() {
 	pdfService := services.NewPDFService()
 
 	hub := internalWs.NewHub()
-    go hub.Run()
-	
+	go hub.Run()
+
 	vesselRepo := repository.NewVesselRepository(db.GetPool())
 	portRepo := repository.NewPortRepository(db)
 	shipmentRepo := repository.NewShipmentRepository(db)
 	userRepo := repository.NewUserRepository(db)
 	tankRepo := repository.NewTankRepository(db)
-	
+
 	routingEngineRepo := repository.NewRoutingRepository(db)
 	routeRepo := repository.NewRouteRepository(db)
 
@@ -71,18 +70,18 @@ func main() {
 	auditRepo := repository.NewAuditRepository(db)
 
 	importerService := services.NewImporterService(
-    portRepo,
-    userRepo,
-    vesselRepo,      
-    routeRepo,
-    shipmentRepo,
-    routingEngineRepo,
-    crewRepo,
-)
+		portRepo,
+		userRepo,
+		vesselRepo,
+		routeRepo,
+		shipmentRepo,
+		routingEngineRepo,
+		crewRepo,
+	)
 
 	vesselHandler := handlers.NewVesselHandler(vesselRepo, importerService)
 	portHandler := handlers.NewPortHandler(portRepo, importerService)
-	
+
 	shipmentHandler := handlers.NewShipmentHandler(
 		shipmentRepo,
 		portRepo,
@@ -189,8 +188,8 @@ func main() {
 	api.Get("/vessels/template", requireAuth, vesselHandler.DownloadVesselsTemplate)
 	api.Get("/vessels/:id", vesselHandler.GetVesselByID)
 
-    // --- ROUTING ENGINE ---
-    api.Get("/routes/network", routeHandler.GetNetworkMesh)
+	// --- ROUTING ENGINE ---
+	api.Get("/routes/network", routeHandler.GetNetworkMesh)
 	api.Post("/routes/calculate", routeHandler.CalculateRoute)
 
 	// Active Fleet Routes
@@ -225,10 +224,9 @@ func main() {
 	ports.Get("/template", portHandler.DownloadPortsTemplate)
 	ports.Get("/:portId/terminals", terminalHandler.GetPortTerminals)
 
-
 	// Components
 	components := api.Group("/components")
-    components.Post("/:id/maintain", requireAdmin, audit("MAINTAIN", "component"), componentHandler.PerformMaintenance)
+	components.Post("/:id/maintain", requireAdmin, audit("MAINTAIN", "component"), componentHandler.PerformMaintenance)
 
 	// Audit log (admin-only, read-only)
 	api.Get("/audit", requireAdmin, auditHandler.GetAuditLog)
@@ -240,12 +238,12 @@ func main() {
 
 	// Crew
 	crew := api.Group("/crew")
-    crew.Get("/", crewHandler.GetAllCrew)
-    crew.Put("/:id/assign", requireAdmin, audit("ASSIGN", "crew"), crewHandler.AssignCrew)
+	crew.Get("/", crewHandler.GetAllCrew)
+	crew.Put("/:id/assign", requireAdmin, audit("ASSIGN", "crew"), crewHandler.AssignCrew)
 
 	// Finance
-    finance := api.Group("/finance")
-    finance.Get("/stats", financeHandler.GetStats)
+	finance := api.Group("/finance")
+	finance.Get("/stats", financeHandler.GetStats)
 
 	// Shipments
 	// Create/read stay open to any authenticated user (a client booking
@@ -272,22 +270,22 @@ func main() {
 		wsOrigins[i] = strings.TrimSpace(wsOrigins[i])
 	}
 	app.Use("/ws", func(c *fiber.Ctx) error {
-    // Set CORS headers for WebSocket
-    c.Set("Access-Control-Allow-Origin", wsOrigins[0])
-    c.Set("Access-Control-Allow-Credentials", "true")
-    c.Set("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization")
-    
-    // Handle preflight
-    if c.Method() == "OPTIONS" {
-        return c.SendStatus(fiber.StatusOK)
-    }
-    
-    // Allow WebSocket upgrade
-    if websocket.IsWebSocketUpgrade(c) {
-        c.Locals("allowed", true)
-        return c.Next()
-    }
-    return fiber.ErrUpgradeRequired
+		// Set CORS headers for WebSocket
+		c.Set("Access-Control-Allow-Origin", wsOrigins[0])
+		c.Set("Access-Control-Allow-Credentials", "true")
+		c.Set("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization")
+
+		// Handle preflight
+		if c.Method() == "OPTIONS" {
+			return c.SendStatus(fiber.StatusOK)
+		}
+
+		// Allow WebSocket upgrade
+		if websocket.IsWebSocketUpgrade(c) {
+			c.Locals("allowed", true)
+			return c.Next()
+		}
+		return fiber.ErrUpgradeRequired
 	})
 
 	// This used to be wide open - anyone could connect and stream the

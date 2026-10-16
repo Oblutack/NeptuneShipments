@@ -11,17 +11,17 @@ import (
 )
 
 type VesselRepository struct {
-    db *pgxpool.Pool
+	db *pgxpool.Pool
 }
 
 func NewVesselRepository(db *pgxpool.Pool) *VesselRepository {
-    return &VesselRepository{
-        db: db,
-    }
+	return &VesselRepository{
+		db: db,
+	}
 }
 
 func (r *VesselRepository) Create(ctx context.Context, vessel *models.Vessel) error {
-    query := `
+	query := `
         INSERT INTO vessels (
             name,
             imo_number,
@@ -43,41 +43,41 @@ func (r *VesselRepository) Create(ctx context.Context, vessel *models.Vessel) er
         RETURNING id, created_at, last_updated
     `
 
-    now := time.Now()
-    if vessel.CreatedAt.IsZero() {
-        vessel.CreatedAt = now
-    }
-    if vessel.LastUpdated.IsZero() {
-        vessel.LastUpdated = now
-    }
+	now := time.Now()
+	if vessel.CreatedAt.IsZero() {
+		vessel.CreatedAt = now
+	}
+	if vessel.LastUpdated.IsZero() {
+		vessel.LastUpdated = now
+	}
 
-    err := r.db.QueryRow(
-        ctx,
-        query,
-        vessel.Name,
-        vessel.IMONumber,
-        vessel.FlagCountry,
-        vessel.Type,
-        vessel.Status,
-        vessel.CapacityTEU,
-        vessel.CapacityBarrels,
-        vessel.Longitude, 
-        vessel.Latitude,
-        vessel.Heading,
-        vessel.SpeedKnots,
-        vessel.LastUpdated,
-        vessel.CreatedAt,
-    ).Scan(&vessel.ID, &vessel.CreatedAt, &vessel.LastUpdated)
+	err := r.db.QueryRow(
+		ctx,
+		query,
+		vessel.Name,
+		vessel.IMONumber,
+		vessel.FlagCountry,
+		vessel.Type,
+		vessel.Status,
+		vessel.CapacityTEU,
+		vessel.CapacityBarrels,
+		vessel.Longitude,
+		vessel.Latitude,
+		vessel.Heading,
+		vessel.SpeedKnots,
+		vessel.LastUpdated,
+		vessel.CreatedAt,
+	).Scan(&vessel.ID, &vessel.CreatedAt, &vessel.LastUpdated)
 
-    if err != nil {
-        return fmt.Errorf("failed to create vessel: %w", err)
-    }
+	if err != nil {
+		return fmt.Errorf("failed to create vessel: %w", err)
+	}
 
-    return nil
+	return nil
 }
 
 func (r *VesselRepository) Update(ctx context.Context, vessel *models.Vessel) error {
-    query := `
+	query := `
         UPDATE vessels 
         SET 
             name = $1,
@@ -94,87 +94,87 @@ func (r *VesselRepository) Update(ctx context.Context, vessel *models.Vessel) er
         RETURNING last_updated
     `
 
-    err := r.db.QueryRow(
-        ctx, query,
-        vessel.Name, vessel.IMONumber, vessel.Type, vessel.Status,
-        vessel.Longitude, vessel.Latitude,
-        vessel.Heading, vessel.SpeedKnots, vessel.FuelLevel, vessel.FuelCapacity,
-        vessel.ID,
-    ).Scan(&vessel.LastUpdated)
+	err := r.db.QueryRow(
+		ctx, query,
+		vessel.Name, vessel.IMONumber, vessel.Type, vessel.Status,
+		vessel.Longitude, vessel.Latitude,
+		vessel.Heading, vessel.SpeedKnots, vessel.FuelLevel, vessel.FuelCapacity,
+		vessel.ID,
+	).Scan(&vessel.LastUpdated)
 
-    if err != nil {
-        return fmt.Errorf("failed to update vessel: %w", err)
-    }
+	if err != nil {
+		return fmt.Errorf("failed to update vessel: %w", err)
+	}
 
-    return nil
+	return nil
 }
 
 // Delete removes a vessel by ID
 // NOTE: This checks for active dependencies before deletion
 func (r *VesselRepository) Delete(ctx context.Context, id string) error {
-    // Check if the vessel is currently on a voyage. There's no vessel_id
-    // on routes - a vessel's current route is tracked the other way
-    // around, via vessels.current_route_id.
-    var onActiveVoyage bool
-    err := r.db.QueryRow(ctx,
-        `SELECT current_route_id IS NOT NULL AND status = 'AT_SEA' FROM vessels WHERE id = $1`,
-        id,
-    ).Scan(&onActiveVoyage)
-    if err != nil {
-        return fmt.Errorf("failed to check vessel voyage status: %w", err)
-    }
+	// Check if the vessel is currently on a voyage. There's no vessel_id
+	// on routes - a vessel's current route is tracked the other way
+	// around, via vessels.current_route_id.
+	var onActiveVoyage bool
+	err := r.db.QueryRow(ctx,
+		`SELECT current_route_id IS NOT NULL AND status = 'AT_SEA' FROM vessels WHERE id = $1`,
+		id,
+	).Scan(&onActiveVoyage)
+	if err != nil {
+		return fmt.Errorf("failed to check vessel voyage status: %w", err)
+	}
 
-    // Check active shipments
-    var activeShipments int
-    err = r.db.QueryRow(ctx,
-        `SELECT COUNT(*) FROM shipments WHERE vessel_id = $1 AND status IN ('PENDING', 'IN_TRANSIT')`,
-        id,
-    ).Scan(&activeShipments)
-    if err != nil {
-        return fmt.Errorf("failed to check active shipments: %w", err)
-    }
+	// Check active shipments
+	var activeShipments int
+	err = r.db.QueryRow(ctx,
+		`SELECT COUNT(*) FROM shipments WHERE vessel_id = $1 AND status IN ('PENDING', 'IN_TRANSIT')`,
+		id,
+	).Scan(&activeShipments)
+	if err != nil {
+		return fmt.Errorf("failed to check active shipments: %w", err)
+	}
 
-    // Check active allocations
-    var activeAllocations int
-    err = r.db.QueryRow(ctx,
-        `SELECT COUNT(*) FROM berth_allocations WHERE vessel_id = $1 AND status IN ('SCHEDULED', 'ACTIVE')`,
-        id,
-    ).Scan(&activeAllocations)
-    if err != nil {
-        return fmt.Errorf("failed to check active allocations: %w", err)
-    }
+	// Check active allocations
+	var activeAllocations int
+	err = r.db.QueryRow(ctx,
+		`SELECT COUNT(*) FROM berth_allocations WHERE vessel_id = $1 AND status IN ('SCHEDULED', 'ACTIVE')`,
+		id,
+	).Scan(&activeAllocations)
+	if err != nil {
+		return fmt.Errorf("failed to check active allocations: %w", err)
+	}
 
-    // Return error if vessel has active dependencies
-    if onActiveVoyage || activeShipments > 0 || activeAllocations > 0 {
-        return fmt.Errorf(
-            "cannot delete vessel: on active voyage=%v, %d active shipments, and %d active allocations. Please complete or cancel them first",
-            onActiveVoyage, activeShipments, activeAllocations,
-        )
-    }
+	// Return error if vessel has active dependencies
+	if onActiveVoyage || activeShipments > 0 || activeAllocations > 0 {
+		return fmt.Errorf(
+			"cannot delete vessel: on active voyage=%v, %d active shipments, and %d active allocations. Please complete or cancel them first",
+			onActiveVoyage, activeShipments, activeAllocations,
+		)
+	}
 
-    // Proceed with deletion
-    query := `DELETE FROM vessels WHERE id = $1`
-    result, err := r.db.Exec(ctx, query, id)
-    if err != nil {
-        return fmt.Errorf("failed to delete vessel: %w", err)
-    }
+	// Proceed with deletion
+	query := `DELETE FROM vessels WHERE id = $1`
+	result, err := r.db.Exec(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete vessel: %w", err)
+	}
 
-    if result.RowsAffected() == 0 {
-        return fmt.Errorf("vessel not found")
-    }
+	if result.RowsAffected() == 0 {
+		return fmt.Errorf("vessel not found")
+	}
 
-    return nil
+	return nil
 }
 
 // BulkCreate inserts multiple vessels in a transaction
 func (r *VesselRepository) BulkCreate(ctx context.Context, vessels []models.Vessel) error {
-    tx, err := r.db.Begin(ctx)
-    if err != nil {
-        return fmt.Errorf("failed to begin transaction: %w", err)
-    }
-    defer tx.Rollback(ctx)
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
 
-    query := `
+	query := `
         INSERT INTO vessels (
             name, imo_number, flag_country, type, status, location,
             heading, speed_knots, fuel_level, fuel_capacity
@@ -184,29 +184,29 @@ func (r *VesselRepository) BulkCreate(ctx context.Context, vessels []models.Vess
         )
     `
 
-    for _, vessel := range vessels {
-        _, err := tx.Exec(
-            ctx, query,
-            vessel.Name, vessel.IMONumber, vessel.FlagCountry, vessel.Type, vessel.Status,
-            vessel.Longitude, vessel.Latitude,
-            vessel.Heading, vessel.SpeedKnots, vessel.FuelLevel, vessel.FuelCapacity,
-        )
-        if err != nil {
-            return fmt.Errorf("failed to insert vessel %s: %w", vessel.Name, err)
-        }
-    }
+	for _, vessel := range vessels {
+		_, err := tx.Exec(
+			ctx, query,
+			vessel.Name, vessel.IMONumber, vessel.FlagCountry, vessel.Type, vessel.Status,
+			vessel.Longitude, vessel.Latitude,
+			vessel.Heading, vessel.SpeedKnots, vessel.FuelLevel, vessel.FuelCapacity,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to insert vessel %s: %w", vessel.Name, err)
+		}
+	}
 
-    if err := tx.Commit(ctx); err != nil {
-        return fmt.Errorf("failed to commit transaction: %w", err)
-    }
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
 
-    return nil
+	return nil
 }
 
 // GetAll retrieves all vessels
 func (r *VesselRepository) GetAll(ctx context.Context) ([]models.Vessel, error) {
-    // --- UPDATED QUERY to include route columns ---
-    query := `
+	// --- UPDATED QUERY to include route columns ---
+	query := `
         SELECT id, name, imo_number, flag_country, type, status, 
                capacity_teu, capacity_barrels,
                ST_Y(location::geometry) as lat, 
@@ -216,30 +216,30 @@ func (r *VesselRepository) GetAll(ctx context.Context) ([]models.Vessel, error) 
                fuel_level, fuel_capacity
         FROM vessels
     `
-    rows, err := r.db.Query(ctx, query)
-    if err != nil {
-        return nil, err
-    }
-    defer rows.Close()
+	rows, err := r.db.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 
-    var vessels []models.Vessel
-    for rows.Next() {
-        var v models.Vessel
-        
-        err := rows.Scan(
-            &v.ID, &v.Name, &v.IMONumber, &v.FlagCountry, &v.Type, &v.Status,
-            &v.CapacityTEU, &v.CapacityBarrels,
-            &v.Latitude, &v.Longitude,
-            &v.Heading, &v.SpeedKnots, &v.LastUpdated, &v.CreatedAt,
-            &v.CurrentRouteID, &v.RouteProgress,
-            &v.FuelLevel, &v.FuelCapacity, 
-        )
-        if err != nil {
-            return nil, err
-        }
-        vessels = append(vessels, v)
-    }
-    return vessels, nil
+	var vessels []models.Vessel
+	for rows.Next() {
+		var v models.Vessel
+
+		err := rows.Scan(
+			&v.ID, &v.Name, &v.IMONumber, &v.FlagCountry, &v.Type, &v.Status,
+			&v.CapacityTEU, &v.CapacityBarrels,
+			&v.Latitude, &v.Longitude,
+			&v.Heading, &v.SpeedKnots, &v.LastUpdated, &v.CreatedAt,
+			&v.CurrentRouteID, &v.RouteProgress,
+			&v.FuelLevel, &v.FuelCapacity,
+		)
+		if err != nil {
+			return nil, err
+		}
+		vessels = append(vessels, v)
+	}
+	return vessels, nil
 }
 
 // GetByID finds a vessel by its UUID
@@ -262,8 +262,8 @@ func (r *VesselRepository) GetByID(ctx context.Context, id string) (*models.Vess
 		&v.CapacityTEU, &v.CapacityBarrels,
 		&v.Latitude, &v.Longitude,
 		&v.Heading, &v.SpeedKnots, &v.LastUpdated, &v.CreatedAt,
-        &v.CurrentRouteID, &v.RouteProgress,
-        &v.FuelLevel, &v.FuelCapacity,
+		&v.CurrentRouteID, &v.RouteProgress,
+		&v.FuelLevel, &v.FuelCapacity,
 	)
 	if err != nil {
 		return nil, err
@@ -279,7 +279,7 @@ func (r *VesselRepository) UpdatePosition(ctx context.Context, id string, lat, l
 		    last_updated = NOW()
 		WHERE id = $3
 	`
-    // Use Exec() for updates that don't return data
+	// Use Exec() for updates that don't return data
 	_, err := r.db.Exec(ctx, query, lon, lat, id)
 	return err
 }
@@ -287,9 +287,9 @@ func (r *VesselRepository) UpdatePosition(ctx context.Context, id string, lat, l
 // UpdateProgress moves the ship along the pre-defined route
 // progress is a value between 0.0 and 1.0
 func (r *VesselRepository) UpdateProgress(ctx context.Context, vesselID string, progress float64, fuelLevel float64) error {
-    // 1. Calculate new point on the line (Interpolate)
-    // 2. Update the vessel's location column AND the progress column
-    query := `
+	// 1. Calculate new point on the line (Interpolate)
+	// 2. Update the vessel's location column AND the progress column
+	query := `
         WITH route_info AS (
             SELECT r.path FROM routes r
             JOIN vessels v ON v.current_route_id = r.id
@@ -307,8 +307,8 @@ func (r *VesselRepository) UpdateProgress(ctx context.Context, vesselID string, 
             last_updated = NOW()
         WHERE id = $1
     `
-    _, err := r.db.Exec(ctx, query, vesselID, progress, fuelLevel)
-    return err
+	_, err := r.db.Exec(ctx, query, vesselID, progress, fuelLevel)
+	return err
 }
 
 // SetDocked stops the ship AND updates all its cargo to 'DELIVERED'
@@ -455,17 +455,17 @@ func (r *VesselRepository) AssignRoute(ctx context.Context, vesselID, routeID st
 }
 
 func (r *VesselRepository) CreateOrUpdate(ctx context.Context, v *models.Vessel) error {
-    query := `
+	query := `
         INSERT INTO vessels (name, imo_number, flag_country, type, status, capacity_teu, capacity_barrels, location, heading, speed_knots, fuel_capacity, fuel_level)
         VALUES ($1, $2, $3, $4, 'AT_SEA', $5, $6, ST_SetSRID(ST_MakePoint($8, $7), 4326), 0, $9, $10, $11)
         ON CONFLICT (imo_number) DO UPDATE 
         SET name = EXCLUDED.name, fuel_level = EXCLUDED.fuel_level -- Update fuel on reset
         RETURNING id
     `
-    err := r.db.QueryRow(ctx, query, 
-        v.Name, v.IMONumber, v.FlagCountry, v.Type, v.CapacityTEU, v.CapacityBarrels, v.Latitude, v.Longitude, v.SpeedKnots, v.FuelCapacity, v.FuelLevel,
-    ).Scan(&v.ID)
-    return err
+	err := r.db.QueryRow(ctx, query,
+		v.Name, v.IMONumber, v.FlagCountry, v.Type, v.CapacityTEU, v.CapacityBarrels, v.Latitude, v.Longitude, v.SpeedKnots, v.FuelCapacity, v.FuelLevel,
+	).Scan(&v.ID)
+	return err
 }
 
 func (r *VesselRepository) GetIDByIMO(ctx context.Context, imo string) (string, error) {
@@ -519,6 +519,5 @@ func (r *VesselRepository) GetNearbyPort(ctx context.Context, lat, lon float64) 
 
 // GetPool returns the database connection pool
 func (r *VesselRepository) GetPool() *pgxpool.Pool {
-    return r.db
+	return r.db
 }
-
