@@ -24,20 +24,20 @@ export const PortInspector = ({ port, onClose }: PortInspectorProps) => {
 
   return (
     <div
-      className="absolute top-4 right-4 bottom-4 z-20 w-96 bg-slate-900/95 backdrop-blur-md border border-slate-700 rounded-xl shadow-2xl overflow-hidden animate-in slide-in-from-right-4 flex flex-col"
+      className="absolute top-4 right-4 bottom-4 z-20 w-96 bg-slate-900/95 border border-slate-800 rounded-lg shadow-xl overflow-hidden animate-in slide-in-from-right-4 flex flex-col"
       onClick={(e) => e.stopPropagation()}
     >
       {/* HEADER */}
-      <div className="bg-linear-to-r from-orange-900/30 to-slate-900 border-b border-slate-700 p-4 shrink-0">
+      <div className="border-b border-slate-800 p-4 shrink-0">
         <div className="flex justify-between items-start">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <Anchor className="text-orange-400" size={20} />
-              <h3 className="text-lg font-bold text-white">
+              <Anchor className="text-slate-500" size={18} />
+              <h3 className="text-base font-semibold text-white">
                 Port Infrastructure
               </h3>
             </div>
-            <p className="text-sm text-slate-300 font-semibold">{port.name}</p>
+            <p className="text-sm text-slate-300 font-medium">{port.name}</p>
             <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
               <MapPin size={12} />
               <span>{port.un_locode}</span>

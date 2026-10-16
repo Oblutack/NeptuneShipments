@@ -50,9 +50,8 @@ const Toast = ({ alert, onDismiss }: ToastProps) => {
     <div
       className={`
         animate-in slide-in-from-right duration-300
-        bg-slate-900 border rounded-lg shadow-2xl p-4
-        ${isCritical ? "border-red-500/70" : "border-blue-500/70"}
-        hover:scale-105 transition-transform
+        bg-slate-900 border rounded-lg shadow-lg p-4
+        ${isCritical ? "border-red-500/50" : "border-blue-500/50"}
       `}
     >
       {/* Header */}
