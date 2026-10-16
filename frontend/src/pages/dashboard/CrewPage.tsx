@@ -7,6 +7,7 @@ import {
 import { VesselSelector } from "../../features/crew/VesselSelector";
 import { CrewRoster } from "../../features/crew/CrewRoster";
 import { Users, Loader2, X } from "lucide-react";
+import { PageHeader } from "../../components/ui/PageHeader";
 
 export const CrewPage = () => {
   const [selectedVesselId, setSelectedVesselId] = useState<string | null>(null);
@@ -69,83 +70,64 @@ export const CrewPage = () => {
 
   if (crewLoading || vesselsLoading) {
     return (
-      <div className="flex items-center justify-center h-screen gap-3">
-        <Loader2 className="animate-spin text-blue-500" size={32} />
-        <span className="text-slate-400 text-lg">Loading crew roster...</span>
+      <div className="flex items-center justify-center py-32 gap-3">
+        <Loader2 className="animate-spin text-blue-400" size={28} />
+        <span className="text-slate-400 font-medium">
+          Loading crew roster...
+        </span>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-8">
-      <div className="max-w-[1800px] mx-auto">
-        {/* Page Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <div className="p-3 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-2xl shadow-lg shadow-cyan-500/20">
-            <Users className="text-white" size={32} />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-white tracking-tight">
-              Crew Management
-            </h1>
-            <p className="text-slate-400 text-sm mt-1">
-              Personnel roster and vessel assignments
-            </p>
-          </div>
-        </div>
+    <>
+      <PageHeader
+        icon={Users}
+        title="Crew Management"
+        subtitle="Personnel roster and vessel assignments"
+      />
 
-        {/* Stats Bar */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <StatCard
-            label="Total Personnel"
-            value={crewData?.total || 0}
-            color="blue"
-          />
-          <StatCard
-            label="Active Crew"
-            value={
-              crewData?.crew.filter((c) => c.status === "ACTIVE").length || 0
-            }
-            color="green"
-          />
-          <StatCard
-            label="On Shore Leave"
-            value={unassignedCount}
-            color="amber"
-          />
-          <StatCard
-            label="Assigned to Fleet"
-            value={
-              crewData?.crew.filter((c) => c.vessel_id !== null).length || 0
-            }
-            color="purple"
-          />
-        </div>
+      {/* Stats Bar */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+        <StatCard label="Total Personnel" value={crewData?.total || 0} />
+        <StatCard
+          label="Active Crew"
+          value={
+            crewData?.crew.filter((c) => c.status === "ACTIVE").length || 0
+          }
+        />
+        <StatCard label="On Shore Leave" value={unassignedCount} />
+        <StatCard
+          label="Assigned to Fleet"
+          value={
+            crewData?.crew.filter((c) => c.vessel_id !== null).length || 0
+          }
+        />
+      </div>
 
-        {/* Master-Detail Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Left: Vessel Selector */}
-          <div className="lg:col-span-1">
-            <div className="bg-slate-900/50 backdrop-blur-xl rounded-2xl border border-slate-800 p-6 sticky top-8 shadow-2xl">
-              <VesselSelector
-                vessels={vessels || []}
-                selectedVesselId={selectedVesselId}
-                unassignedCount={unassignedCount}
-                onSelectVessel={setSelectedVesselId}
-              />
-            </div>
-          </div>
-
-          {/* Right: Crew Roster */}
-          <div className="lg:col-span-3">
-            <CrewRoster
-              crew={filteredCrew}
-              vesselName={selectedVesselName}
-              onAssign={handleAssign}
-              onTransfer={handleTransfer}
-              onRemove={handleRemove}
+      {/* Master-Detail Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        {/* Left: Vessel Selector */}
+        <div className="lg:col-span-1">
+          <div className="bg-slate-900 border border-slate-800 rounded-lg p-4 sticky top-4">
+            <VesselSelector
+              vessels={vessels || []}
+              selectedVesselId={selectedVesselId}
+              unassignedCount={unassignedCount}
+              onSelectVessel={setSelectedVesselId}
             />
           </div>
+        </div>
+
+        {/* Right: Crew Roster */}
+        <div className="lg:col-span-3">
+          <CrewRoster
+            crew={filteredCrew}
+            vesselName={selectedVesselName}
+            onAssign={handleAssign}
+            onTransfer={handleTransfer}
+            onRemove={handleRemove}
+          />
         </div>
       </div>
 
@@ -159,7 +141,7 @@ export const CrewPage = () => {
           }}
         />
       )}
-    </div>
+    </>
   );
 };
 
@@ -177,21 +159,23 @@ const AssignVesselModal = ({
   const [selected, setSelected] = useState(vessels[0]?.id || "");
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+      <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 w-full max-w-sm shadow-xl">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-bold text-white">Assign to Vessel</h3>
+          <h3 className="text-base font-semibold text-white">
+            Assign to Vessel
+          </h3>
           <button
             onClick={onClose}
             className="text-slate-500 hover:text-white transition-colors"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
         <select
           value={selected}
           onChange={(e) => setSelected(e.target.value)}
-          className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-white text-sm mb-4 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
         >
           {vessels.map((v) => (
             <option key={v.id} value={v.id}>
@@ -202,14 +186,14 @@ const AssignVesselModal = ({
         <div className="flex gap-3">
           <button
             onClick={onClose}
-            className="flex-1 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2.5 rounded-xl font-medium transition-all"
+            className="flex-1 bg-slate-800 hover:bg-slate-700 text-white text-sm px-4 py-2 rounded-md font-medium transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={() => selected && onConfirm(selected)}
             disabled={!selected}
-            className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-4 py-2.5 rounded-xl font-medium transition-all disabled:opacity-50"
+            className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-sm px-4 py-2 rounded-md font-medium transition-colors disabled:opacity-50"
           >
             Confirm
           </button>
@@ -223,28 +207,17 @@ const AssignVesselModal = ({
 interface StatCardProps {
   label: string;
   value: number;
-  color: "blue" | "green" | "amber" | "purple";
 }
 
-const StatCard = ({ label, value, color }: StatCardProps) => {
-  const colorClasses = {
-    blue: "from-blue-500/20 to-cyan-500/20 border-blue-500/30 text-blue-400",
-    green:
-      "from-green-500/20 to-emerald-500/20 border-green-500/30 text-green-400",
-    amber:
-      "from-amber-500/20 to-orange-500/20 border-amber-500/30 text-amber-400",
-    purple:
-      "from-purple-500/20 to-pink-500/20 border-purple-500/30 text-purple-400",
-  };
-
+const StatCard = ({ label, value }: StatCardProps) => {
   return (
-    <div
-      className={`bg-gradient-to-br ${colorClasses[color]} backdrop-blur-xl border rounded-xl p-6 shadow-xl`}
-    >
-      <p className="text-xs uppercase tracking-wider mb-2 opacity-70">
+    <div className="bg-slate-900 border border-slate-800 rounded-lg p-4">
+      <p className="text-xs text-slate-500 uppercase tracking-wide mb-1.5">
         {label}
       </p>
-      <p className="text-3xl font-bold">{value}</p>
+      <p className="text-2xl font-semibold text-white tabular-nums">
+        {value}
+      </p>
     </div>
   );
 };
