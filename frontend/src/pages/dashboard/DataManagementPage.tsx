@@ -32,6 +32,8 @@ import {
   type Shipment,
 } from "../../features/api/apiSlice";
 import { DataTable } from "../../components/ui/DataTable";
+import { PageHeader } from "../../components/ui/PageHeader";
+import { StatusBadge } from "../../components/ui/StatusBadge";
 import { toast } from "react-toastify";
 
 type Tab = "vessels" | "ports" | "shipments";
@@ -210,24 +212,7 @@ const DataManagementPage = () => {
     {
       accessorKey: "status",
       header: "STATUS",
-      cell: ({ getValue }) => {
-        const value = String(getValue());
-        const statusStyles = {
-          AT_SEA: "bg-blue-500/20 text-blue-300 border-blue-500/30",
-          DOCKED: "bg-green-500/20 text-green-300 border-green-500/30",
-          ANCHORED: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
-          MAINTENANCE: "bg-red-500/20 text-red-300 border-red-500/30",
-          DISTRESS: "bg-red-500/20 text-red-300 border-red-500/30",
-          IDLE: "bg-gray-500/20 text-gray-300 border-gray-500/30",
-        };
-        return (
-          <span
-            className={`px-3 py-1 rounded-full text-xs font-semibold uppercase border ${statusStyles[value as keyof typeof statusStyles] || statusStyles.IDLE}`}
-          >
-            {value.replace("_", " ")}
-          </span>
-        );
-      },
+      cell: ({ getValue }) => <StatusBadge status={String(getValue())} />,
     },
     {
       accessorKey: "fuel_level",
@@ -235,21 +220,16 @@ const DataManagementPage = () => {
       cell: ({ row }) => {
         const vessel = row.original;
         const percentage = (vessel.fuel_level / vessel.fuel_capacity) * 100;
-        const fuelColor =
-          percentage > 70
-            ? "bg-green-500"
-            : percentage > 30
-              ? "bg-yellow-500"
-              : "bg-red-500";
+        const fuelColor = percentage < 20 ? "bg-red-500" : "bg-blue-500";
         return (
-          <div className="flex items-center gap-3">
-            <div className="w-24 h-2 bg-slate-800 rounded-full overflow-hidden">
+          <div className="flex items-center gap-2 w-28">
+            <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
               <div
-                className={`h-full ${fuelColor} transition-all`}
-                style={{ width: `${percentage}%` }}
+                className={`h-full rounded-full ${fuelColor} transition-all`}
+                style={{ width: `${Math.max(percentage, 2)}%` }}
               />
             </div>
-            <span className="text-xs font-medium text-slate-400">
+            <span className="text-xs text-slate-400 w-9 text-right tabular-nums">
               {percentage.toFixed(0)}%
             </span>
           </div>
@@ -260,20 +240,20 @@ const DataManagementPage = () => {
       id: "actions",
       header: "ACTIONS",
       cell: ({ row }) => (
-        <div className="flex gap-2">
+        <div className="flex gap-1">
           <button
             onClick={() => handleEdit(row.original)}
-            className="p-2 hover:bg-blue-500/10 text-blue-400 hover:text-blue-300 rounded-lg transition-all duration-200"
+            className="p-1.5 hover:bg-slate-800 text-blue-400 rounded-md transition-colors"
             title="Edit Vessel"
           >
-            <Pencil size={16} />
+            <Pencil size={15} />
           </button>
           <button
             onClick={() => handleDelete(row.original.id)}
-            className="p-2 hover:bg-red-500/10 text-red-400 hover:text-red-300 rounded-lg transition-all duration-200"
+            className="p-1.5 hover:bg-red-500/15 text-red-400 rounded-md transition-colors"
             title="Delete Vessel"
           >
-            <Trash2 size={16} />
+            <Trash2 size={15} />
           </button>
         </div>
       ),
@@ -289,7 +269,7 @@ const DataManagementPage = () => {
       accessorKey: "un_locode",
       header: "UN/LOCODE",
       cell: ({ getValue }) => (
-        <code className="px-2 py-1 bg-slate-800 rounded text-xs font-mono text-blue-300">
+        <code className="px-1.5 py-0.5 bg-slate-800 rounded text-xs font-mono text-slate-300">
           {String(getValue())}
         </code>
       ),
@@ -329,20 +309,20 @@ const DataManagementPage = () => {
       id: "actions",
       header: "ACTIONS",
       cell: ({ row }) => (
-        <div className="flex gap-2">
+        <div className="flex gap-1">
           <button
             onClick={() => handleEdit(row.original)}
-            className="p-2 hover:bg-blue-500/10 text-blue-400 hover:text-blue-300 rounded-lg transition-all duration-200"
+            className="p-1.5 hover:bg-slate-800 text-blue-400 rounded-md transition-colors"
             title="Edit Port"
           >
-            <Pencil size={16} />
+            <Pencil size={15} />
           </button>
           <button
             onClick={() => handleDelete(row.original.id)}
-            className="p-2 hover:bg-red-500/10 text-red-400 hover:text-red-300 rounded-lg transition-all duration-200"
+            className="p-1.5 hover:bg-red-500/15 text-red-400 rounded-md transition-colors"
             title="Delete Port"
           >
-            <Trash2 size={16} />
+            <Trash2 size={15} />
           </button>
         </div>
       ),
@@ -354,7 +334,7 @@ const DataManagementPage = () => {
       accessorKey: "tracking_number",
       header: "TRACKING #",
       cell: ({ getValue }) => (
-        <code className="px-2 py-1 bg-slate-800 rounded text-xs font-mono text-green-300">
+        <code className="px-1.5 py-0.5 bg-slate-800 rounded text-xs font-mono text-slate-300">
           {String(getValue())}
         </code>
       ),
@@ -366,22 +346,7 @@ const DataManagementPage = () => {
     {
       accessorKey: "status",
       header: "STATUS",
-      cell: ({ getValue }) => {
-        const value = String(getValue());
-        const statusStyles = {
-          IN_TRANSIT: "bg-blue-500/20 text-blue-300 border-blue-500/30",
-          DELIVERED: "bg-green-500/20 text-green-300 border-green-500/30",
-          PENDING: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
-          DELAYED: "bg-red-500/20 text-red-300 border-red-500/30",
-        };
-        return (
-          <span
-            className={`px-3 py-1 rounded-full text-xs font-semibold uppercase border ${statusStyles[value as keyof typeof statusStyles] || "bg-gray-500/20 text-gray-300 border-gray-500/30"}`}
-          >
-            {value.replace("_", " ")}
-          </span>
-        );
-      },
+      cell: ({ getValue }) => <StatusBadge status={String(getValue())} />,
     },
     {
       accessorKey: "origin_port_name",
@@ -420,28 +385,17 @@ const DataManagementPage = () => {
   const isLoading = vesselsLoading || portsLoading || shipmentsLoading;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-8">
-      <div className="max-w-[1600px] mx-auto space-y-8">
-        {/* ✨ Modern Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl shadow-lg shadow-blue-500/20">
-              <Database className="text-white" size={32} />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-white tracking-tight">
-                Data Management
-              </h1>
-              <p className="text-slate-400 text-sm mt-1">
-                Manage vessels, ports, and shipments
-              </p>
-            </div>
-          </div>
-        </div>
+    <>
+      <PageHeader
+        icon={Database}
+        title="Data Management"
+        subtitle="Manage vessels, ports, and shipments"
+      />
 
-        {/* ✨ Modern Tabs */}
-        <div className="bg-slate-900/50 backdrop-blur-xl rounded-2xl border border-slate-800 p-2">
-          <div className="flex gap-2">
+      <div className="space-y-4">
+        {/* Tabs */}
+        <div className="bg-slate-900 border border-slate-800 rounded-lg p-1.5">
+          <div className="flex gap-1.5">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -449,21 +403,15 @@ const DataManagementPage = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-3 px-6 py-3 rounded-xl transition-all duration-300 flex-1 ${
+                  className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors flex-1 ${
                     isActive
-                      ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg shadow-blue-500/20"
+                      ? "bg-blue-500/10 text-white"
                       : "text-slate-400 hover:text-white hover:bg-slate-800/50"
                   }`}
                 >
-                  <Icon size={20} />
-                  <span className="font-semibold">{tab.label}</span>
-                  <span
-                    className={`ml-auto px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                      isActive
-                        ? "bg-white/20 text-white"
-                        : "bg-slate-800 text-slate-400"
-                    }`}
-                  >
+                  <Icon size={16} className={isActive ? "text-blue-400" : ""} />
+                  <span className="font-medium text-sm">{tab.label}</span>
+                  <span className="ml-auto px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 text-xs font-medium tabular-nums">
                     {tab.count}
                   </span>
                 </button>
@@ -472,22 +420,22 @@ const DataManagementPage = () => {
           </div>
         </div>
 
-        {/* ✨ Modern Toolbar */}
+        {/* Toolbar */}
         {activeTab !== "shipments" && (
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2.5">
             <button
               onClick={handleAdd}
-              className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-blue-500/30 transition-all duration-300 hover:scale-105"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-md font-medium text-sm transition-colors"
             >
-              <Plus size={20} />
+              <Plus size={16} />
               Add {activeTab === "vessels" ? "Vessel" : "Port"}
             </button>
 
             <button
               onClick={handleDownloadTemplate}
-              className="flex items-center gap-2 px-5 py-3 bg-slate-800 text-slate-300 rounded-xl font-semibold hover:bg-slate-700 border border-slate-700 hover:border-slate-600 transition-all duration-300"
+              className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-slate-300 rounded-md font-medium text-sm hover:bg-slate-700 transition-colors"
             >
-              <Download size={20} />
+              <Download size={16} />
               Download Template
             </button>
 
@@ -498,12 +446,12 @@ const DataManagementPage = () => {
                   : portFileRef.current?.click()
               }
               disabled={isUploading}
-              className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-green-500/30 transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+              className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-slate-300 rounded-md font-medium text-sm hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isUploading ? (
-                <Loader2 size={20} className="animate-spin" />
+                <Loader2 size={16} className="animate-spin" />
               ) : (
-                <Upload size={20} />
+                <Upload size={16} />
               )}
               {isUploading ? "Uploading..." : "Bulk Upload CSV"}
             </button>
@@ -525,11 +473,11 @@ const DataManagementPage = () => {
           </div>
         )}
 
-        {/* ✨ Modern Data Table */}
-        <div className="bg-slate-900/50 backdrop-blur-xl rounded-2xl border border-slate-800 overflow-hidden shadow-2xl">
+        {/* Data Table */}
+        <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center h-96 gap-4">
-              <Loader2 className="animate-spin text-blue-500" size={48} />
+            <div className="flex flex-col items-center justify-center h-96 gap-3">
+              <Loader2 className="animate-spin text-blue-400" size={32} />
               <p className="text-slate-400 font-medium">Loading data...</p>
             </div>
           ) : (
@@ -586,7 +534,7 @@ const DataManagementPage = () => {
           onSubmit={handleSubmit}
         />
       )}
-    </div>
+    </>
   );
 };
 
@@ -608,18 +556,20 @@ const EmptyState = ({
   action,
   actionLabel,
 }: EmptyStateProps) => (
-  <div className="flex flex-col items-center justify-center h-96 gap-4 p-8">
-    <div className="p-4 bg-slate-800/50 rounded-2xl">
-      <Icon size={48} className="text-slate-600" />
+  <div className="flex flex-col items-center justify-center h-96 gap-3 p-8">
+    <div className="p-4 bg-slate-800/50 rounded-lg">
+      <Icon size={40} className="text-slate-600" />
     </div>
-    <h3 className="text-xl font-bold text-slate-300">{title}</h3>
-    <p className="text-slate-500 text-center max-w-md">{description}</p>
+    <h3 className="text-base font-semibold text-slate-300">{title}</h3>
+    <p className="text-slate-500 text-sm text-center max-w-md">
+      {description}
+    </p>
     {action && actionLabel && (
       <button
         onClick={action}
-        className="mt-4 flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-blue-500/30 transition-all duration-300 hover:scale-105"
+        className="mt-3 flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-md font-medium text-sm transition-colors"
       >
-        <Plus size={20} />
+        <Plus size={16} />
         {actionLabel}
       </button>
     )}
@@ -659,24 +609,24 @@ const FormModal = ({ type, item, onClose, onSubmit }: FormModalProps) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-900 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto border border-slate-800">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+      <div className="bg-slate-900 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto border border-slate-800">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-800 sticky top-0 bg-slate-900 z-10">
-          <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-            {type === "vessels" ? <Ship size={24} /> : <Anchor size={24} />}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 sticky top-0 bg-slate-900 z-10">
+          <h2 className="text-lg font-semibold text-white flex items-center gap-2.5">
+            {type === "vessels" ? <Ship size={18} /> : <Anchor size={18} />}
             {item ? "Edit" : "Add"} {type === "vessels" ? "Vessel" : "Port"}
           </h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-slate-800 rounded-lg transition-colors text-slate-400 hover:text-white"
+            className="p-1.5 hover:bg-slate-800 rounded-md transition-colors text-slate-400 hover:text-white"
           >
-            <X size={24} />
+            <X size={20} />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleFormSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleFormSubmit} className="p-6 space-y-5">
           {type === "vessels" ? (
             <VesselForm formData={formData} onChange={handleChange} />
           ) : (
@@ -684,17 +634,17 @@ const FormModal = ({ type, item, onClose, onSubmit }: FormModalProps) => {
           )}
 
           {/* Actions */}
-          <div className="flex justify-end gap-3 pt-6 border-t border-slate-800">
+          <div className="flex justify-end gap-3 pt-5 border-t border-slate-800">
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-3 bg-slate-800 text-slate-300 rounded-xl font-semibold hover:bg-slate-700 transition-colors"
+              className="px-4 py-2 bg-slate-800 text-slate-300 text-sm rounded-md font-medium hover:bg-slate-700 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-blue-500/30 transition-all duration-300"
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-md font-medium transition-colors"
             >
               {item ? "Update" : "Create"}
             </button>
@@ -716,7 +666,7 @@ interface VesselFormProps {
 }
 
 const VesselForm = ({ formData, onChange }: VesselFormProps) => (
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
     <FormField label="Vessel Name" required>
       <input
         type="text"
@@ -724,7 +674,7 @@ const VesselForm = ({ formData, onChange }: VesselFormProps) => (
         value={formData.name || ""}
         onChange={onChange}
         required
-        className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+        className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
         placeholder="Enter vessel name"
       />
     </FormField>
@@ -736,7 +686,7 @@ const VesselForm = ({ formData, onChange }: VesselFormProps) => (
         value={formData.imo_number || ""}
         onChange={onChange}
         required
-        className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-mono"
+        className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 font-mono"
         placeholder="IMO1234567"
       />
     </FormField>
@@ -747,7 +697,7 @@ const VesselForm = ({ formData, onChange }: VesselFormProps) => (
         value={formData.type || ""}
         onChange={onChange}
         required
-        className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+        className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
       >
         <option value="">Select Type</option>
         <option value="CONTAINER">Container</option>
@@ -763,7 +713,7 @@ const VesselForm = ({ formData, onChange }: VesselFormProps) => (
         value={formData.status || ""}
         onChange={onChange}
         required
-        className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+        className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
       >
         <option value="">Select Status</option>
         <option value="AT_SEA">At Sea</option>
@@ -782,7 +732,7 @@ const VesselForm = ({ formData, onChange }: VesselFormProps) => (
         value={formData.latitude || ""}
         onChange={onChange}
         required
-        className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-mono"
+        className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 font-mono"
         placeholder="-90.0000 to 90.0000"
       />
     </FormField>
@@ -795,7 +745,7 @@ const VesselForm = ({ formData, onChange }: VesselFormProps) => (
         value={formData.longitude || ""}
         onChange={onChange}
         required
-        className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-mono"
+        className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 font-mono"
         placeholder="-180.0000 to 180.0000"
       />
     </FormField>
@@ -807,7 +757,7 @@ const VesselForm = ({ formData, onChange }: VesselFormProps) => (
         name="fuel_level"
         value={formData.fuel_level || 100}
         onChange={onChange}
-        className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+        className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
         min="0"
         max="100"
       />
@@ -820,7 +770,7 @@ const VesselForm = ({ formData, onChange }: VesselFormProps) => (
         name="fuel_capacity"
         value={formData.fuel_capacity || 100}
         onChange={onChange}
-        className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+        className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
         min="0"
       />
     </FormField>
@@ -838,7 +788,7 @@ interface PortFormProps {
 }
 
 const PortForm = ({ formData, onChange }: PortFormProps) => (
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
     <FormField label="Port Name" required>
       <input
         type="text"
@@ -846,7 +796,7 @@ const PortForm = ({ formData, onChange }: PortFormProps) => (
         value={formData.name || ""}
         onChange={onChange}
         required
-        className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+        className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
         placeholder="Enter port name"
       />
     </FormField>
@@ -858,7 +808,7 @@ const PortForm = ({ formData, onChange }: PortFormProps) => (
         value={formData.un_locode || ""}
         onChange={onChange}
         required
-        className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-mono uppercase"
+        className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 font-mono uppercase"
         placeholder="USNYC"
         maxLength={5}
       />
@@ -871,7 +821,7 @@ const PortForm = ({ formData, onChange }: PortFormProps) => (
         value={formData.country || ""}
         onChange={onChange}
         required
-        className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+        className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
         placeholder="Enter country"
       />
     </FormField>
@@ -882,7 +832,7 @@ const PortForm = ({ formData, onChange }: PortFormProps) => (
         value={formData.type || ""}
         onChange={onChange}
         required
-        className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+        className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
       >
         <option value="">Select Type</option>
         <option value="COMMERCIAL">Commercial</option>
@@ -899,7 +849,7 @@ const PortForm = ({ formData, onChange }: PortFormProps) => (
         value={formData.latitude || ""}
         onChange={onChange}
         required
-        className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-mono"
+        className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 font-mono"
         placeholder="-90.0000 to 90.0000"
       />
     </FormField>
@@ -912,7 +862,7 @@ const PortForm = ({ formData, onChange }: PortFormProps) => (
         value={formData.longitude || ""}
         onChange={onChange}
         required
-        className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all font-mono"
+        className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 font-mono"
         placeholder="-180.0000 to 180.0000"
       />
     </FormField>
@@ -930,7 +880,7 @@ interface FormFieldProps {
 
 const FormField = ({ label, required, children }: FormFieldProps) => (
   <div className="space-y-2">
-    <label className="block text-sm font-semibold text-slate-300">
+    <label className="block text-xs font-medium text-slate-400 mb-1.5">
       {label}
       {required && <span className="text-red-400 ml-1">*</span>}
     </label>
