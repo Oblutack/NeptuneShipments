@@ -36,8 +36,40 @@ jobs:
       - name: go build
         run: go build ./...
 
+      # Repository tests hit a real Postgres+PostGIS+pgRouting instance
+      # rather than a mock - the project's custom image (backend/db/Dockerfile)
+      # isn't on a public registry, so it's built here the same way
+      # docker-compose builds it, instead of using `services:` (which only
+      # pulls pre-built images).
+      - name: Build test database image
+        run: docker build -t neptune_test_db ./db
+
+      - name: Start test database
+        run: |
+          docker run -d --name neptune_test_db -p 5432:5432 \
+            -e POSTGRES_PASSWORD=postgres \
+            -e POSTGRES_DB=neptune_test \
+            neptune_test_db
+          for i in $(seq 1 30); do
+            if docker exec neptune_test_db pg_isready -U postgres > /dev/null 2>&1; then
+              echo "Postgres is ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Postgres did not become ready in time"
+          exit 1
+
+      - name: Install migrate CLI
+        run: go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+
+      - name: Run migrations
+        run: migrate -path db/migrations -database "postgres://postgres:postgres@localhost:5432/neptune_test?sslmode=disable" up
+
       - name: go test
         run: go test ./...
+        env:
+          DB_URL: postgres://postgres:postgres@localhost:5432/neptune_test?sslmode=disable
 
   frontend:
     name: Frontend (React/TypeScript)

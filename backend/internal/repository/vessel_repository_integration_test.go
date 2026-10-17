@@ -2,14 +2,13 @@ package repository
 
 import (
 	"context"
-	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/Oblutack/NeptuneShipments/backend/internal/database"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/models"
-	"github.com/joho/godotenv"
+	"github.com/Oblutack/NeptuneShipments/backend/internal/testutil"
 )
 
 // These are integration tests against a real Postgres database - they
@@ -19,19 +18,10 @@ import (
 // have caught any of those, since the bugs were in the SQL itself.
 //
 // Skips (not fails) when no database is reachable, so `go test ./...`
-// still works without Postgres running - see testDB below.
+// still works without Postgres running - see testutil.RequireDB.
 
 func testDB(t *testing.T) *database.Service {
-	t.Helper()
-	_ = godotenv.Load("../../.env") // backend/.env, relative to this package
-	if os.Getenv("DB_URL") == "" {
-		t.Skip("DB_URL not set - skipping integration test (needs a running Postgres)")
-	}
-	db, err := database.New()
-	if err != nil {
-		t.Skipf("could not connect to database: %v", err)
-	}
-	return db
+	return testutil.RequireDB(t)
 }
 
 // twoRealPortIDs fetches two distinct existing ports to satisfy shipments'
