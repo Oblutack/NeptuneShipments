@@ -2,11 +2,13 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"time"
 
 	"github.com/Oblutack/NeptuneShipments/backend/internal/models"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -516,7 +518,7 @@ func (r *VesselRepository) GetNearbyPort(ctx context.Context, lat, lon float64) 
 	)
 
 	if err != nil {
-		if err.Error() == "no rows in result set" {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil // No port nearby
 		}
 		return nil, fmt.Errorf("failed to check nearby port: %w", err)

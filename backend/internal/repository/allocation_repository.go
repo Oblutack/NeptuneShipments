@@ -3,11 +3,13 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/Oblutack/NeptuneShipments/backend/internal/database"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/models"
+	"github.com/jackc/pgx/v5"
 )
 
 type AllocationRepository struct {
@@ -94,7 +96,7 @@ func (r *AllocationRepository) CheckOverlap(ctx context.Context, berthID string,
 
 	if err != nil {
 		// No conflict found (expected error)
-		if err.Error() == "no rows in result set" {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to check overlap: %w", err)
@@ -237,7 +239,7 @@ func (r *AllocationRepository) GetScheduledAllocationByVesselID(ctx context.Cont
 	)
 
 	if err != nil {
-		if err.Error() == "no rows in result set" {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, nil // No scheduled allocation found
 		}
 		return nil, fmt.Errorf("failed to fetch scheduled allocation: %w", err)
