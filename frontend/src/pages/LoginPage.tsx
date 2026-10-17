@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLoginMutation } from "../features/api/apiSlice";
 import { useDispatch } from "react-redux";
-import { setCredentials } from "../features/auth/authSlice";
+import { setCredentials, homePathFor } from "../features/auth/authSlice";
 import { useNavigate } from "react-router-dom";
 import { Lock, Mail, Loader2, Globe, AlertCircle, ShieldCheck } from "lucide-react";
 
@@ -27,7 +27,7 @@ export const LoginPage = () => {
       }).unwrap();
 
       dispatch(setCredentials(userData));
-      navigate(userData.user.role === "CLIENT" ? "/portal" : "/dashboard");
+      navigate(homePathFor(userData.user.role));
     } catch (err) {
       console.error("Login Error:", err);
       const apiError = err as { data?: { error?: string; totp_required?: boolean } };

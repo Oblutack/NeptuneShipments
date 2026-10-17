@@ -4,21 +4,17 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/Oblutack/NeptuneShipments/backend/internal/database"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/handlers"
-	"github.com/Oblutack/NeptuneShipments/backend/internal/middleware"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/repository"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/services"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/simulator"
 	internalWs "github.com/Oblutack/NeptuneShipments/backend/internal/websocket"
-	jwtware "github.com/gofiber/contrib/jwt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/limiter"
-	"github.com/gofiber/websocket/v2"
 	"github.com/joho/godotenv"
 )
 
@@ -140,172 +136,25 @@ func main() {
 		})
 	})
 
-	// API routes group
-	api := app.Group("/api")
-
-	// --- MIDDLEWARE ---
-	// Built here, ahead of route registration, because one route below
-	// needs it applied explicitly rather than through the usual
-	// api.Use(...) split further down - see the comment on
-	// /vessels/template for why.
-	requireAuth := jwtware.New(jwtware.Config{
-		SigningKey: jwtware.SigningKey{Key: []byte(jwtSecret)},
-		ErrorHandler: func(c *fiber.Ctx, err error) error {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
-		},
+	registerRoutes(app, routeDeps{
+		jwtSecret:      jwtSecret,
+		allowedOrigins: allowedOrigins,
+		auditRepo:      auditRepo,
+		vessel:         vesselHandler,
+		port:           portHandler,
+		shipment:       shipmentHandler,
+		auth:           authHandler,
+		tank:           tankHandler,
+		route:          routeHandler,
+		terminal:       terminalHandler,
+		component:      componentHandler,
+		crew:           crewHandler,
+		finance:        financeHandler,
+		ws:             wsHandler,
+		allocation:     allocationHandler,
+		auditLog:       auditHandler,
+		simulation:     simulationHandler,
 	})
-	requireAdmin := middleware.RequireRole("ADMIN")
-	audit := func(action, entityType string) fiber.Handler {
-		return middleware.AuditLog(auditRepo, action, entityType)
-	}
-
-	// Browsers can't set custom headers on a native WebSocket handshake,
-	// so /ws/fleet takes its token as a query param instead of a header.
-	requireAuthWS := jwtware.New(jwtware.Config{
-		SigningKey:  jwtware.SigningKey{Key: []byte(jwtSecret)},
-		TokenLookup: "query:token",
-		ErrorHandler: func(c *fiber.Ctx, err error) error {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
-		},
-	})
-
-	// Tighter limit on login specifically - brute-force protection.
-	loginLimiter := limiter.New(limiter.Config{
-		Max:        10,
-		Expiration: 1 * time.Minute,
-		KeyGenerator: func(c *fiber.Ctx) string {
-			return c.IP()
-		},
-		LimitReached: func(c *fiber.Ctx) error {
-			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{"error": "Too many login attempts, try again shortly"})
-		},
-	})
-
-	// PUBLIC ROUTES
-	api.Post("/auth/login", loginLimiter, authHandler.Login)
-	api.Get("/shipments/:trackingNumber", shipmentHandler.GetShipmentByTracking)
-	api.Get("/shipments/:trackingNumber/events", shipmentHandler.GetShipmentEvents)
-
-	// Fiber matches GET routes at the same path depth in registration
-	// order, not by specificity - so this has to be registered before
-	// the public /vessels/:id below, or a request for "/vessels/template"
-	// would be handed to GetVesselByID with id="template" instead. Still
-	// protected: requireAuth is applied directly since it's ahead of the
-	// api.Use(requireAuth) call that protects everything else.
-	api.Get("/vessels/template", requireAuth, vesselHandler.DownloadVesselsTemplate)
-	api.Get("/vessels/:id", vesselHandler.GetVesselByID)
-
-	// --- ROUTING ENGINE ---
-	api.Get("/routes/network", routeHandler.GetNetworkMesh)
-	api.Post("/routes/calculate", routeHandler.CalculateRoute)
-
-	// Active Fleet Routes
-	api.Get("/routes/active", routeHandler.GetActiveRoutes)
-
-	api.Get("/routes/:id", routeHandler.GetRoute)
-
-	api.Use(requireAuth)
-
-	// PRIVATE ROUTES
-	// Vessels
-	vessels := api.Group("/vessels")
-	vessels.Post("/", requireAdmin, audit("CREATE", "vessel"), vesselHandler.CreateVessel)
-	vessels.Get("/", vesselHandler.GetAllVessels)
-	vessels.Put("/:id", requireAdmin, audit("UPDATE", "vessel"), vesselHandler.UpdateVessel)
-	vessels.Delete("/:id", requireAdmin, audit("DELETE", "vessel"), vesselHandler.DeleteVessel)
-	vessels.Post("/import", requireAdmin, audit("IMPORT", "vessel"), vesselHandler.UploadVesselsCSV)
-	vessels.Get("/:vesselId/tanks", tankHandler.GetTanks)
-	vessels.Get("/:vesselId/shipments", requireAdmin, shipmentHandler.GetShipmentsByVessel)
-	vessels.Get("/:vesselId/components", componentHandler.GetComponents)
-	vessels.Get("/:id/crew", crewHandler.GetCrewByVessel)
-	vessels.Post("/:id/refuel", requireAdmin, audit("REFUEL", "vessel"), vesselHandler.RefuelVessel)
-
-	// Ports
-	ports := api.Group("/ports")
-	ports.Get("/", portHandler.GetAllPorts)
-	ports.Get("/stats", portHandler.GetPortStats)
-	ports.Post("/", requireAdmin, audit("CREATE", "port"), portHandler.CreatePort)
-	ports.Put("/:id", requireAdmin, audit("UPDATE", "port"), portHandler.UpdatePort)
-	ports.Delete("/:id", requireAdmin, audit("DELETE", "port"), portHandler.DeletePort)
-	ports.Post("/import", requireAdmin, audit("IMPORT", "port"), portHandler.UploadPortsCSV)
-	ports.Get("/template", portHandler.DownloadPortsTemplate)
-	ports.Get("/:portId/terminals", terminalHandler.GetPortTerminals)
-
-	// Components
-	components := api.Group("/components")
-	components.Post("/:id/maintain", requireAdmin, audit("MAINTAIN", "component"), componentHandler.PerformMaintenance)
-
-	// Audit log (admin-only, read-only)
-	api.Get("/audit", requireAdmin, auditHandler.GetAuditLog)
-
-	// Simulation reset (admin-only, destructive)
-	api.Post("/simulation/reset", requireAdmin, audit("RESET", "simulation"), simulationHandler.ResetSimulation)
-
-	// 2FA - any authenticated user can set this up on their own account
-	api.Post("/auth/totp/setup", authHandler.SetupTOTP)
-	api.Post("/auth/totp/verify", authHandler.VerifyTOTP)
-	api.Post("/auth/totp/disable", authHandler.DisableTOTP)
-
-	// Crew
-	crew := api.Group("/crew")
-	crew.Get("/", crewHandler.GetAllCrew)
-	crew.Put("/:id/assign", requireAdmin, audit("ASSIGN", "crew"), crewHandler.AssignCrew)
-
-	// Finance
-	finance := api.Group("/finance")
-	finance.Get("/stats", financeHandler.GetStats)
-	finance.Get("/revenue-trend", financeHandler.GetRevenueTrend)
-
-	// Shipments
-	// Create/read stay open to any authenticated user (a client booking
-	// or tracking their own shipment); delete/update are administrative
-	// actions the same way vessel/port mutations are.
-	shipments := api.Group("/shipments")
-	shipments.Post("/", shipmentHandler.CreateShipment)
-	shipments.Get("/", shipmentHandler.GetAllShipments)
-	shipments.Get("/:trackingNumber/bol", shipmentHandler.DownloadBOL)
-	shipments.Delete("/:id", requireAdmin, audit("DELETE", "shipment"), shipmentHandler.DeleteShipment)
-	shipments.Put("/:id", requireAdmin, audit("UPDATE", "shipment"), shipmentHandler.UpdateShipment)
-
-	// Berth allocations
-	// NOTE: these three used to be registered on `app` instead of `api`,
-	// which skipped the JWT middleware entirely - anyone could hit them
-	// with no token. Moved under the protected group like everything else.
-	ports.Get("/:portId/schedule", allocationHandler.GetSchedule)
-	allocations := api.Group("/allocations")
-	allocations.Post("/", requireAdmin, audit("CREATE", "allocation"), allocationHandler.CreateAllocation)
-	allocations.Get("/unassigned", allocationHandler.GetUnassignedVessels)
-
-	wsOrigins := strings.Split(allowedOrigins, ",")
-	for i := range wsOrigins {
-		wsOrigins[i] = strings.TrimSpace(wsOrigins[i])
-	}
-	app.Use("/ws", func(c *fiber.Ctx) error {
-		// Set CORS headers for WebSocket
-		c.Set("Access-Control-Allow-Origin", wsOrigins[0])
-		c.Set("Access-Control-Allow-Credentials", "true")
-		c.Set("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization")
-
-		// Handle preflight
-		if c.Method() == "OPTIONS" {
-			return c.SendStatus(fiber.StatusOK)
-		}
-
-		// Allow WebSocket upgrade
-		if websocket.IsWebSocketUpgrade(c) {
-			c.Locals("allowed", true)
-			return c.Next()
-		}
-		return fiber.ErrUpgradeRequired
-	})
-
-	// This used to be wide open - anyone could connect and stream the
-	// full live fleet with no token at all. requireAuthWS is the query-
-	// param variant since a browser's native WebSocket API can't set an
-	// Authorization header on the handshake.
-	app.Get("/ws/fleet", requireAuthWS, websocket.New(wsHandler.HandleFleetStream, websocket.Config{
-		Origins: wsOrigins,
-	}))
 
 	simEngine := simulator.NewEngine(vesselRepo, shipmentRepo, componentRepo, allocationRepo, shipmentEventRepo, hub)
 	simEngine.Start()

@@ -309,7 +309,7 @@ A scoped, customer-facing view alongside the admin dashboard — the same archit
 
 - **Self-Service Booking** — A `CLIENT`-role account can book its own shipments; bookings always start unassigned (`PENDING`, no vessel) rather than letting a client dispatch a specific vessel directly — that stays an operational/admin action
 - **Scoped Visibility** — A client only ever sees shipments tied to their own account (`customer_user_id`, set from the verified JWT, never trusted from request input), enforced server-side in the query itself, not just hidden in the UI
-- **Separate Landing** — Logging in as a `CLIENT` routes to `/portal`, a simplified "my shipments" view, instead of the full fleet-ops dashboard
+- **Separate Landing** — Logging in as a `CLIENT` routes to `/portal`, a simplified "my shipments" view with its own booking form (no vessel picker), instead of the full fleet-ops dashboard, which redirects clients back to the portal
 
 ### 11. Security Hardening
 
@@ -421,7 +421,7 @@ to seed a larger fleet/port set without any code changes.
 
 ```bash
 cd backend
-go run cmd/api/main.go
+go run ./cmd/api
 ```
 
 ```
@@ -599,7 +599,7 @@ math, date helpers) plus component rendering.
 - **Two-Factor Authentication** — Optional TOTP 2FA per account (any standard authenticator app), set up from Settings
 - **Authorization** — Role-based (`ADMIN`/`CLIENT`) middleware, enforced server-side in the handlers, not just the UI:
   - Destructive/administrative endpoints (vessel and port mutations, CSV import, component maintenance, berth allocation, crew assignment, shipment update/delete, simulation reset, audit log) require `ADMIN`
-  - A CLIENT can create and read their own shipments, but can't assign a vessel to a booking (that always starts unassigned) and can't read another vessel's full manifest
+  - A CLIENT can book and read their own shipments (and fetch the port list the booking form needs), but can't assign a vessel to a booking (that always starts unassigned) and can't reach fleet, crew, schedule, or finance data - REST or the live `/ws/fleet` stream - at all. The dashboard routes redirect a CLIENT to `/portal` as well, but that's just UX; the API is what enforces it
   - Public tracking/voyage-timeline endpoints stay genuinely public (no auth) by design
   - `/ws/fleet` requires a valid token too, passed as a query param since a browser WebSocket handshake can't carry a header
 - **Rate Limiting** — A global request limiter, plus a tighter one specifically on `/api/auth/login`

@@ -1,4 +1,6 @@
 import { useState, type FormEvent } from "react";
+import { useSelector } from "react-redux";
+import { selectCurrentUser } from "../auth/authSlice";
 import {
   useGetPortsQuery,
   useGetVesselsQuery,
@@ -7,14 +9,24 @@ import {
 import { Package, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 
 export const ShipmentForm = () => {
+  // A CLIENT books cargo, an operator dispatches it: clients never pick (or
+  // even fetch) vessels - their booking is created unassigned and an
+  // operator assigns it - and their own name is filled in for them.
+  const user = useSelector(selectCurrentUser);
+  const isClient = user?.role === "CLIENT";
+  const defaultCustomer = isClient ? user?.company_name || user?.full_name || "" : "";
+
   const { data: ports, isLoading: portsLoading } = useGetPortsQuery();
-  const { data: vessels, isLoading: vesselsLoading } = useGetVesselsQuery();
+  const { data: vessels, isLoading: vesselsLoading } = useGetVesselsQuery(
+    undefined,
+    { skip: isClient },
+  );
   const [createShipment, { isLoading: isSubmitting }] =
     useCreateShipmentMutation();
 
   const [formData, setFormData] = useState({
     tracking_number: "",
-    customer_name: "",
+    customer_name: defaultCustomer,
     origin_port_id: "",
     destination_port_id: "",
     vessel_id: "",
@@ -62,7 +74,7 @@ export const ShipmentForm = () => {
         weight_kg: parseFloat(formData.weight_kg) || 0,
         container_number: formData.container_number,
         status: "PENDING",
-        ...(formData.vessel_id && { vessel_id: formData.vessel_id }),
+        ...(!isClient && formData.vessel_id && { vessel_id: formData.vessel_id }),
       };
 
       await createShipment(payload).unwrap();
@@ -72,7 +84,7 @@ export const ShipmentForm = () => {
       // Reset form after successful submission
       setFormData({
         tracking_number: "",
-        customer_name: "",
+        customer_name: defaultCustomer,
         origin_port_id: "",
         destination_port_id: "",
         vessel_id: "",
@@ -101,7 +113,7 @@ export const ShipmentForm = () => {
     });
   };
 
-  const isLoading = portsLoading || vesselsLoading;
+  const isLoading = portsLoading || (!isClient && vesselsLoading);
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden h-fit">
@@ -109,7 +121,9 @@ export const ShipmentForm = () => {
       <div className="border-b border-slate-800 px-5 py-3.5">
         <div className="flex items-center gap-2">
           <Package className="text-slate-500" size={16} />
-          <h3 className="text-sm font-semibold text-white">New Booking</h3>
+          <h3 className="text-sm font-semibold text-white">
+            {isClient ? "Book a Shipment" : "New Booking"}
+          </h3>
         </div>
       </div>
 
@@ -229,30 +243,32 @@ export const ShipmentForm = () => {
                 </select>
               </div>
 
-              {/* Assign Vessel (Optional) */}
-              <div>
-                <label
-                  htmlFor="vessel_id"
-                  className="block text-xs font-medium text-slate-400 mb-1.5"
-                >
-                  Assign Vessel{" "}
-                  <span className="text-slate-500">(Optional)</span>
-                </label>
-                <select
-                  id="vessel_id"
-                  name="vessel_id"
-                  value={formData.vessel_id}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">No vessel assigned yet</option>
-                  {vessels?.map((vessel) => (
-                    <option key={vessel.id} value={vessel.id}>
-                      {vessel.name} ({vessel.type})
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {/* Assign Vessel (Optional) - operators only */}
+              {!isClient && (
+                <div>
+                  <label
+                    htmlFor="vessel_id"
+                    className="block text-xs font-medium text-slate-400 mb-1.5"
+                  >
+                    Assign Vessel{" "}
+                    <span className="text-slate-500">(Optional)</span>
+                  </label>
+                  <select
+                    id="vessel_id"
+                    name="vessel_id"
+                    value={formData.vessel_id}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-white text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">No vessel assigned yet</option>
+                    {vessels?.map((vessel) => (
+                      <option key={vessel.id} value={vessel.id}>
+                        {vessel.name} ({vessel.type})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* Container Number */}
               <div>
@@ -329,7 +345,7 @@ export const ShipmentForm = () => {
               ) : (
                 <>
                   <Package size={20} />
-                  Create Shipment
+                  {isClient ? "Submit Booking" : "Create Shipment"}
                 </>
               )}
             </button>

@@ -56,9 +56,13 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/track" element={<TrackingPage />} />
 
-        {/* ADMIN PORTAL */}
+        {/* CLIENT PORTAL - any signed-in user */}
         <Route element={<RequireAuth />}>
           <Route path="/portal" element={<ClientPortalPage />} />
+        </Route>
+
+        {/* FLEET OPS DASHBOARD - admins only; clients are sent to /portal */}
+        <Route element={<RequireAuth allowedRoles={["ADMIN"]} />}>
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<StatsPage />} />
             <Route path="fleet" element={<FleetPage />} />

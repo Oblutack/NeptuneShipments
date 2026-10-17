@@ -1,6 +1,10 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type { User } from "../api/apiSlice";
 
+// Where a signed-in user of each role belongs.
+export const homePathFor = (role?: string) =>
+  role === "CLIENT" ? "/portal" : "/dashboard";
+
 interface AuthState {
   user: User | null;
   token: string | null;
