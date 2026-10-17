@@ -11,25 +11,57 @@ import (
 type FinanceRepository struct {
 	db          *database.Service
 	oilPriceSvc *OilPriceService
+	fxRateSvc   *FXRateService
 }
 
-func NewFinanceRepository(db *database.Service, oilPriceSvc *OilPriceService) *FinanceRepository {
-	return &FinanceRepository{db: db, oilPriceSvc: oilPriceSvc}
+func NewFinanceRepository(db *database.Service, oilPriceSvc *OilPriceService, fxRateSvc *FXRateService) *FinanceRepository {
+	return &FinanceRepository{db: db, oilPriceSvc: oilPriceSvc, fxRateSvc: fxRateSvc}
+}
+
+// clampPercent keeps a surcharge within a realistic band - real BAF/CAF
+// tables are published in bands too, not an unbounded raw pass-through
+// of market movement.
+func clampPercent(v, min, max float64) float64 {
+	if v < min {
+		return min
+	}
+	if v > max {
+		return max
+	}
+	return v
 }
 
 // GetStats calculates comprehensive financial statistics
 func (r *FinanceRepository) GetStats(ctx context.Context) (*models.FinancialStats, error) {
 	stats := &models.FinancialStats{}
 
-	// Freight rate is still a simulated constant - there's no real-world
-	// source for what this fictional company charges its customers.
-	const freightRate = 2.50 // $2.50 per kg
+	// Base freight rate is still a simulated constant - there's no real-
+	// world source for what this fictional company charges its
+	// customers. BAF and CAF on top of it are real surcharge mechanisms
+	// (every real carrier publishes these), driven by real live data.
+	const baseFreightRate = 2.00 // $2.00 per kg
+	const baselineFuelPricePerTon = 600.0
+	const baselineUSDToEUR = 0.92
 
 	oilPrice := r.oilPriceSvc.GetPrice(ctx)
 	fuelPricePerTon := oilPrice.PricePerTonUSD
 	stats.FuelPricePerTon = fuelPricePerTon
 	stats.OilRefPriceUSDBbl = oilPrice.PricePerBarrelUSD
 	stats.FuelPriceIsLive = oilPrice.IsLive
+
+	fxRate := r.fxRateSvc.GetRate(ctx)
+	stats.FXRateUSDEUR = fxRate.USDToEUR
+	stats.FXRateIsLive = fxRate.IsLive
+
+	stats.BaseFreightRate = baseFreightRate
+	stats.BAFPercent = clampPercent(
+		(fuelPricePerTon-baselineFuelPricePerTon)/baselineFuelPricePerTon*100, -20, 40,
+	)
+	stats.CAFPercent = clampPercent(
+		(fxRate.USDToEUR-baselineUSDToEUR)/baselineUSDToEUR*100*0.5, -5, 10,
+	)
+	freightRate := baseFreightRate * (1 + (stats.BAFPercent+stats.CAFPercent)/100)
+	stats.EffectiveRate = freightRate
 
 	// 1. Calculate Revenue (Sum of all shipment weights * freight rate)
 	revenueQuery := `

@@ -221,6 +221,12 @@ export interface FinancialStats {
   fuel_price_per_ton: number;
   oil_ref_price_usd_bbl: number;
   fuel_price_is_live: boolean;
+  base_freight_rate: number;
+  baf_percent: number;
+  caf_percent: number;
+  effective_rate: number;
+  fx_rate_usd_eur: number;
+  fx_rate_is_live: boolean;
 }
 
 export interface AuditLogEntry {

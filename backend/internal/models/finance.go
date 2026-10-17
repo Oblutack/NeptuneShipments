@@ -19,4 +19,16 @@ type FinancialStats struct {
 	FuelPricePerTon   float64 `json:"fuel_price_per_ton"`
 	OilRefPriceUSDBbl float64 `json:"oil_ref_price_usd_bbl"`
 	FuelPriceIsLive   bool    `json:"fuel_price_is_live"`
+
+	// Freight rate structure: real shipping carriers quote a base rate
+	// plus surcharges, not one flat number. BAF (Bunker Adjustment
+	// Factor) and CAF (Currency Adjustment Factor) are both derived from
+	// real live market data (oil price / USD-EUR rate) rather than fixed
+	// constants.
+	BaseFreightRate float64 `json:"base_freight_rate"`
+	BAFPercent      float64 `json:"baf_percent"`
+	CAFPercent      float64 `json:"caf_percent"`
+	EffectiveRate   float64 `json:"effective_rate"`
+	FXRateUSDEUR    float64 `json:"fx_rate_usd_eur"`
+	FXRateIsLive    bool    `json:"fx_rate_is_live"`
 }

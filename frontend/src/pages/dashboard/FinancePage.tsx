@@ -83,11 +83,25 @@ export const FinancePage = () => {
             <p className="text-2xl font-semibold text-white tabular-nums">
               ${(stats?.total_revenue || 0).toLocaleString()}
             </p>
-            <div className="mt-3 pt-3 border-t border-slate-800 flex justify-between text-xs">
-              <span className="text-slate-500">Avg per shipment</span>
-              <span className="text-slate-300 tabular-nums">
-                ${(stats?.avg_revenue_per_job || 0).toLocaleString()}
-              </span>
+            <div className="mt-3 pt-3 border-t border-slate-800 space-y-1.5">
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-500">Avg per shipment</span>
+                <span className="text-slate-300 tabular-nums">
+                  ${(stats?.avg_revenue_per_job || 0).toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-500">
+                  Base ${(stats?.base_freight_rate || 0).toFixed(2)}/kg + BAF{" "}
+                  {(stats?.baf_percent ?? 0) >= 0 ? "+" : ""}
+                  {(stats?.baf_percent || 0).toFixed(1)}% + CAF{" "}
+                  {(stats?.caf_percent ?? 0) >= 0 ? "+" : ""}
+                  {(stats?.caf_percent || 0).toFixed(1)}%
+                </span>
+                <span className="text-slate-300 tabular-nums">
+                  ${(stats?.effective_rate || 0).toFixed(2)}/kg
+                </span>
+              </div>
             </div>
           </div>
 
