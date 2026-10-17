@@ -279,7 +279,10 @@ type RootState = {
 };
 
 const rawBaseQuery = fetchBaseQuery({
-  baseUrl: "http://localhost:8080/api", // ✅ FIX: Use localhost instead of 127.0.0.1
+  // Inlined at build time (see frontend/Dockerfile's VITE_API_URL build
+  // arg) - falls back to local dev's default so this keeps working
+  // with no .env changes required for `npm run dev`.
+  baseUrl: import.meta.env.VITE_API_URL || "http://localhost:8080/api",
   prepareHeaders: (headers, { getState }) => {
     const token = (getState() as RootState).auth.token;
 

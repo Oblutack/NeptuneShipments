@@ -44,6 +44,12 @@ services:
       args:
         VITE_MAPBOX_TOKEN: ${VITE_MAPBOX_TOKEN:-}
         VITE_AIS_TRACKER_URL: ${VITE_AIS_TRACKER_URL:-}
+        # Defaults to localhost:8080, correct for this compose file's own
+        # port mapping (the browser reaches the API on the host, not over
+        # the internal docker network) - override when deploying anywhere
+        # else, since this is baked in at image build time, not read at
+        # container start.
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8080/api}
     container_name: neptune_web
     restart: always
     ports:

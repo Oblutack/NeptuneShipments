@@ -378,7 +378,7 @@ ENVIRONMENT=development
 Create `frontend/.env`:
 
 ```env
-VITE_API_URL=http://127.0.0.1:8080
+VITE_API_URL=http://localhost:8080/api
 VITE_MAPBOX_TOKEN=your_mapbox_token_here
 ```
 
