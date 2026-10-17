@@ -25,7 +25,6 @@ export const ShipmentForm = () => {
     useCreateShipmentMutation();
 
   const [formData, setFormData] = useState({
-    tracking_number: "",
     customer_name: defaultCustomer,
     origin_port_id: "",
     destination_port_id: "",
@@ -39,6 +38,7 @@ export const ShipmentForm = () => {
     "idle" | "success" | "error"
   >("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [issuedTrackingNumber, setIssuedTrackingNumber] = useState("");
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -47,7 +47,6 @@ export const ShipmentForm = () => {
 
     // Validation
     if (
-      !formData.tracking_number ||
       !formData.customer_name ||
       !formData.origin_port_id ||
       !formData.destination_port_id
@@ -66,7 +65,6 @@ export const ShipmentForm = () => {
     try {
       // Prepare payload - only include vessel_id if it's selected
       const payload = {
-        tracking_number: formData.tracking_number,
         customer_name: formData.customer_name,
         origin_port_id: formData.origin_port_id,
         destination_port_id: formData.destination_port_id,
@@ -77,13 +75,13 @@ export const ShipmentForm = () => {
         ...(!isClient && formData.vessel_id && { vessel_id: formData.vessel_id }),
       };
 
-      await createShipment(payload).unwrap();
+      const created = await createShipment(payload).unwrap();
 
+      setIssuedTrackingNumber(created.tracking_number);
       setSubmitStatus("success");
 
       // Reset form after successful submission
       setFormData({
-        tracking_number: "",
         customer_name: defaultCustomer,
         origin_port_id: "",
         destination_port_id: "",
@@ -93,8 +91,9 @@ export const ShipmentForm = () => {
         container_number: "",
       });
 
-      // Hide success message after 3 seconds
-      setTimeout(() => setSubmitStatus("idle"), 3000);
+      // The tracking number is the one thing the user needs to keep, so
+      // leave the confirmation up longer than a flash.
+      setTimeout(() => setSubmitStatus("idle"), 10000);
     } catch (err) {
       setSubmitStatus("error");
       setErrorMessage("Failed to create shipment. Please try again.");
@@ -141,7 +140,12 @@ export const ShipmentForm = () => {
             {submitStatus === "success" && (
               <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-sm p-3 rounded-md">
                 <CheckCircle2 size={18} />
-                <span>Shipment created successfully!</span>
+                <span>
+                  Shipment created - tracking number{" "}
+                  <span className="font-mono font-semibold">
+                    {issuedTrackingNumber}
+                  </span>
+                </span>
               </div>
             )}
 
@@ -153,26 +157,6 @@ export const ShipmentForm = () => {
             )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {/* Tracking Number */}
-              <div>
-                <label
-                  htmlFor="tracking_number"
-                  className="block text-xs font-medium text-slate-400 mb-1.5"
-                >
-                  Tracking Number <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="tracking_number"
-                  name="tracking_number"
-                  value={formData.tracking_number}
-                  onChange={handleChange}
-                  placeholder="TRK-123456"
-                  required
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-md text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
               {/* Customer Name */}
               <div>
                 <label

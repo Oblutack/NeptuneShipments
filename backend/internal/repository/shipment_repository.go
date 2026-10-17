@@ -2,11 +2,39 @@ package repository
 
 import (
 	"context"
+	"crypto/rand"
+	"errors"
 	"fmt"
 
 	"github.com/Oblutack/NeptuneShipments/backend/internal/database"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/models"
+	"github.com/jackc/pgx/v5/pgconn"
 )
+
+// Crockford's base32: no I, L, O or U, so a number read aloud or typed
+// from a printed document can't be confused with another character.
+const trackingAlphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+
+// GenerateTrackingNumber returns an unguessable tracking number:
+// "NEP-" plus 10 random base32 characters (50 bits - far too many to
+// enumerate). Because it's random rather than sequential, one customer's
+// number says nothing about anyone else's.
+func GenerateTrackingNumber() (string, error) {
+	b := make([]byte, 10)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("generate tracking number: %w", err)
+	}
+	for i := range b {
+		// 256 is a multiple of 32, so masking is unbiased.
+		b[i] = trackingAlphabet[b[i]&31]
+	}
+	return "NEP-" + string(b), nil
+}
+
+func isTrackingNumberCollision(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "shipments_tracking_number_key"
+}
 
 type ShipmentRepository struct {
 	db *database.Service
@@ -16,7 +44,10 @@ func NewShipmentRepository(db *database.Service) *ShipmentRepository {
 	return &ShipmentRepository{db: db}
 }
 
-// Create inserts a new shipment
+// Create inserts a new shipment. If the shipment has no tracking number
+// one is generated (retrying in the vanishingly unlikely event of a
+// collision); a number supplied by the caller - the CSV importer's
+// existing data - is stored as given.
 func (r *ShipmentRepository) Create(ctx context.Context, s *models.Shipment) error {
 	query := `
 		INSERT INTO shipments (
@@ -31,13 +62,27 @@ func (r *ShipmentRepository) Create(ctx context.Context, s *models.Shipment) err
 		s.Status = "PENDING"
 	}
 
-	err := r.db.GetPool().QueryRow(
-		ctx, query,
-		s.TrackingNumber, s.CustomerName, s.OriginPortID, s.DestinationPortID,
-		s.VesselID, s.Description, s.ContainerNumber, s.WeightKG, s.Status, s.ETA, s.ManifestItems, s.CustomerUserID,
-	).Scan(&s.ID, &s.CreatedAt, &s.UpdatedAt)
+	generate := s.TrackingNumber == ""
+	for attempt := 0; ; attempt++ {
+		if generate {
+			tn, err := GenerateTrackingNumber()
+			if err != nil {
+				return err
+			}
+			s.TrackingNumber = tn
+		}
 
-	return err
+		err := r.db.GetPool().QueryRow(
+			ctx, query,
+			s.TrackingNumber, s.CustomerName, s.OriginPortID, s.DestinationPortID,
+			s.VesselID, s.Description, s.ContainerNumber, s.WeightKG, s.Status, s.ETA, s.ManifestItems, s.CustomerUserID,
+		).Scan(&s.ID, &s.CreatedAt, &s.UpdatedAt)
+
+		if generate && attempt < 4 && isTrackingNumberCollision(err) {
+			continue
+		}
+		return err
+	}
 }
 
 // GetAll fetches all shipments

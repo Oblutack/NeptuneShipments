@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/Oblutack/NeptuneShipments/backend/internal/models"
@@ -421,5 +422,66 @@ func TestDownloadBOL_OnlyOwnerOrAdmin(t *testing.T) {
 	t.Cleanup(func() { shipmentRepo.Delete(ctx, unowned.ID) })
 	if resp := asUser("", "CLIENT", unowned.TrackingNumber); resp.StatusCode != fiber.StatusNotFound {
 		t.Errorf("CLIENT with empty user id on an unowned shipment: status = %d, want 404", resp.StatusCode)
+	}
+}
+
+// Callers don't get to pick tracking numbers: a supplied one is ignored
+// and the server issues its own, so a booking can't squat on - or collide
+// with - another customer's number.
+func TestCreateShipment_IgnoresSuppliedTrackingNumber(t *testing.T) {
+	db := testutil.RequireDB(t)
+	ctx := context.Background()
+
+	portRepo := repository.NewPortRepository(db)
+	vesselRepo := repository.NewVesselRepository(db.GetPool())
+	shipmentRepo := repository.NewShipmentRepository(db)
+	eventRepo := repository.NewShipmentEventRepository(db)
+	routingRepo := repository.NewRoutingRepository(db)
+	routeRepo := repository.NewRouteRepository(db)
+	h := NewShipmentHandler(shipmentRepo, portRepo, routingRepo, routeRepo, vesselRepo, eventRepo, nil)
+
+	app := fiber.New()
+	app.Post("/shipments", func(c *fiber.Ctx) error {
+		c.Locals("user", jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{"user_id": "admin-under-test", "role": "ADMIN"}))
+		return h.CreateShipment(c)
+	})
+
+	originID, destID, _, _, _, _ := testutil.TwoRealPorts(t, db.GetPool())
+	const chosen = "TRK-I-CHOSE-THIS"
+	body, _ := json.Marshal(map[string]any{
+		"tracking_number": chosen, "customer_name": "Tracking Test",
+		"origin_port_id": originID, "destination_port_id": destID, "weight_kg": 10,
+	})
+
+	create := func() models.Shipment {
+		req := httptest.NewRequest("POST", "/shipments", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := app.Test(req, -1)
+		if err != nil {
+			t.Fatalf("request failed: %v", err)
+		}
+		respBody, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode != fiber.StatusCreated {
+			t.Fatalf("status = %d, want 201, body = %s", resp.StatusCode, respBody)
+		}
+		var got models.Shipment
+		if err := json.Unmarshal(respBody, &got); err != nil {
+			t.Fatalf("decode: %v", err)
+		}
+		t.Cleanup(func() { shipmentRepo.Delete(ctx, got.ID) })
+		return got
+	}
+
+	first, second := create(), create() // identical bodies - the second would collide if the number were honoured
+	for _, got := range []models.Shipment{first, second} {
+		if got.TrackingNumber == chosen {
+			t.Errorf("tracking number %q was taken from the request, want a server-issued one", got.TrackingNumber)
+		}
+		if !strings.HasPrefix(got.TrackingNumber, "NEP-") {
+			t.Errorf("tracking number = %q, want a server-issued NEP-... number", got.TrackingNumber)
+		}
+	}
+	if first.TrackingNumber == second.TrackingNumber {
+		t.Errorf("two bookings share tracking number %q", first.TrackingNumber)
 	}
 }

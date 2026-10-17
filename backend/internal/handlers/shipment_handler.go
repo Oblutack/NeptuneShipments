@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/Oblutack/NeptuneShipments/backend/internal/models"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/repository"
@@ -60,6 +61,12 @@ func (h *ShipmentHandler) CreateShipment(c *fiber.Ctx) error {
 		shipment.CustomerUserID = &userID
 	}
 
+	// Tracking numbers are issued by the server, never chosen by the
+	// caller: a typed one is guessable, can collide with someone else's,
+	// and would let a booking claim a number that belongs to another
+	// customer's shipment.
+	shipment.TrackingNumber = ""
+
 	// 1. Look up the assigned vessel (if any) once. Its current state
 	// decides both the shipment's initial status and whether a new
 	// route needs to be calculated at all (a vessel already AT_SEA
@@ -85,7 +92,8 @@ func (h *ShipmentHandler) CreateShipment(c *fiber.Ctx) error {
 
 	// 2. Create the Shipment Record with correct initial status
 	if err := h.repo.Create(c.Context(), &shipment); err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+		log.Printf("Failed to create shipment: %v", err)
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to create shipment"})
 	}
 	h.eventRepo.Create(c.Context(), shipment.ID, "BOOKED",
 		fmt.Sprintf("Shipment booked (%s)", shipment.TrackingNumber))

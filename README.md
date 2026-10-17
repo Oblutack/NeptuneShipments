@@ -239,7 +239,7 @@ Full lifecycle management from manifest creation through delivery.
 - **Bill of Lading (BOL)** — PDF generation and download via the Maroto library
 - **Smart Status Transitions** — Automatic PENDING → IN_TRANSIT when vessel departs, IN_TRANSIT → DELIVERED on arrival
 - **Voyage Track-and-Trace** — A real event timeline (BOOKED, DEPARTED, DELIVERED, ...) per shipment, driven by actual state transitions
-- **Public Tracking** — Anyone can track a shipment by tracking number (no auth required)
+- **Public Tracking** — Anyone can track a shipment by tracking number (no auth required). Numbers are issued by the server (`NEP-` plus 10 random characters), never chosen by the booker, so they can't be guessed or collide
 - **Vessel Assignment** — ADMIN can assign shipments to specific vessels, with automatic route calculation
 
 ### 4. Liquid Logistics (Tank Monitoring)
