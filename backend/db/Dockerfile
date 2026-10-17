@@ -1,6 +1,1 @@
-FROM postgis/postgis:16-3.4
-
-# Install pgRouting manually
-RUN apt-get update \
-    && apt-get install -y postgresql-16-pgrouting \
-    && rm -rf /var/lib/apt/lists/*
+FROM pgrouting/pgrouting:16-3.5-3.8
