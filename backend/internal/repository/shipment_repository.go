@@ -20,9 +20,9 @@ func NewShipmentRepository(db *database.Service) *ShipmentRepository {
 func (r *ShipmentRepository) Create(ctx context.Context, s *models.Shipment) error {
 	query := `
 		INSERT INTO shipments (
-			tracking_number, customer_name, origin_port_id, destination_port_id, 
-			vessel_id, description, container_number, weight_kg, status, eta, manifest_items
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+			tracking_number, customer_name, origin_port_id, destination_port_id,
+			vessel_id, description, container_number, weight_kg, status, eta, manifest_items, customer_user_id
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		RETURNING id, created_at, updated_at
 	`
 
@@ -34,7 +34,7 @@ func (r *ShipmentRepository) Create(ctx context.Context, s *models.Shipment) err
 	err := r.db.GetPool().QueryRow(
 		ctx, query,
 		s.TrackingNumber, s.CustomerName, s.OriginPortID, s.DestinationPortID,
-		s.VesselID, s.Description, s.ContainerNumber, s.WeightKG, s.Status, s.ETA, s.ManifestItems,
+		s.VesselID, s.Description, s.ContainerNumber, s.WeightKG, s.Status, s.ETA, s.ManifestItems, s.CustomerUserID,
 	).Scan(&s.ID, &s.CreatedAt, &s.UpdatedAt)
 
 	return err

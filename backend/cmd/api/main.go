@@ -213,7 +213,7 @@ func main() {
 	vessels.Delete("/:id", requireAdmin, audit("DELETE", "vessel"), vesselHandler.DeleteVessel)
 	vessels.Post("/import", requireAdmin, audit("IMPORT", "vessel"), vesselHandler.UploadVesselsCSV)
 	vessels.Get("/:vesselId/tanks", tankHandler.GetTanks)
-	vessels.Get("/:vesselId/shipments", shipmentHandler.GetShipmentsByVessel)
+	vessels.Get("/:vesselId/shipments", requireAdmin, shipmentHandler.GetShipmentsByVessel)
 	vessels.Get("/:vesselId/components", componentHandler.GetComponents)
 	vessels.Get("/:id/crew", crewHandler.GetCrewByVessel)
 	vessels.Post("/:id/refuel", requireAdmin, audit("REFUEL", "vessel"), vesselHandler.RefuelVessel)

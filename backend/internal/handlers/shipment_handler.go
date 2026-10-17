@@ -45,6 +45,21 @@ func (h *ShipmentHandler) CreateShipment(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid request"})
 	}
 
+	// A CLIENT books a shipment under their own account and can't assign
+	// a vessel directly - that's an operational dispatch decision (it
+	// immediately sets the vessel AT_SEA, refuels it, and recalculates
+	// its route via pgRouting below), not something self-service booking
+	// should be able to trigger for an arbitrary vessel in the fleet.
+	// Client bookings always start PENDING with no vessel, the same as
+	// any other unassigned booking, awaiting an ops team to assign one -
+	// never trust vessel_id/customer_user_id from the request body here,
+	// only from the requester's own verified JWT.
+	role, userID := currentUserRoleAndID(c)
+	if role == "CLIENT" {
+		shipment.VesselID = nil
+		shipment.CustomerUserID = &userID
+	}
+
 	// 1. Look up the assigned vessel (if any) once. Its current state
 	// decides both the shipment's initial status and whether a new
 	// route needs to be calculated at all (a vessel already AT_SEA

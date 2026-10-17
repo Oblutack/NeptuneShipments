@@ -57,6 +57,13 @@ type Shipment struct {
 	// Nullable because a shipment might sit at a port waiting for a ship
 	VesselID *string `json:"vessel_id,omitempty"`
 
+	// CustomerUserID links a shipment to the CLIENT user who booked it -
+	// the client portal's GetAllForCustomer filters on this. Set by the
+	// handler from the requester's own JWT for a CLIENT booking (never
+	// trusted from the request body), left nil for an ADMIN-created
+	// shipment with no associated self-service account.
+	CustomerUserID *string `json:"customer_user_id,omitempty"`
+
 	Description     string  `json:"description"`
 	ContainerNumber string  `json:"container_number"`
 	WeightKG        float64 `json:"weight_kg"`
