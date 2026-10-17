@@ -14,6 +14,11 @@ type ManifestItem struct {
 	Quantity    int     `json:"quantity"`
 	UnitValue   float64 `json:"unit_value"`
 	TotalValue  float64 `json:"total_value"`
+
+	// IMDGClass is the UN Dangerous Goods class (1-9, per the IMO's real
+	// International Maritime Dangerous Goods code) if this item is
+	// classified as dangerous goods. Empty/omitted for ordinary cargo.
+	IMDGClass string `json:"imdg_class,omitempty"`
 }
 
 // ManifestItems is a custom type for JSONB array handling

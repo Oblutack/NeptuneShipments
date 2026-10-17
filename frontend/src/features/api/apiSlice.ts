@@ -47,6 +47,7 @@ export interface ManifestItem {
   quantity: number;
   unit_value: number;
   total_value: number;
+  imdg_class?: string;
 }
 
 export interface Shipment {

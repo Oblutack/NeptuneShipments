@@ -371,6 +371,7 @@ func generateManifestItems(description string, weightKG float64) models.Manifest
 			Quantity:    200,
 			UnitValue:   450.00,
 			TotalValue:  90000.00,
+			IMDGClass:   "8", // Corrosive Substances - a realistic default for generic industrial chemicals
 		})
 		items = append(items, models.ManifestItem{
 			SKU:         "CHEM-002",

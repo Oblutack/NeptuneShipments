@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useGetShipmentsByVesselQuery, type Shipment } from "../api/apiSlice";
+import { imdgLabel } from "../../lib/imdg";
 import {
   Loader2,
   Package,
@@ -289,7 +290,17 @@ export const CargoManifest = ({ vesselId }: CargoManifestProps) => {
                                       </span>
                                     </td>
                                     <td className="px-4 py-3 text-slate-300 font-medium">
-                                      {item.description}
+                                      <div className="flex items-center gap-2">
+                                        {item.description}
+                                        {item.imdg_class && (
+                                          <span
+                                            className="text-[9px] font-bold uppercase bg-amber-500/15 text-amber-400 px-1.5 py-0.5 rounded"
+                                            title={imdgLabel(item.imdg_class)}
+                                          >
+                                            DG {item.imdg_class}
+                                          </span>
+                                        )}
+                                      </div>
                                     </td>
                                     <td className="px-4 py-3 text-right font-mono text-slate-300">
                                       {item.quantity.toLocaleString()}
