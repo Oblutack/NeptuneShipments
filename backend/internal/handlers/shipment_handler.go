@@ -172,7 +172,8 @@ func (h *ShipmentHandler) GetShipmentByTracking(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(404).JSON(fiber.Map{"error": "Shipment not found"})
 	}
-	return c.JSON(shipment)
+	// Public endpoint: only the shareable projection, never the full record.
+	return c.JSON(shipment.PublicView())
 }
 
 // GetShipmentEvents returns the voyage track-and-trace timeline for a

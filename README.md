@@ -604,7 +604,7 @@ math, date helpers) plus component rendering.
 - **Authorization** — Role-based (`ADMIN`/`CLIENT`) middleware, enforced server-side in the handlers, not just the UI:
   - Destructive/administrative endpoints (vessel and port mutations, CSV import, component maintenance, berth allocation, crew assignment, shipment update/delete, simulation reset, audit log) require `ADMIN`
   - A CLIENT can book and read their own shipments (and fetch the port list the booking form needs), but can't assign a vessel to a booking (that always starts unassigned) and can't reach fleet, crew, schedule, or finance data - REST or the live `/ws/fleet` stream - at all. The dashboard routes redirect a CLIENT to `/portal` as well, but that's just UX; the API is what enforces it
-  - Public tracking/voyage-timeline endpoints stay genuinely public (no auth) by design
+  - Public tracking/voyage-timeline endpoints stay genuinely public (no auth) by design, but return a minimal view - status, route, ETA - never the customer or the manifest
   - `/ws/fleet` requires a valid token too, passed as a query param since a browser WebSocket handshake can't carry a header
 - **Rate Limiting** — A global request limiter, plus a tighter one specifically on `/api/auth/login`
 - **Audit Log** — Every administrative mutation is recorded with actor, action, and entity, viewable on an admin-only page

@@ -114,9 +114,6 @@ export const TrackingPage = () => {
                 <h2 className="text-base font-semibold text-white">
                   {shipment.tracking_number}
                 </h2>
-                <p className="text-slate-500 text-sm">
-                  Customer: {shipment.customer_name}
-                </p>
               </div>
             </div>
 
@@ -128,7 +125,7 @@ export const TrackingPage = () => {
                   </p>
                   <div className="flex items-center gap-1.5 text-slate-200 font-mono text-sm font-medium">
                     <MapPin size={14} className="text-slate-500" />
-                    {shipment.origin_port_name || shipment.origin_port_id}
+                    {shipment.origin_port_name}
                   </div>
                 </div>
                 <ArrowRight className="text-slate-600" size={18} />
@@ -138,8 +135,7 @@ export const TrackingPage = () => {
                   </p>
                   <div className="flex items-center gap-1.5 text-slate-200 font-mono text-sm font-medium">
                     <MapPin size={14} className="text-slate-500" />
-                    {shipment.destination_port_name ||
-                      shipment.destination_port_id}
+                    {shipment.destination_port_name}
                   </div>
                 </div>
               </div>

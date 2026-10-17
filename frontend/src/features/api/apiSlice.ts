@@ -68,6 +68,20 @@ export interface Shipment {
   destination_port_name?: string;
 }
 
+// What the unauthenticated tracking endpoint returns - deliberately a
+// subset of Shipment: no customer, no manifest.
+export interface PublicShipment {
+  tracking_number: string;
+  status: string;
+  origin_port_name: string;
+  destination_port_name: string;
+  eta?: string;
+  vessel_id?: string;
+  weight_kg: number;
+  container_number: string;
+  created_at: string;
+}
+
 export interface ShipmentEvent {
   id: string;
   shipment_id: string;
@@ -459,7 +473,7 @@ export const apiSlice = createApi({
       }),
     }),
     // Find Shipment by Tracking Number
-    getShipmentByTracking: builder.query<Shipment, string>({
+    getShipmentByTracking: builder.query<PublicShipment, string>({
       query: (trackingNumber) => `/shipments/${trackingNumber}`,
     }),
     getShipmentEvents: builder.query<

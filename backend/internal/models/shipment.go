@@ -77,3 +77,36 @@ type Shipment struct {
 	OriginPortName      string     `json:"origin_port_name,omitempty"`
 	DestinationPortName string     `json:"destination_port_name,omitempty"`
 }
+
+// PublicShipmentView is what the unauthenticated tracking endpoint
+// returns: enough to follow a shipment (status, route, ETA, which vessel
+// to show on the map) and nothing about who booked it or what is in it.
+// The full Shipment carries the customer's name and account id and every
+// manifest line with its value and dangerous-goods class, none of which
+// should be readable by anyone who can guess a tracking number.
+type PublicShipmentView struct {
+	TrackingNumber      string     `json:"tracking_number"`
+	Status              string     `json:"status"`
+	OriginPortName      string     `json:"origin_port_name"`
+	DestinationPortName string     `json:"destination_port_name"`
+	ETA                 *time.Time `json:"eta,omitempty"`
+	VesselID            *string    `json:"vessel_id,omitempty"`
+	WeightKG            float64    `json:"weight_kg"`
+	ContainerNumber     string     `json:"container_number"`
+	CreatedAt           time.Time  `json:"created_at"`
+}
+
+// PublicView projects a Shipment down to its publicly shareable fields.
+func (s *Shipment) PublicView() PublicShipmentView {
+	return PublicShipmentView{
+		TrackingNumber:      s.TrackingNumber,
+		Status:              s.Status,
+		OriginPortName:      s.OriginPortName,
+		DestinationPortName: s.DestinationPortName,
+		ETA:                 s.ETA,
+		VesselID:            s.VesselID,
+		WeightKG:            s.WeightKG,
+		ContainerNumber:     s.ContainerNumber,
+		CreatedAt:           s.CreatedAt,
+	}
+}

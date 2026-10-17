@@ -251,3 +251,83 @@ func TestCreateShipment_AdminDispatchesVesselAndAutoRoutes(t *testing.T) {
 		t.Errorf("shipment events = %+v, want both a BOOKED and a DEPARTED event", events)
 	}
 }
+
+// TestGetShipmentByTracking_PublicResponseLeaksNothingPrivate is a
+// regression test for the unauthenticated tracking endpoint returning the
+// whole shipment record - customer name, account id, and every manifest
+// line with its value and dangerous-goods class - to anyone who could
+// guess or be handed a tracking number. It must expose only what
+// following a shipment needs.
+func TestGetShipmentByTracking_PublicResponseLeaksNothingPrivate(t *testing.T) {
+	db := testutil.RequireDB(t)
+	ctx := context.Background()
+
+	portRepo := repository.NewPortRepository(db)
+	vesselRepo := repository.NewVesselRepository(db.GetPool())
+	shipmentRepo := repository.NewShipmentRepository(db)
+	eventRepo := repository.NewShipmentEventRepository(db)
+	routingRepo := repository.NewRoutingRepository(db)
+	routeRepo := repository.NewRouteRepository(db)
+	userRepo := repository.NewUserRepository(db)
+
+	suffix := testutil.UniqueSuffix()
+	owner := &models.User{Email: "test-owner-" + suffix + "@example.com", PasswordHash: "x", FullName: "Owner", CompanyName: "Secret Co", Role: "CLIENT"}
+	if err := userRepo.Create(ctx, owner); err != nil {
+		t.Fatalf("create owner: %v", err)
+	}
+	t.Cleanup(func() { db.GetPool().Exec(ctx, `DELETE FROM users WHERE id = $1`, owner.ID) })
+
+	originID, destID, _, _, _, _ := testutil.TwoRealPorts(t, db.GetPool())
+	shipment := &models.Shipment{
+		TrackingNumber: "TEST-PUBLIC-" + suffix, CustomerName: "Highly Confidential Customer",
+		OriginPortID: originID, DestinationPortID: destID,
+		CustomerUserID: &owner.ID, WeightKG: 1234, Status: "PENDING",
+		ContainerNumber: "MSKU1234567",
+		ManifestItems: models.ManifestItems{{
+			SKU: "SECRET-SKU", Description: "Confidential cargo", Quantity: 3,
+			UnitValue: 9999, TotalValue: 29997, IMDGClass: "1",
+		}},
+	}
+	if err := shipmentRepo.Create(ctx, shipment); err != nil {
+		t.Fatalf("create shipment: %v", err)
+	}
+	t.Cleanup(func() { shipmentRepo.Delete(ctx, shipment.ID) })
+
+	h := NewShipmentHandler(shipmentRepo, portRepo, routingRepo, routeRepo, vesselRepo, eventRepo, nil)
+	app := fiber.New()
+	app.Get("/track/:trackingNumber", h.GetShipmentByTracking) // no auth, like the real route
+
+	resp, err := app.Test(httptest.NewRequest("GET", "/track/"+shipment.TrackingNumber, nil), -1)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != fiber.StatusOK {
+		t.Fatalf("status = %d, want 200, body = %s", resp.StatusCode, body)
+	}
+
+	var got map[string]any
+	if err := json.Unmarshal(body, &got); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+
+	for _, field := range []string{"id", "customer_name", "customer_user_id", "manifest_items", "description", "origin_port_id", "destination_port_id"} {
+		if _, present := got[field]; present {
+			t.Errorf("public response contains %q - it must not", field)
+		}
+	}
+	for _, secret := range []string{"Highly Confidential Customer", "SECRET-SKU", "Confidential cargo", "Secret Co", owner.ID} {
+		if bytes.Contains(body, []byte(secret)) {
+			t.Errorf("public response body leaks %q", secret)
+		}
+	}
+
+	for _, field := range []string{"tracking_number", "status", "origin_port_name", "destination_port_name", "weight_kg", "container_number", "created_at"} {
+		if _, present := got[field]; !present {
+			t.Errorf("public response is missing %q, which the tracking page needs", field)
+		}
+	}
+	if got["tracking_number"] != shipment.TrackingNumber {
+		t.Errorf("tracking_number = %v, want %q", got["tracking_number"], shipment.TrackingNumber)
+	}
+}

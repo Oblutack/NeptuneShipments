@@ -48,7 +48,7 @@ exposes the fleet, crew, schedules or finances is Admin.
 
 | Method   | Endpoint                               | Auth  | Description                                                                                                                                                 |
 | -------- | ----------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET`    | `/api/shipments/:trackingNumber`         | No    | Public shipment tracking                                                                                                                                  |
+| `GET`    | `/api/shipments/:trackingNumber`         | No    | Public shipment tracking - a deliberately minimal view (status, port names, ETA, weight, container number, vessel id); no customer or manifest data                                                                                                                                  |
 | `GET`    | `/api/shipments/:trackingNumber/events`  | No    | Public voyage track-and-trace timeline (BOOKED, DEPARTED, DELIVERED, ...)                                                                                 |
 | `GET`    | `/api/shipments`                         | Auth  | List shipments — every shipment for ADMIN, only the caller's own for CLIENT                                                                               |
 | `POST`   | `/api/shipments`                         | Auth  | Create a shipment. ADMIN can assign a vessel directly (auto-routes + dispatches it); a CLIENT's booking always starts unassigned, `customer_user_id` from the JWT, not the request body |
