@@ -70,6 +70,7 @@ func main() {
 	financeRepo := repository.NewFinanceRepository(db, oilPriceSvc, fxRateSvc)
 	allocationRepo := repository.NewAllocationRepository(db)
 	auditRepo := repository.NewAuditRepository(db)
+	simulationRepo := repository.NewSimulationRepository(db)
 
 	importerService := services.NewImporterService(
 		portRepo,
@@ -105,6 +106,7 @@ func main() {
 	wsHandler := handlers.NewWebSocketHandler(hub, vesselRepo)
 	allocationHandler := handlers.NewAllocationHandler(allocationRepo)
 	auditHandler := handlers.NewAuditHandler(auditRepo)
+	simulationHandler := handlers.NewSimulationHandler(simulationRepo)
 
 	// Initialize Fiber
 	app := fiber.New()
@@ -235,6 +237,9 @@ func main() {
 
 	// Audit log (admin-only, read-only)
 	api.Get("/audit", requireAdmin, auditHandler.GetAuditLog)
+
+	// Simulation reset (admin-only, destructive)
+	api.Post("/simulation/reset", requireAdmin, audit("RESET", "simulation"), simulationHandler.ResetSimulation)
 
 	// 2FA - any authenticated user can set this up on their own account
 	api.Post("/auth/totp/setup", authHandler.SetupTOTP)

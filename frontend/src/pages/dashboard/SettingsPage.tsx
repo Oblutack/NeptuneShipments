@@ -23,10 +23,12 @@ import {
 } from "lucide-react";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
+import { toast } from "react-toastify";
 import {
   useSetupTOTPMutation,
   useVerifyTOTPMutation,
   useDisableTOTPMutation,
+  useResetSimulationMutation,
 } from "../../features/api/apiSlice";
 
 export const SettingsPage = () => {
@@ -37,10 +39,17 @@ export const SettingsPage = () => {
     null,
   );
 
-  const handleResetSimulation = () => {
-    console.log("Resetting simulation data...");
-    // TODO: Call backend API to reset data
+  const [resetSimulation, { isLoading: isResetting }] =
+    useResetSimulationMutation();
+
+  const handleResetSimulation = async () => {
     setConfirmAction(null);
+    try {
+      await resetSimulation().unwrap();
+      toast.success("✅ Simulation reset - all vessels are idle and fueled");
+    } catch {
+      toast.error("❌ Failed to reset simulation");
+    }
   };
 
   const handleClearCache = () => {
@@ -223,13 +232,16 @@ export const SettingsPage = () => {
                   Reset Simulation
                 </h3>
                 <p className="text-xs text-slate-500 mb-3.5">
-                  Clears all vessels, shipments, and routes. Cannot be undone.
+                  Resets every vessel to idle and fully fueled, and clears
+                  all shipments, routes, and berth allocations. Ports, crew,
+                  and accounts are untouched. Cannot be undone.
                 </p>
                 <button
                   onClick={() => setConfirmAction("reset")}
-                  className="w-full bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                  disabled={isResetting}
+                  className="w-full bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
                 >
-                  Reset Data
+                  {isResetting ? "Resetting..." : "Reset Data"}
                 </button>
               </div>
 

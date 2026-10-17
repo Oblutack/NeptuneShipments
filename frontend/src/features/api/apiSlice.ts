@@ -583,6 +583,10 @@ export const apiSlice = createApi({
     >({
       query: () => "/audit",
     }),
+    resetSimulation: builder.mutation<{ message: string }, void>({
+      query: () => ({ url: "/simulation/reset", method: "POST" }),
+      invalidatesTags: ["Vessels", "Shipments", "Routes", "Allocations"],
+    }),
     getPortSchedule: builder.query<
       ScheduleResponse,
       { portId: string; startDate?: string; endDate?: string }
@@ -656,6 +660,7 @@ export const {
   useGetFinancialStatsQuery,
   useGetRevenueTrendQuery,
   useGetAuditLogQuery,
+  useResetSimulationMutation,
   useUpdateVesselMutation,
   useDeleteVesselMutation,
   useUploadVesselCSVMutation,
