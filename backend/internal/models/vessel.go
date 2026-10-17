@@ -36,4 +36,7 @@ type Vessel struct {
 	// to estimate a CII rating (see frontend lib/cii.ts).
 	TotalFuelConsumedTons float64 `json:"total_fuel_consumed_tons" db:"total_fuel_consumed_tons"`
 	TotalDistanceNM       float64 `json:"total_distance_nm" db:"total_distance_nm"`
+
+	// Classification society survey / dry-dock due date.
+	NextSurveyDue *time.Time `json:"next_survey_due,omitempty" db:"next_survey_due"`
 }

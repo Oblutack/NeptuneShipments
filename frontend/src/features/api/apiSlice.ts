@@ -27,6 +27,7 @@ export interface Vessel {
   total_distance_nm: number;
   capacity_teu?: number;
   capacity_barrels?: number;
+  next_survey_due?: string | null;
 }
 
 export interface Port {

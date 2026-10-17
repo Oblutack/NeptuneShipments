@@ -214,7 +214,7 @@ func (r *VesselRepository) GetAll(ctx context.Context) ([]models.Vessel, error) 
                heading, speed_knots, last_updated, created_at,
                current_route_id, route_progress,
                fuel_level, fuel_capacity,
-               total_fuel_consumed_tons, total_distance_nm
+               total_fuel_consumed_tons, total_distance_nm, next_survey_due
         FROM vessels
     `
 	rows, err := r.db.Query(ctx, query)
@@ -234,7 +234,7 @@ func (r *VesselRepository) GetAll(ctx context.Context) ([]models.Vessel, error) 
 			&v.Heading, &v.SpeedKnots, &v.LastUpdated, &v.CreatedAt,
 			&v.CurrentRouteID, &v.RouteProgress,
 			&v.FuelLevel, &v.FuelCapacity,
-			&v.TotalFuelConsumedTons, &v.TotalDistanceNM,
+			&v.TotalFuelConsumedTons, &v.TotalDistanceNM, &v.NextSurveyDue,
 		)
 		if err != nil {
 			return nil, err
@@ -255,7 +255,7 @@ func (r *VesselRepository) GetByID(ctx context.Context, id string) (*models.Vess
 		       heading, speed_knots, last_updated, created_at,
                current_route_id, route_progress,
                fuel_level, fuel_capacity,
-               total_fuel_consumed_tons, total_distance_nm
+               total_fuel_consumed_tons, total_distance_nm, next_survey_due
 		FROM vessels
 		WHERE id = $1
 	`
@@ -267,7 +267,7 @@ func (r *VesselRepository) GetByID(ctx context.Context, id string) (*models.Vess
 		&v.Heading, &v.SpeedKnots, &v.LastUpdated, &v.CreatedAt,
 		&v.CurrentRouteID, &v.RouteProgress,
 		&v.FuelLevel, &v.FuelCapacity,
-		&v.TotalFuelConsumedTons, &v.TotalDistanceNM,
+		&v.TotalFuelConsumedTons, &v.TotalDistanceNM, &v.NextSurveyDue,
 	)
 	if err != nil {
 		return nil, err

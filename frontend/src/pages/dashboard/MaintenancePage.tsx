@@ -17,6 +17,7 @@ import {
   Gauge,
   Zap,
   Fuel,
+  CalendarClock,
 } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { PageHeader } from "../../components/ui/PageHeader";
@@ -24,6 +25,7 @@ import { StatusBadge } from "../../components/ui/StatusBadge";
 import { DataTable } from "../../components/ui/DataTable";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { computeCII, CII_RATING_COLOR } from "../../lib/cii";
+import { daysUntil } from "../../lib/dates";
 
 export const MaintenancePage = () => {
   const { data: vessels, isLoading: loadingVessels } = useGetVesselsQuery(
@@ -148,6 +150,9 @@ const FuelGauge = ({ vessel }: { vessel: Vessel }) => {
   const fuelPercentage = (vessel.fuel_level / vessel.fuel_capacity) * 100;
   const isLowFuel = fuelPercentage < 20;
   const cii = computeCII(vessel);
+  const surveyDaysLeft = vessel.next_survey_due
+    ? daysUntil(vessel.next_survey_due)
+    : null;
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
@@ -259,6 +264,37 @@ const FuelGauge = ({ vessel }: { vessel: Vessel }) => {
                   <p className="text-xs text-amber-300/70">
                     Fuel level is below 20%. Refueling recommended to avoid
                     operational disruption.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {surveyDaysLeft !== null && surveyDaysLeft <= 90 && (
+              <div
+                className={`rounded-md p-3.5 flex items-start gap-3 border-l-2 ${
+                  surveyDaysLeft < 0
+                    ? "bg-red-500/10 border-red-500"
+                    : "bg-amber-500/10 border-amber-500"
+                }`}
+              >
+                <CalendarClock
+                  className={`shrink-0 mt-0.5 ${surveyDaysLeft < 0 ? "text-red-400" : "text-amber-400"}`}
+                  size={18}
+                />
+                <div className="flex-1">
+                  <p
+                    className={`text-sm font-medium mb-0.5 ${surveyDaysLeft < 0 ? "text-red-300" : "text-amber-300"}`}
+                  >
+                    {surveyDaysLeft < 0
+                      ? "Class Survey Overdue"
+                      : "Class Survey Due Soon"}
+                  </p>
+                  <p
+                    className={`text-xs ${surveyDaysLeft < 0 ? "text-red-300/70" : "text-amber-300/70"}`}
+                  >
+                    {surveyDaysLeft < 0
+                      ? `Overdue by ${Math.abs(surveyDaysLeft)} days - schedule dry-dock immediately.`
+                      : `Due in ${surveyDaysLeft} days (${new Date(vessel.next_survey_due!).toLocaleDateString()}).`}
                   </p>
                 </div>
               </div>
