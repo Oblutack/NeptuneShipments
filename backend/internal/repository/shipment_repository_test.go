@@ -21,7 +21,7 @@ func TestShipmentRepository_GetAllForCustomer_ScopesToOwnShipmentsOnly(t *testin
 	ctx := context.Background()
 
 	portRepo := NewPortRepository(db)
-	userRepo := NewUserRepository(db)
+	userRepo := NewUserRepository(db, nil)
 	shipmentRepo := NewShipmentRepository(db)
 
 	suffix := testutil.UniqueSuffix()

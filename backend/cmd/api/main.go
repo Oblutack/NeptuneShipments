@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"github.com/Oblutack/NeptuneShipments/backend/internal/database"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/handlers"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/repository"
+	"github.com/Oblutack/NeptuneShipments/backend/internal/secretbox"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/services"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/simulator"
 	internalWs "github.com/Oblutack/NeptuneShipments/backend/internal/websocket"
@@ -43,6 +45,27 @@ func main() {
 		jwtSecret = "neptune_secret_key_12345"
 	}
 
+	// TOTP seeds are encrypted at rest with this key. Like JWT_SECRET it's
+	// required in production; in local dev a key is derived from the JWT
+	// secret so the app runs with no extra setup.
+	var totpKey []byte
+	if raw := os.Getenv("TOTP_ENCRYPTION_KEY"); raw != "" {
+		totpKey, err = secretbox.KeyFromBase64(raw)
+		if err != nil {
+			log.Fatal("TOTP_ENCRYPTION_KEY is invalid (want 32 random bytes, base64 - e.g. `openssl rand -base64 32`): ", err)
+		}
+	} else {
+		if os.Getenv("ENVIRONMENT") == "production" {
+			log.Fatal("TOTP_ENCRYPTION_KEY must be set when ENVIRONMENT=production (e.g. `openssl rand -base64 32`)")
+		}
+		log.Println("Warning: TOTP_ENCRYPTION_KEY not set, deriving an insecure dev key from JWT_SECRET for local dev only")
+		totpKey = secretbox.DevKey(jwtSecret)
+	}
+	secrets, err := secretbox.New(totpKey)
+	if err != nil {
+		log.Fatal("Failed to set up secret encryption: ", err)
+	}
+
 	pdfService := services.NewPDFService()
 
 	hub := internalWs.NewHub()
@@ -51,7 +74,12 @@ func main() {
 	vesselRepo := repository.NewVesselRepository(db.GetPool())
 	portRepo := repository.NewPortRepository(db)
 	shipmentRepo := repository.NewShipmentRepository(db)
-	userRepo := repository.NewUserRepository(db)
+	userRepo := repository.NewUserRepository(db, secrets)
+	if n, err := userRepo.EncryptLegacyTOTPSecrets(context.Background()); err != nil {
+		log.Fatal("Failed to encrypt existing TOTP secrets (have migrations been run?): ", err)
+	} else if n > 0 {
+		log.Printf("Encrypted %d existing plaintext TOTP secret(s)", n)
+	}
 	tankRepo := repository.NewTankRepository(db)
 
 	routingEngineRepo := repository.NewRoutingRepository(db)

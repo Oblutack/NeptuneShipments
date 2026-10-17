@@ -3,18 +3,43 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/Oblutack/NeptuneShipments/backend/internal/database"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/models"
+	"github.com/Oblutack/NeptuneShipments/backend/internal/secretbox"
 	"github.com/jackc/pgx/v5"
 )
 
 type UserRepository struct {
 	db *database.Service
+	// box encrypts TOTP secrets at rest. Nil is allowed for callers that
+	// never touch 2FA (the seeder, most tests); anything that would need
+	// to encrypt or decrypt a secret then returns an error instead.
+	box *secretbox.Box
 }
 
-func NewUserRepository(db *database.Service) *UserRepository {
-	return &UserRepository{db: db}
+func NewUserRepository(db *database.Service, box *secretbox.Box) *UserRepository {
+	return &UserRepository{db: db, box: box}
+}
+
+// openTOTPSecret decrypts a stored secret in place. A value without the
+// encrypted marker is a plaintext secret from before encryption existed
+// (the startup pass re-encrypts those), and is returned as is so 2FA
+// logins keep working in the meantime.
+func (r *UserRepository) openTOTPSecret(u *models.User) error {
+	if u.TOTPSecret == nil || !secretbox.IsEncrypted(*u.TOTPSecret) {
+		return nil
+	}
+	if r.box == nil {
+		return errors.New("user has an encrypted TOTP secret but no encryption key is configured")
+	}
+	plain, err := r.box.Decrypt(*u.TOTPSecret)
+	if err != nil {
+		return fmt.Errorf("decrypt TOTP secret: %w", err)
+	}
+	u.TOTPSecret = &plain
+	return nil
 }
 
 // GetByEmail finds a user by email
@@ -34,6 +59,9 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*models.
 		return nil, nil
 	}
 	if err != nil {
+		return nil, err
+	}
+	if err := r.openTOTPSecret(&user); err != nil {
 		return nil, err
 	}
 	return &user, nil
@@ -59,16 +87,90 @@ func (r *UserRepository) GetByID(ctx context.Context, id string) (*models.User, 
 	if err != nil {
 		return nil, err
 	}
+	if err := r.openTOTPSecret(&user); err != nil {
+		return nil, err
+	}
 	return &user, nil
 }
 
-// SetTOTPSecret stores a pending (not-yet-verified) TOTP secret.
+// SetTOTPSecret stores a pending (not-yet-verified) TOTP secret, encrypted.
 func (r *UserRepository) SetTOTPSecret(ctx context.Context, userID string, secret string) error {
-	_, err := r.db.GetPool().Exec(ctx,
+	if r.box == nil {
+		return errors.New("cannot store a TOTP secret: no encryption key is configured")
+	}
+	encrypted, err := r.box.Encrypt(secret)
+	if err != nil {
+		return err
+	}
+	_, err = r.db.GetPool().Exec(ctx,
 		`UPDATE users SET totp_secret = $1, totp_enabled = FALSE WHERE id = $2`,
-		secret, userID,
+		encrypted, userID,
 	)
 	return err
+}
+
+// EncryptLegacyTOTPSecretFor encrypts one user's TOTP secret if it is
+// still stored as plaintext. Reports whether it changed anything.
+func (r *UserRepository) EncryptLegacyTOTPSecretFor(ctx context.Context, userID string) (bool, error) {
+	if r.box == nil {
+		return false, errors.New("no encryption key is configured")
+	}
+	var stored *string
+	if err := r.db.GetPool().QueryRow(ctx, `SELECT totp_secret FROM users WHERE id = $1`, userID).Scan(&stored); err != nil {
+		return false, err
+	}
+	if stored == nil || secretbox.IsEncrypted(*stored) {
+		return false, nil
+	}
+	encrypted, err := r.box.Encrypt(*stored)
+	if err != nil {
+		return false, err
+	}
+	// Matching on the old value keeps this safe against a concurrent
+	// SetTOTPSecret writing a newer secret between the read and the write.
+	tag, err := r.db.GetPool().Exec(ctx,
+		`UPDATE users SET totp_secret = $1 WHERE id = $2 AND totp_secret = $3`,
+		encrypted, userID, *stored)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() == 1, nil
+}
+
+// EncryptLegacyTOTPSecrets encrypts every TOTP secret still stored as
+// plaintext - run once at startup so no plaintext seed outlives the
+// upgrade. Returns how many rows it encrypted.
+func (r *UserRepository) EncryptLegacyTOTPSecrets(ctx context.Context) (int, error) {
+	rows, err := r.db.GetPool().Query(ctx,
+		`SELECT id FROM users WHERE totp_secret IS NOT NULL AND totp_secret NOT LIKE 'v1:%'`)
+	if err != nil {
+		return 0, err
+	}
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return 0, err
+		}
+		ids = append(ids, id)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+
+	n := 0
+	for _, id := range ids {
+		changed, err := r.EncryptLegacyTOTPSecretFor(ctx, id)
+		if err != nil {
+			return n, fmt.Errorf("encrypt TOTP secret for user %s: %w", id, err)
+		}
+		if changed {
+			n++
+		}
+	}
+	return n, nil
 }
 
 // EnableTOTP flips totp_enabled on after the user has proven they can

@@ -37,7 +37,7 @@ func TestCreateShipment_ClientCannotDispatchAVessel(t *testing.T) {
 	eventRepo := repository.NewShipmentEventRepository(db)
 	routingRepo := repository.NewRoutingRepository(db)
 	routeRepo := repository.NewRouteRepository(db)
-	userRepo := repository.NewUserRepository(db)
+	userRepo := repository.NewUserRepository(db, nil)
 
 	suffix := testutil.UniqueSuffix()
 
@@ -271,7 +271,7 @@ func TestGetShipmentByTracking_PublicResponseLeaksNothingPrivate(t *testing.T) {
 	eventRepo := repository.NewShipmentEventRepository(db)
 	routingRepo := repository.NewRoutingRepository(db)
 	routeRepo := repository.NewRouteRepository(db)
-	userRepo := repository.NewUserRepository(db)
+	userRepo := repository.NewUserRepository(db, nil)
 
 	suffix := testutil.UniqueSuffix()
 	owner := &models.User{Email: "test-owner-" + suffix + "@example.com", PasswordHash: "x", FullName: "Owner", CompanyName: "Secret Co", Role: "CLIENT"}
@@ -350,7 +350,7 @@ func TestDownloadBOL_OnlyOwnerOrAdmin(t *testing.T) {
 	eventRepo := repository.NewShipmentEventRepository(db)
 	routingRepo := repository.NewRoutingRepository(db)
 	routeRepo := repository.NewRouteRepository(db)
-	userRepo := repository.NewUserRepository(db)
+	userRepo := repository.NewUserRepository(db, nil)
 
 	suffix := testutil.UniqueSuffix()
 	mkClient := func(name string) *models.User {

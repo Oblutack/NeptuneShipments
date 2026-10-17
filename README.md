@@ -313,7 +313,7 @@ A scoped, customer-facing view alongside the admin dashboard — the same archit
 
 ### 11. Security Hardening
 
-- **Two-Factor Authentication** — TOTP-based 2FA (any standard authenticator app), optional per account, set up from Settings
+- **Two-Factor Authentication** — TOTP-based 2FA (any standard authenticator app), optional per account, set up from Settings. The seeds are encrypted at rest (AES-256-GCM), so a leaked database dump doesn't hand over working 2FA
 - **Rate Limiting** — A global request limiter plus a tighter limiter specifically on `/api/auth/login`, to blunt brute-force attempts
 - **Audit Log** — Every administrative mutation (vessel/port/crew/shipment changes, CSV imports, maintenance, berth allocation, simulation reset) is logged with actor, action, and entity, viewable on an admin-only Activity Log page
 - **Fail-Fast JWT Secret** — The server refuses to start in production without a real `JWT_SECRET`; only local dev falls back to an insecure default, with a loud warning
@@ -367,6 +367,10 @@ Create `backend/.env`:
 DB_URL=postgres://postgres:password123@localhost:5455/neptune_shipments?sslmode=disable
 PORT=8080
 JWT_SECRET=neptune_production_secret_key
+# Encrypts 2FA seeds in the database. Optional for local dev (a key is derived
+# from JWT_SECRET, with a warning); required when ENVIRONMENT=production.
+# Generate one with: openssl rand -base64 32
+TOTP_ENCRYPTION_KEY=
 ENVIRONMENT=development
 ```
 
@@ -476,8 +480,10 @@ and `web` (port `5173`, served via nginx). Pass `VITE_MAPBOX_TOKEN`,
 `VITE_AIS_TRACKER_URL`, and/or `VITE_API_URL` as environment variables
 before running this if you need non-default values - they're baked into
 the `web` image at build time (see `docker-compose.yml`). The `api`
-service also requires `JWT_SECRET` to be set in your shell environment,
-or the container will refuse to start.
+service also requires `JWT_SECRET` and `TOTP_ENCRYPTION_KEY` (generate with
+`openssl rand -base64 32`) to be set in your shell environment, or the
+container will refuse to start. Keep the TOTP key: losing it makes existing
+2FA setups undecryptable.
 
 ---
 
@@ -600,7 +606,7 @@ math, date helpers) plus component rendering.
 ## Security & Compliance
 
 - **Authentication** — JWT-based stateless auth with a configurable secret; the server refuses to start in production without a real `JWT_SECRET` set (local dev falls back to an insecure default, with a loud warning)
-- **Two-Factor Authentication** — Optional TOTP 2FA per account (any standard authenticator app), set up from Settings
+- **Two-Factor Authentication** — Optional TOTP 2FA per account (any standard authenticator app), set up from Settings; seeds are stored AES-256-GCM encrypted under `TOTP_ENCRYPTION_KEY` (required in production), and any pre-existing plaintext seed is encrypted on startup
 - **Authorization** — Role-based (`ADMIN`/`CLIENT`) middleware, enforced server-side in the handlers, not just the UI:
   - Destructive/administrative endpoints (vessel and port mutations, CSV import, component maintenance, berth allocation, crew assignment, shipment update/delete, simulation reset, audit log) require `ADMIN`
   - A CLIENT can book and read their own shipments (and fetch the port list the booking form needs), but can't assign a vessel to a booking (that always starts unassigned) and can't reach fleet, crew, schedule, or finance data - REST or the live `/ws/fleet` stream - at all. The dashboard routes redirect a CLIENT to `/portal` as well, but that's just UX; the API is what enforces it

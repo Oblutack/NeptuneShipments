@@ -25,7 +25,7 @@ func main() {
 
 	// 1. Init Repos
 	portRepo := repository.NewPortRepository(dbService)
-	userRepo := repository.NewUserRepository(dbService)
+	userRepo := repository.NewUserRepository(dbService, nil)
 	vesselRepo := repository.NewVesselRepository(dbService.GetPool())
 	routeRepo := repository.NewRouteRepository(dbService)
 	shipmentRepo := repository.NewShipmentRepository(dbService)
