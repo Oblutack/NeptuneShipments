@@ -102,6 +102,7 @@ var adminOnly = []struct{ method, path string }{
 	{"DELETE", "/api/shipments/x"},
 	{"POST", "/api/allocations"},
 	{"GET", "/api/allocations/unassigned"},
+	{"POST", "/api/routes/calculate"},
 }
 
 // anyAuthenticated are the routes a CLIENT account legitimately uses.
@@ -168,5 +169,25 @@ func TestRoutes_FleetStreamRejectsClients(t *testing.T) {
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusForbidden {
 		t.Errorf("GET /ws/fleet as CLIENT = %d, want 403", resp.StatusCode)
+	}
+}
+
+// Every call to /routes/calculate runs a pgRouting Dijkstra query, so even
+// an admin gets a tight cap on it.
+func TestRoutes_CalculateIsRateLimited(t *testing.T) {
+	app := newRouteTestApp()
+	admin := tokenFor(t, "ADMIN")
+
+	limited := 0
+	for i := 0; i < 40; i++ {
+		if statusFor(t, app, "POST", "/api/routes/calculate", admin) == http.StatusTooManyRequests {
+			limited++
+		}
+	}
+	if limited == 0 {
+		t.Error("40 rapid calls to /api/routes/calculate were never rate limited")
+	}
+	if limited == 40 {
+		t.Error("every call was rate limited - the cap is below any sensible usage")
 	}
 }

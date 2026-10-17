@@ -98,7 +98,6 @@ func registerRoutes(app *fiber.App, d routeDeps) {
 
 	// --- ROUTING ENGINE ---
 	api.Get("/routes/network", d.route.GetNetworkMesh)
-	api.Post("/routes/calculate", d.route.CalculateRoute)
 
 	// Active Fleet Routes
 	api.Get("/routes/active", d.route.GetActiveRoutes)
@@ -142,6 +141,22 @@ func registerRoutes(app *fiber.App, d routeDeps) {
 	// Components
 	components := api.Group("/components")
 	components.Post("/:id/maintain", requireAdmin, audit("MAINTAIN", "component"), d.component.PerformMaintenance)
+
+	// Route calculation runs a pgRouting Dijkstra query per call and is a
+	// dev/ops tool (nothing in the app calls it), so it's admin-only with
+	// its own tight cap. requireAdmin runs first so rejected requests
+	// don't use up an admin's quota.
+	calculateLimiter := limiter.New(limiter.Config{
+		Max:        20,
+		Expiration: 1 * time.Minute,
+		KeyGenerator: func(c *fiber.Ctx) string {
+			return c.IP()
+		},
+		LimitReached: func(c *fiber.Ctx) error {
+			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{"error": "Too many route calculations, try again shortly"})
+		},
+	})
+	api.Post("/routes/calculate", requireAdmin, calculateLimiter, d.route.CalculateRoute)
 
 	// Audit log (admin-only, read-only)
 	api.Get("/audit", requireAdmin, d.auditLog.GetAuditLog)

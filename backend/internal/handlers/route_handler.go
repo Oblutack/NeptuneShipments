@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 
 	"github.com/Oblutack/NeptuneShipments/backend/internal/repository"
 	"github.com/gofiber/fiber/v2"
@@ -35,7 +36,8 @@ func (h *RouteHandler) CalculateRoute(c *fiber.Ctx) error {
 
 	path, err := h.routingRepo.CalculatePath(c.Context(), req.StartLat, req.StartLon, req.EndLat, req.EndLon)
 	if err != nil {
-		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+		log.Printf("Route calculation failed: %v", err)
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to calculate route"})
 	}
 
 	return c.JSON(fiber.Map{

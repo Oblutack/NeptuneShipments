@@ -40,7 +40,7 @@ exposes the fleet, crew, schedules or finances is Admin.
 | Method | Endpoint                | Auth | Description                                              |
 | ------ | ------------------------ | ---- | ---------------------------------------------------------- |
 | `GET`  | `/api/routes/network`   | No   | Get full ocean network mesh (GeoJSON)                    |
-| `POST` | `/api/routes/calculate` | No   | Calculate route between two coordinates                  |
+| `POST` | `/api/routes/calculate` | Admin | Calculate route between two coordinates (rate-limited to 20/min)  |
 | `GET`  | `/api/routes/active`    | No   | Get all active voyage routes (GeoJSON FeatureCollection) |
 | `GET`  | `/api/routes/:id`       | No   | Get specific route by ID                                 |
 
