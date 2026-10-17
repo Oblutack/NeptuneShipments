@@ -33,9 +33,9 @@
 - [Overview](#overview)
 - [System Architecture](#system-architecture)
 - [Key Modules](#key-modules)
-- [Data Model](#data-model)
+- [Data Model](docs/DATA_MODEL.md)
 - [Installation & Setup](#installation--setup)
-- [API Reference](#api-reference)
+- [API Reference](docs/API.md)
 - [Operational Workflows](#operational-workflows)
 - [Testing](#testing)
 - [Performance](#performance)
@@ -336,42 +336,11 @@ Background physics engine that powers the entire live fleet experience.
 
 ## Data Model
 
-### Entity Relationship Overview
-
-```
-Ports ──────────── Terminals ──────── Berths
-  │                                     │
-  │ origin/destination                  │ allocation
-  │                                     │
-Shipments ─────── Vessels ────────── BerthAllocations
-  │     │           │
-  │     │ booked by │ assignment
-  │     ▼           │
-  │   Users ◄────────┘ (role: ADMIN or CLIENT)
-  │ manifest         │
-  │                 Components
-ManifestItems         │
-(JSONB)              Crew
-```
-
-### Core Entities
-
-| Entity              | Key Fields                                                                                                                                                                                           | Notes                                                                       |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| **Vessel**          | `id`, `name`, `imo_number`, `type`, `status`, `location` (POINT), `heading`, `speed_knots`, `fuel_level/capacity`, `current_route_id`, `route_progress`, `total_fuel_consumed_tons`, `total_distance_nm` (lifetime, for CII), `next_survey_due` | 5 statuses: AT_SEA, DOCKED, ANCHORED, MAINTENANCE, DISTRESS                 |
-| **Port**            | `id`, `un_locode`, `name`, `country`, `location` (POINT), `type`                                                                                                                                     | 14 ports in the default seed data                                           |
-| **Route**           | `id`, `name`, `path` (LINESTRING), `origin_port_id`, `destination_port_id`                                                                                                                           | Computed via pgRouting Dijkstra                                             |
-| **Shipment**        | `id`, `tracking_number`, `customer_name`, `origin/destination_port_id`, `vessel_id`, `customer_user_id`, `status`, `weight_kg`, `manifest_items` (JSONB), `eta`                                      | Statuses: PENDING, IN_TRANSIT, DELIVERED; `customer_user_id` links to the CLIENT account that booked it |
-| **ManifestItem**    | `sku`, `description`, `quantity`, `unit_value`, `total_value`, `imdg_class`                                                                                                                          | Stored as JSONB array in Shipment; `imdg_class` is one of the IMDG Code's 9 real UN hazard classes, if any |
-| **ShipmentEvent**   | `id`, `shipment_id`, `event_type`, `description`, `created_at`                                                                                                                                       | Voyage track-and-trace history: BOOKED, DEPARTED, DELIVERED, etc.          |
-| **Terminal**        | `id`, `port_id`, `name`, `type`                                                                                                                                                                      | Types: CONTAINER, LIQUID, BULK, GENERAL                                     |
-| **Berth**           | `id`, `terminal_id`, `name`, `length_meters`, `is_occupied`, `current_vessel_id`                                                                                                                     | Nested under Terminal                                                        |
-| **BerthAllocation** | `id`, `vessel_id`, `berth_id`, `start_time`, `end_time`, `status`, `notes`                                                                                                                            | Statuses: SCHEDULED, ACTIVE, COMPLETED, CANCELLED                           |
-| **Component**       | `id`, `vessel_id`, `name`, `type`, `health_percentage`, `status`, `total_operating_hours`, `last_maintenance`                                                                                        | Types: PROPULSION, ELECTRICAL, NAVIGATION, HULL                             |
-| **Crew**            | `id`, `name`, `role`, `license_number`, `nationality`, `vessel_id`, `status`, `cert_expiry_date`                                                                                                      | Roles: CAPTAIN, CHIEF_ENGINEER, FIRST_OFFICER, DECKHAND, COOK               |
-| **User**            | `id`, `email`, `password_hash`, `full_name`, `company_name`, `role`, `totp_secret`, `totp_enabled`                                                                                                    | Roles: ADMIN, CLIENT. Auth entity with bcrypt hashing + optional TOTP 2FA   |
-| **AuditLogEntry**   | `id`, `actor_id`, `action`, `entity_type`, `entity_id`, `metadata` (JSONB), `created_at`                                                                                                              | Written on every administrative mutation                                    |
-| **FinancialStats**  | `total_revenue`, `total_fuel_cost`, `gross_profit`, `active_job_count`, `avg_revenue_per_job`, `base_freight_rate`, `baf_percent`, `caf_percent`, `effective_rate`, `fuel_price_per_ton`, `fx_rate_usd_eur` | Computed via SQL aggregation + live oil price/FX rate                        |
+14 core entities — Vessel, Port, Route, Shipment, ManifestItem,
+ShipmentEvent, Terminal, Berth, BerthAllocation, Component, Crew, User,
+AuditLogEntry, FinancialStats — spanning fleet, cargo, scheduling, and
+auth. Full ER diagram and field-level reference:
+**[docs/DATA_MODEL.md](docs/DATA_MODEL.md)**.
 
 ---
 
@@ -514,96 +483,12 @@ or the container will refuse to start.
 
 ## API Reference
 
-### Authentication
-
-Protected endpoints require `Authorization: Bearer <token>`. "Admin" in
-the Auth column below means `requireAdmin` specifically (a CLIENT-role
-token gets a 403); "Auth" alone means any authenticated user.
-
-| Method | Endpoint                 | Auth  | Description                                  |
-| ------ | ------------------------- | ----- | --------------------------------------------- |
-| `POST` | `/api/auth/login`        | No    | Authenticate and receive JWT (rate-limited)    |
-| `POST` | `/api/auth/totp/setup`   | Auth  | Begin TOTP 2FA setup, returns a QR code        |
-| `POST` | `/api/auth/totp/verify`  | Auth  | Confirm a TOTP code and enable 2FA             |
-| `POST` | `/api/auth/totp/disable` | Auth  | Disable 2FA (requires a valid current code)    |
-
-### Fleet Operations
-
-| Method   | Endpoint                            | Auth  | Description                                                         |
-| -------- | ------------------------------------- | ----- | ----------------------------------------------------------------------- |
-| `GET`    | `/api/vessels`                       | Auth  | List all vessels                                                     |
-| `GET`    | `/api/vessels/:id`                   | No    | Get vessel details                                                   |
-| `GET`    | `/api/vessels/template`              | Auth  | Download a CSV import template                                       |
-| `POST`   | `/api/vessels`                       | Admin | Create a new vessel                                                  |
-| `PUT`    | `/api/vessels/:id`                   | Admin | Update a vessel                                                      |
-| `DELETE` | `/api/vessels/:id`                   | Admin | Delete a vessel (blocked if it has active shipments)                 |
-| `POST`   | `/api/vessels/import`                | Admin | Bulk-import vessels from CSV                                         |
-| `POST`   | `/api/vessels/:id/refuel`            | Admin | Refuel vessel to full capacity                                       |
-| `GET`    | `/api/vessels/:vesselId/tanks`       | Auth  | Get vessel tank levels                                                |
-| `GET`    | `/api/vessels/:vesselId/components`  | Auth  | Get vessel components                                                 |
-| `GET`    | `/api/vessels/:id/crew`              | Auth  | Get crew assigned to vessel                                           |
-| `GET`    | `/api/vessels/:vesselId/shipments`   | Admin | Get vessel cargo manifest (fleet-ops view, not a client's own list)  |
-
-### Routing
-
-| Method | Endpoint                | Auth | Description                                              |
-| ------ | ------------------------ | ---- | -------------------------------------------------------- |
-| `GET`  | `/api/routes/network`   | No   | Get full ocean network mesh (GeoJSON)                    |
-| `POST` | `/api/routes/calculate` | No   | Calculate route between two coordinates                  |
-| `GET`  | `/api/routes/active`    | No   | Get all active voyage routes (GeoJSON FeatureCollection) |
-| `GET`  | `/api/routes/:id`       | No   | Get specific route by ID                                 |
-
-### Cargo & Shipments
-
-| Method   | Endpoint                               | Auth  | Description                                                                                                                                                 |
-| -------- | ----------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET`    | `/api/shipments/:trackingNumber`         | No    | Public shipment tracking                                                                                                                                  |
-| `GET`    | `/api/shipments/:trackingNumber/events`  | No    | Public voyage track-and-trace timeline (BOOKED, DEPARTED, DELIVERED, ...)                                                                                 |
-| `GET`    | `/api/shipments`                         | Auth  | List shipments — every shipment for ADMIN, only the caller's own for CLIENT                                                                               |
-| `POST`   | `/api/shipments`                         | Auth  | Create a shipment. ADMIN can assign a vessel directly (auto-routes + dispatches it); a CLIENT's booking always starts unassigned, `customer_user_id` from the JWT, not the request body |
-| `PUT`    | `/api/shipments/:id`                     | Admin | Update shipment                                                                                                                                            |
-| `DELETE` | `/api/shipments/:id`                     | Admin | Delete shipment                                                                                                                                            |
-| `GET`    | `/api/shipments/:trackingNumber/bol`     | Auth  | Download Bill of Lading (PDF)                                                                                                                              |
-
-### Ports & Scheduling
-
-| Method   | Endpoint                       | Auth  | Description                                  |
-| -------- | -------------------------------- | ----- | ----------------------------------------------- |
-| `GET`    | `/api/ports`                    | Auth  | List all ports                               |
-| `GET`    | `/api/ports/stats`              | Auth  | Port throughput statistics                   |
-| `POST`   | `/api/ports`                    | Admin | Create a port                                |
-| `PUT`    | `/api/ports/:id`                | Admin | Update a port                                |
-| `DELETE` | `/api/ports/:id`                | Admin | Delete a port                                |
-| `POST`   | `/api/ports/import`             | Admin | Bulk-import ports from CSV                   |
-| `GET`    | `/api/ports/template`           | No    | Download a CSV import template               |
-| `GET`    | `/api/ports/:portId/terminals`  | Auth  | Get port terminals and berths                |
-| `GET`    | `/api/ports/:portId/schedule`   | Auth  | Get port berth schedule                      |
-| `POST`   | `/api/allocations`              | Admin | Create a berth allocation (conflict-checked) |
-| `GET`    | `/api/allocations/unassigned`   | Auth  | Get vessels without berth assignments        |
-
-### Crew, Finance, Maintenance, Admin
-
-| Method | Endpoint                       | Auth  | Description                                                                                             |
-| ------ | --------------------------------- | ----- | -------------------------------------------------------------------------------------------------------- |
-| `GET`  | `/api/crew`                      | Auth  | List all crew members                                                                                  |
-| `PUT`  | `/api/crew/:id/assign`           | Admin | Assign/reassign a crew member to a vessel                                                                |
-| `POST` | `/api/components/:id/maintain`   | Admin | Perform maintenance on a component (resets health to 100%)                                               |
-| `GET`  | `/api/finance/stats`             | Auth  | Financial KPIs, incl. live rate-card (BAF/CAF) and fuel/FX pricing                                       |
-| `GET`  | `/api/finance/revenue-trend`     | Auth  | Real per-day revenue for the last N days (`?days=7` default)                                             |
-| `GET`  | `/api/audit`                     | Admin | Audit log of administrative actions                                                                      |
-| `POST` | `/api/simulation/reset`          | Admin | Clear active-voyage state (shipments/routes/berth allocations); vessels return to idle, fully fueled     |
-| `GET`  | `/health`                        | No    | Server health check                                                                                      |
-
-### WebSocket
-
-```
-ws://localhost:8080/ws/fleet
-```
-
-Message types:
-
-- `FLEET_UPDATE` — Vessel positions, headings, speeds, fuel levels (every 5s)
-- `ALERT` — Critical notifications with level, message, vessel ID, and timestamp
+~40 REST endpoints across auth/2FA, fleet, routing, cargo, ports/scheduling,
+crew, finance, and admin, plus the `/ws/fleet` WebSocket. Protected
+endpoints require `Authorization: Bearer <token>`; most mutations are
+`ADMIN`-only, a CLIENT can read/create only their own shipments, and
+tracking/voyage-timeline endpoints are public by design. Full endpoint
+table with per-route auth requirements: **[docs/API.md](docs/API.md)**.
 
 ---
 
