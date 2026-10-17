@@ -12,4 +12,11 @@ type FinancialStats struct {
 	CompletedJobCount int     `json:"completed_job_count"`
 	FuelConsumed      float64 `json:"fuel_consumed"`
 	AvgRevenuePerJob  float64 `json:"avg_revenue_per_job"`
+
+	// Fuel cost is priced using a real, live WTI crude oil quote where
+	// available (see OilPriceService) - these fields let the frontend be
+	// honest about whether that's live data or the offline fallback.
+	FuelPricePerTon   float64 `json:"fuel_price_per_ton"`
+	OilRefPriceUSDBbl float64 `json:"oil_ref_price_usd_bbl"`
+	FuelPriceIsLive   bool    `json:"fuel_price_is_live"`
 }

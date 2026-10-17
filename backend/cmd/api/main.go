@@ -65,7 +65,8 @@ func main() {
 
 	componentRepo := repository.NewComponentRepository(db.GetPool())
 	crewRepo := repository.NewCrewRepository(db)
-	financeRepo := repository.NewFinanceRepository(db)
+	oilPriceSvc := repository.NewOilPriceService()
+	financeRepo := repository.NewFinanceRepository(db, oilPriceSvc)
 	allocationRepo := repository.NewAllocationRepository(db)
 	auditRepo := repository.NewAuditRepository(db)
 

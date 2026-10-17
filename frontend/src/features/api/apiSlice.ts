@@ -205,6 +205,9 @@ export interface FinancialStats {
   completed_job_count: number;
   fuel_consumed: number;
   avg_revenue_per_job: number;
+  fuel_price_per_ton: number;
+  oil_ref_price_usd_bbl: number;
+  fuel_price_is_live: boolean;
 }
 
 export interface AuditLogEntry {

@@ -102,11 +102,36 @@ export const FinancePage = () => {
             <p className="text-2xl font-semibold text-white tabular-nums">
               ${(stats?.total_fuel_cost || 0).toLocaleString()}
             </p>
-            <div className="mt-3 pt-3 border-t border-slate-800 flex justify-between text-xs">
-              <span className="text-slate-500">Fuel consumed</span>
-              <span className="text-slate-300 tabular-nums">
-                {(stats?.fuel_consumed || 0).toFixed(1)} tons
-              </span>
+            <div className="mt-3 pt-3 border-t border-slate-800 space-y-1.5">
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-500">Fuel consumed</span>
+                <span className="text-slate-300 tabular-nums">
+                  {(stats?.fuel_consumed || 0).toFixed(1)} tons
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-slate-500 flex items-center gap-1.5">
+                  Price/ton
+                  {stats?.fuel_price_is_live ? (
+                    <span className="text-[9px] text-emerald-400 bg-emerald-500/10 px-1 py-0.5 rounded font-medium">
+                      LIVE
+                    </span>
+                  ) : (
+                    <span className="text-[9px] text-slate-500 bg-slate-800 px-1 py-0.5 rounded font-medium">
+                      OFFLINE FALLBACK
+                    </span>
+                  )}
+                </span>
+                <span className="text-slate-300 tabular-nums">
+                  ${(stats?.fuel_price_per_ton || 0).toFixed(0)}
+                </span>
+              </div>
+              {stats?.fuel_price_is_live && (
+                <p className="text-[10px] text-slate-600">
+                  Indexed to real WTI crude (${stats.oil_ref_price_usd_bbl.toFixed(2)}/bbl) via
+                  barrels-per-ton - an honest proxy, not the actual bunker fuel index.
+                </p>
+              )}
             </div>
           </div>
 

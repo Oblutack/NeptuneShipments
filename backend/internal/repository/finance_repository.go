@@ -9,20 +9,27 @@ import (
 )
 
 type FinanceRepository struct {
-	db *database.Service
+	db          *database.Service
+	oilPriceSvc *OilPriceService
 }
 
-func NewFinanceRepository(db *database.Service) *FinanceRepository {
-	return &FinanceRepository{db: db}
+func NewFinanceRepository(db *database.Service, oilPriceSvc *OilPriceService) *FinanceRepository {
+	return &FinanceRepository{db: db, oilPriceSvc: oilPriceSvc}
 }
 
 // GetStats calculates comprehensive financial statistics
 func (r *FinanceRepository) GetStats(ctx context.Context) (*models.FinancialStats, error) {
 	stats := &models.FinancialStats{}
 
-	// Constants
-	const freightRate = 2.50      // $2.50 per kg
-	const fuelPricePerTon = 600.0 // $600 per ton of bunker fuel
+	// Freight rate is still a simulated constant - there's no real-world
+	// source for what this fictional company charges its customers.
+	const freightRate = 2.50 // $2.50 per kg
+
+	oilPrice := r.oilPriceSvc.GetPrice(ctx)
+	fuelPricePerTon := oilPrice.PricePerTonUSD
+	stats.FuelPricePerTon = fuelPricePerTon
+	stats.OilRefPriceUSDBbl = oilPrice.PricePerBarrelUSD
+	stats.FuelPriceIsLive = oilPrice.IsLive
 
 	// 1. Calculate Revenue (Sum of all shipment weights * freight rate)
 	revenueQuery := `
