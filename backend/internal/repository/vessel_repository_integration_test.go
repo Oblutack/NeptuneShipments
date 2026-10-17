@@ -29,24 +29,8 @@ func testDB(t *testing.T) *database.Service {
 // ports just for this test.
 func twoRealPortIDs(t *testing.T, db *database.Service) (string, string) {
 	t.Helper()
-	rows, err := db.GetPool().Query(context.Background(), `SELECT id FROM ports LIMIT 2`)
-	if err != nil {
-		t.Fatalf("failed to fetch port ids: %v", err)
-	}
-	defer rows.Close()
-
-	var ids []string
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			t.Fatalf("failed to scan port id: %v", err)
-		}
-		ids = append(ids, id)
-	}
-	if len(ids) < 2 {
-		t.Skip("need at least 2 seeded ports for this test")
-	}
-	return ids[0], ids[1]
+	id1, id2, _, _, _, _ := testutil.TwoRealPorts(t, db.GetPool())
+	return id1, id2
 }
 
 func newThrowawayVessel(t *testing.T, repo *VesselRepository, imo string) *models.Vessel {

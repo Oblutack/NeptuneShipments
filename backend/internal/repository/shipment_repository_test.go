@@ -2,9 +2,7 @@ package repository
 
 import (
 	"context"
-	"fmt"
 	"testing"
-	"time"
 
 	"github.com/Oblutack/NeptuneShipments/backend/internal/models"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/testutil"
@@ -25,7 +23,7 @@ func TestShipmentRepository_GetAllForCustomer_ScopesToOwnShipmentsOnly(t *testin
 	userRepo := NewUserRepository(db)
 	shipmentRepo := NewShipmentRepository(db)
 
-	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	suffix := testutil.UniqueSuffix()
 
 	origin := &models.Port{Name: "Test Origin " + suffix, UnLocode: "TO" + suffix[len(suffix)-3:], Country: "XX", Latitude: 1, Longitude: 1}
 	if err := portRepo.Create(ctx, origin); err != nil {

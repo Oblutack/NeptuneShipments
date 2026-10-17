@@ -2,9 +2,7 @@ package repository
 
 import (
 	"context"
-	"fmt"
 	"testing"
-	"time"
 
 	"github.com/Oblutack/NeptuneShipments/backend/internal/models"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/testutil"
@@ -41,7 +39,7 @@ func TestSimulationRepository_Reset(t *testing.T) {
 	}
 	originID, destID := portIDs[0], portIDs[1]
 
-	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	suffix := testutil.UniqueSuffix()
 
 	vesselRepo := NewVesselRepository(pool)
 	vessel := &models.Vessel{

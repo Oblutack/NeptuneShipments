@@ -4,11 +4,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http/httptest"
 	"testing"
-	"time"
 
 	"github.com/Oblutack/NeptuneShipments/backend/internal/models"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/repository"
@@ -38,7 +36,7 @@ func TestCreateShipment_ClientCannotDispatchAVessel(t *testing.T) {
 	routeRepo := repository.NewRouteRepository(db)
 	userRepo := repository.NewUserRepository(db)
 
-	suffix := fmt.Sprintf("%d", time.Now().UnixNano())
+	suffix := testutil.UniqueSuffix()
 
 	// customer_user_id is a real FK to users(id), so the "client" in this
 	// test needs to be a real row, not an arbitrary string.
@@ -53,23 +51,7 @@ func TestCreateShipment_ClientCannotDispatchAVessel(t *testing.T) {
 	// code path (the vessel stays nil, so CreateShipment's routing block
 	// never runs), and un_locode is only varchar(5), too narrow to
 	// reliably generate a unique one per test run.
-	var portIDs []string
-	rows, err := db.GetPool().Query(ctx, `SELECT id FROM ports LIMIT 2`)
-	if err != nil {
-		t.Fatalf("failed to fetch port ids: %v", err)
-	}
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			t.Fatalf("failed to scan port id: %v", err)
-		}
-		portIDs = append(portIDs, id)
-	}
-	rows.Close()
-	if len(portIDs) < 2 {
-		t.Skip("need at least 2 seeded ports for this test")
-	}
-	originID, destID := portIDs[0], portIDs[1]
+	originID, destID, _, _, _, _ := testutil.TwoRealPorts(t, db.GetPool())
 
 	vessel := &models.Vessel{
 		Name: "Test Vessel " + suffix, IMONumber: "IMOTEST" + suffix[len(suffix)-6:],
@@ -140,5 +122,132 @@ func TestCreateShipment_ClientCannotDispatchAVessel(t *testing.T) {
 	}
 	if v.Status != "DOCKED" {
 		t.Errorf("vessel status = %q, want unchanged DOCKED (a client booking must not dispatch it)", v.Status)
+	}
+}
+
+// TestCreateShipment_AdminDispatchesVesselAndAutoRoutes exercises the
+// full multi-step orchestration CreateShipment runs for an ADMIN booking
+// with a vessel attached: port lookup -> pgRouting path calculation ->
+// route persisted -> vessel assigned and dispatched -> shipment flipped
+// to IN_TRANSIT. This had zero coverage before - the most complex
+// handler-embedded logic in the app, spanning five repositories and
+// several failure-return paths, was previously only ever checked by
+// hand. Needs the real ocean_network pgRouting graph the seeder builds,
+// so it skips (not fails) against a migrations-only database with no
+// seed data, such as a bare CI run.
+func TestCreateShipment_AdminDispatchesVesselAndAutoRoutes(t *testing.T) {
+	db := testutil.RequireDB(t)
+	ctx := context.Background()
+
+	portRepo := repository.NewPortRepository(db)
+	vesselRepo := repository.NewVesselRepository(db.GetPool())
+	shipmentRepo := repository.NewShipmentRepository(db)
+	eventRepo := repository.NewShipmentEventRepository(db)
+	routingRepo := repository.NewRoutingRepository(db)
+	routeRepo := repository.NewRouteRepository(db)
+
+	suffix := testutil.UniqueSuffix()
+
+	originID, destID, originLat, originLon, _, _ := testutil.TwoRealPorts(t, db.GetPool())
+
+	vessel := &models.Vessel{
+		Name: "Test Admin Vessel " + suffix, IMONumber: "IMOTEST" + suffix[len(suffix)-6:],
+		FlagCountry: "XX", Type: "CONTAINER", Status: "DOCKED",
+		Latitude: originLat, Longitude: originLon,
+	}
+	if err := vesselRepo.Create(ctx, vessel); err != nil {
+		t.Fatalf("create vessel: %v", err)
+	}
+	t.Cleanup(func() { vesselRepo.Delete(ctx, vessel.ID) })
+
+	h := NewShipmentHandler(shipmentRepo, portRepo, routingRepo, routeRepo, vesselRepo, eventRepo, nil)
+
+	app := fiber.New()
+	app.Post("/shipments", func(c *fiber.Ctx) error {
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+			"user_id": "admin-under-test-" + suffix,
+			"role":    "ADMIN",
+		})
+		c.Locals("user", token)
+		return h.CreateShipment(c)
+	})
+
+	body, _ := json.Marshal(map[string]any{
+		"tracking_number":     "TEST-ADMIN-ROUTE-" + suffix,
+		"customer_name":       "Admin Route Test",
+		"origin_port_id":      originID,
+		"destination_port_id": destID,
+		"weight_kg":           2000,
+		"vessel_id":           vessel.ID,
+	})
+
+	req := httptest.NewRequest("POST", "/shipments", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := app.Test(req, -1)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	respBody, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode == fiber.StatusBadGateway {
+		t.Skipf("routing failed (likely no ocean_network graph in this database): %s", respBody)
+	}
+	if resp.StatusCode != fiber.StatusCreated {
+		t.Fatalf("status = %d, want 201, body = %s", resp.StatusCode, respBody)
+	}
+
+	var got models.Shipment
+	if err := json.Unmarshal(respBody, &got); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	t.Cleanup(func() { shipmentRepo.Delete(ctx, got.ID) })
+	t.Cleanup(func() {
+		// The route must be unlinked from the vessel before it can be
+		// deleted (vessels.current_route_id has no ON DELETE action).
+		v, err := vesselRepo.GetByID(ctx, vessel.ID)
+		if err != nil || v.CurrentRouteID == nil {
+			return
+		}
+		routeID := *v.CurrentRouteID
+		db.GetPool().Exec(ctx, `UPDATE vessels SET current_route_id = NULL WHERE id = $1`, vessel.ID)
+		db.GetPool().Exec(ctx, `DELETE FROM routes WHERE id = $1`, routeID)
+	})
+
+	if got.Status != "IN_TRANSIT" {
+		t.Errorf("Status = %q, want IN_TRANSIT", got.Status)
+	}
+	if got.VesselID == nil || *got.VesselID != vessel.ID {
+		t.Errorf("VesselID = %v, want %q", got.VesselID, vessel.ID)
+	}
+
+	v, err := vesselRepo.GetByID(ctx, vessel.ID)
+	if err != nil {
+		t.Fatalf("GetByID(vessel) after dispatch: %v", err)
+	}
+	if v.Status != "AT_SEA" {
+		t.Errorf("vessel status = %q, want AT_SEA (dispatched)", v.Status)
+	}
+	if v.CurrentRouteID == nil {
+		t.Error("vessel CurrentRouteID = nil, want a real route assigned")
+	}
+	if v.FuelLevel != v.FuelCapacity {
+		t.Errorf("vessel FuelLevel = %v, want full (%v) - AssignRoute refuels on dispatch", v.FuelLevel, v.FuelCapacity)
+	}
+
+	events, err := eventRepo.GetByShipmentID(ctx, got.ID)
+	if err != nil {
+		t.Fatalf("GetByShipmentID: %v", err)
+	}
+	var hasBooked, hasDeparted bool
+	for _, e := range events {
+		if e.EventType == "BOOKED" {
+			hasBooked = true
+		}
+		if e.EventType == "DEPARTED" {
+			hasDeparted = true
+		}
+	}
+	if !hasBooked || !hasDeparted {
+		t.Errorf("shipment events = %+v, want both a BOOKED and a DEPARTED event", events)
 	}
 }
