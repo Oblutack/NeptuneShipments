@@ -107,6 +107,70 @@ func (r *ShipmentRepository) GetAll(ctx context.Context) ([]models.Shipment, err
 	return shipments, nil
 }
 
+// GetAllForCustomer returns only the shipments booked by a specific
+// CLIENT user - the backbone of the client portal's "my shipments" view.
+func (r *ShipmentRepository) GetAllForCustomer(ctx context.Context, userID string) ([]models.Shipment, error) {
+	query := `
+        SELECT
+            s.id,
+            s.tracking_number,
+            s.customer_name,
+            s.origin_port_id,
+            s.destination_port_id,
+            s.vessel_id,
+            s.description,
+            s.container_number,
+            s.weight_kg,
+            s.status,
+            COALESCE(s.manifest_items, '[]'::jsonb) as manifest_items,
+            s.eta,
+            s.created_at,
+            s.updated_at,
+            origin.name AS origin_port_name,
+            dest.name AS destination_port_name
+        FROM shipments s
+        LEFT JOIN ports origin ON s.origin_port_id = origin.id
+        LEFT JOIN ports dest ON s.destination_port_id = dest.id
+        WHERE s.customer_user_id = $1
+        ORDER BY s.created_at DESC
+    `
+
+	rows, err := r.db.GetPool().Query(ctx, query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query customer shipments: %w", err)
+	}
+	defer rows.Close()
+
+	shipments := []models.Shipment{}
+	for rows.Next() {
+		var s models.Shipment
+		err := rows.Scan(
+			&s.ID,
+			&s.TrackingNumber,
+			&s.CustomerName,
+			&s.OriginPortID,
+			&s.DestinationPortID,
+			&s.VesselID,
+			&s.Description,
+			&s.ContainerNumber,
+			&s.WeightKG,
+			&s.Status,
+			&s.ManifestItems,
+			&s.ETA,
+			&s.CreatedAt,
+			&s.UpdatedAt,
+			&s.OriginPortName,
+			&s.DestinationPortName,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan shipment: %w", err)
+		}
+		shipments = append(shipments, s)
+	}
+
+	return shipments, nil
+}
+
 // GetByTrackingNumber finds a single shipment with Port names included
 func (r *ShipmentRepository) GetByTrackingNumber(ctx context.Context, trackingNum string) (*models.Shipment, error) {
 	// We alias ports as 'p1' (Origin) and 'p2' (Destination)

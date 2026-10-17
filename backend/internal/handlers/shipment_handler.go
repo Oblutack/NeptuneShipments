@@ -178,8 +178,20 @@ func (h *ShipmentHandler) GetShipmentEvents(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"events": events})
 }
 
+// GetAllShipments returns every shipment to an ADMIN, but only the
+// requesting user's own shipments to a CLIENT - the server-side
+// enforcement the client portal actually depends on (the frontend route
+// alone is not access control).
 func (h *ShipmentHandler) GetAllShipments(c *fiber.Ctx) error {
-	shipments, err := h.repo.GetAll(c.Context())
+	role, userID := currentUserRoleAndID(c)
+
+	var shipments []models.Shipment
+	var err error
+	if role == "CLIENT" {
+		shipments, err = h.repo.GetAllForCustomer(c.Context(), userID)
+	} else {
+		shipments, err = h.repo.GetAll(c.Context())
+	}
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch shipments"})
 	}

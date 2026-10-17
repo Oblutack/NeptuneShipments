@@ -95,6 +95,23 @@ func currentUserID(c *fiber.Ctx) (string, bool) {
 	return userID, ok
 }
 
+// currentUserRoleAndID is the same lookup, also returning the role claim -
+// used wherever a handler needs to branch behavior by role (e.g. an
+// ADMIN seeing every shipment vs. a CLIENT seeing only their own).
+func currentUserRoleAndID(c *fiber.Ctx) (role string, userID string) {
+	token, ok := c.Locals("user").(*jwt.Token)
+	if !ok {
+		return "", ""
+	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return "", ""
+	}
+	role, _ = claims["role"].(string)
+	userID, _ = claims["user_id"].(string)
+	return role, userID
+}
+
 // SetupTOTP generates a new (not-yet-enabled) TOTP secret for the
 // authenticated user and returns it as both a scannable QR code and a
 // manual-entry secret. Calling this again before verifying replaces the

@@ -27,7 +27,7 @@ export const LoginPage = () => {
       }).unwrap();
 
       dispatch(setCredentials(userData));
-      navigate("/dashboard");
+      navigate(userData.user.role === "CLIENT" ? "/portal" : "/dashboard");
     } catch (err) {
       console.error("Login Error:", err);
       const apiError = err as { data?: { error?: string; totp_required?: boolean } };

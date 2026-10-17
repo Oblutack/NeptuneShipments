@@ -18,6 +18,7 @@ import { BerthScheduler } from "./features/port/BerthScheduler";
 import { SchedulerLanding } from "./features/port/SchedulerLanding";
 import DataManagementPage from './pages/dashboard/DataManagementPage';
 import { ActivityLogPage } from "./pages/dashboard/ActivityLogPage";
+import { ClientPortalPage } from "./pages/ClientPortalPage";
 import { PageHeader } from "./components/ui/PageHeader";
 import { Map as MapIcon } from "lucide-react";
 import 'react-toastify/dist/ReactToastify.css';
@@ -57,6 +58,7 @@ function App() {
 
         {/* ADMIN PORTAL */}
         <Route element={<RequireAuth />}>
+          <Route path="/portal" element={<ClientPortalPage />} />
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<StatsPage />} />
             <Route path="fleet" element={<FleetPage />} />
