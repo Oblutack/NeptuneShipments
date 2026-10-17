@@ -104,6 +104,23 @@ export const FinancePage = () => {
                   ${(stats?.effective_rate || 0).toFixed(2)}/kg
                 </span>
               </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-slate-500 flex items-center gap-1.5">
+                  USD/EUR
+                  {stats?.fx_rate_is_live ? (
+                    <span className="text-[9px] text-emerald-400 bg-emerald-500/10 px-1 py-0.5 rounded font-medium">
+                      LIVE
+                    </span>
+                  ) : (
+                    <span className="text-[9px] text-slate-500 bg-slate-800 px-1 py-0.5 rounded font-medium">
+                      OFFLINE FALLBACK
+                    </span>
+                  )}
+                </span>
+                <span className="text-slate-300 tabular-nums">
+                  {(stats?.fx_rate_usd_eur || 0).toFixed(4)}
+                </span>
+              </div>
             </div>
           </div>
 

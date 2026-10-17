@@ -60,11 +60,6 @@ export const GlobalMap = ({
     skip: !showAllRoutes,
   });
 
-  // 2. LOG THE FINDING (Check Console!)
-  console.log("GlobalMap Selected ID:", selectedVesselId);
-  console.log("Found Ship:", activeShip?.name);
-  console.log("Route ID on Ship:", activeShip?.current_route_id);
-
   const activeRouteId = activeShip?.current_route_id;
 
   // Real current sea-state (wave height, swell, period) from Open-Meteo
@@ -135,12 +130,6 @@ export const GlobalMap = ({
   const { data: routeData } = useGetRouteByIdQuery(activeRouteId || "", {
     skip: !activeRouteId,
   });
-
-  console.log("--- MAP DEBUG ---");
-  console.log("1. Selected Vessel ID (Prop):", selectedVesselId);
-  console.log("2. Active Ship Name:", activeShip?.name);
-  console.log("3. Route ID on Ship:", activeRouteId);
-  console.log("4. Fetched Route Data:", routeData);
 
   // Filtering
   const filteredVessels = vessels?.filter((ship) => {
@@ -315,14 +304,26 @@ export const GlobalMap = ({
               anchor="center"
             >
               <div
-                className="relative cursor-pointer flex items-center justify-center w-10 h-10 hover:scale-110 transition-transform"
+                role="button"
+                tabIndex={0}
+                aria-label={`${ship.name}, ${ship.status.replace(/_/g, " ").toLowerCase()}`}
+                aria-pressed={isSelected}
+                className="relative cursor-pointer flex items-center justify-center w-10 h-10 hover:scale-110 transition-transform focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-slate-950 rounded-full"
                 onClick={(e) => {
                   e.stopPropagation();
-                  console.log("Clicked:", ship.name);
                   // Set clicked ship for the info panel
                   setClickedShipId(clickedShipId === ship.id ? null : ship.id);
                   if (onShipClick) {
                     // Toggle Logic: If clicking the same ship, deselect it (null)
+                    onShipClick(isSelected ? null : ship.id);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter" && e.key !== " ") return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setClickedShipId(clickedShipId === ship.id ? null : ship.id);
+                  if (onShipClick) {
                     onShipClick(isSelected ? null : ship.id);
                   }
                 }}

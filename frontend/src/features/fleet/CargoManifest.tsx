@@ -141,8 +141,15 @@ export const CargoManifest = ({ vesselId }: CargoManifestProps) => {
                 <>
                   <tr
                     key={shipment.id}
-                    className={`hover:bg-slate-800/50 transition-colors ${hasManifest ? "cursor-pointer" : ""}`}
+                    tabIndex={hasManifest ? 0 : undefined}
+                    aria-expanded={hasManifest ? isExpanded : undefined}
+                    className={`hover:bg-slate-800/50 transition-colors ${hasManifest ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500" : ""}`}
                     onClick={() => hasManifest && toggleRow(shipment.id)}
+                    onKeyDown={(e) => {
+                      if (!hasManifest || (e.key !== "Enter" && e.key !== " ")) return;
+                      e.preventDefault();
+                      toggleRow(shipment.id);
+                    }}
                   >
                     {/* Expand Icon */}
                     <td className="px-4 py-3">

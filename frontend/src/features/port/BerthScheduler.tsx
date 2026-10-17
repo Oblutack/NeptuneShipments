@@ -31,6 +31,7 @@ import {
   CheckCircle2,
   X,
 } from "lucide-react";
+import { toast } from "react-toastify";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 
@@ -133,7 +134,17 @@ export const BerthScheduler = () => {
       setStartTime("");
       setDuration(24);
     } catch (err) {
-      console.error("Failed to create allocation:", err);
+      const message =
+        err &&
+        typeof err === "object" &&
+        "data" in err &&
+        err.data &&
+        typeof err.data === "object" &&
+        "error" in err.data &&
+        typeof err.data.error === "string"
+          ? err.data.error
+          : "Failed to create allocation";
+      toast.error(`❌ ${message}`);
     }
   };
 

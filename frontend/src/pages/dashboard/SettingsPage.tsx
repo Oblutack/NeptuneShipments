@@ -53,7 +53,6 @@ export const SettingsPage = () => {
   };
 
   const handleClearCache = () => {
-    console.log("Clearing local cache...");
     localStorage.clear();
     window.location.reload();
   };

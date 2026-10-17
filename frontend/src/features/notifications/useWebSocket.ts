@@ -32,9 +32,6 @@ export const useWebSocket = (): void => {
         wsRef.current.close();
       }
 
-      console.log(
-        `🔌 Connecting to WebSocket... (Attempt ${reconnectAttemptsRef.current + 1})`,
-      );
       // The browser's native WebSocket API can't set an Authorization
       // header, so the token goes as a query param - the backend's
       // /ws/fleet middleware looks for it there specifically.
@@ -44,20 +41,15 @@ export const useWebSocket = (): void => {
       );
 
       ws.onopen = () => {
-        console.log("✅ WebSocket Connected");
         reconnectAttemptsRef.current = 0;
       };
 
       ws.onmessage = (event) => {
         try {
-          console.log("📩 Raw WebSocket message:", event.data);
           const message: WebSocketMessage = JSON.parse(event.data);
 
           if (message.type === "ALERT") {
-            console.log("🔔 Alert Received:", message.payload);
             dispatch(addAlert(message.payload as AlertPayload));
-          } else if (message.type === "FLEET_UPDATE") {
-            console.log("🚢 Fleet Update Received");
           }
         } catch (error) {
           console.error("Failed to parse WebSocket message:", error);
@@ -69,7 +61,6 @@ export const useWebSocket = (): void => {
       };
 
       ws.onclose = () => {
-        console.log("🔌 WebSocket Disconnected. Reconnecting in 3s...");
         wsRef.current = null;
         reconnectAttemptsRef.current += 1;
 
@@ -88,7 +79,6 @@ export const useWebSocket = (): void => {
         window.clearTimeout(reconnectTimeoutRef.current);
       }
       if (wsRef.current) {
-        console.log("🔌 Closing WebSocket (component unmount)");
         wsRef.current.close();
         wsRef.current = null;
       }
