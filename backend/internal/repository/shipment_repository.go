@@ -182,6 +182,7 @@ func (r *ShipmentRepository) GetByTrackingNumber(ctx context.Context, trackingNu
 			s.weight_kg, s.status, 
 			COALESCE(s.manifest_items, '[]'::jsonb) as manifest_items,
 			s.eta, s.created_at, s.updated_at,
+			s.customer_user_id,
 			p1.name as origin_name,
 			p2.name as dest_name
 		FROM shipments s
@@ -197,6 +198,7 @@ func (r *ShipmentRepository) GetByTrackingNumber(ctx context.Context, trackingNu
 		&s.OriginPortID, &s.DestinationPortID,
 		&s.VesselID, &s.Description, &s.ContainerNumber,
 		&s.WeightKG, &s.Status, &s.ManifestItems, &s.ETA, &s.CreatedAt, &s.UpdatedAt,
+		&s.CustomerUserID,
 		&s.OriginPortName,      // <--- New scan target
 		&s.DestinationPortName, // <--- New scan target
 	)

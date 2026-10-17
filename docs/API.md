@@ -54,7 +54,7 @@ exposes the fleet, crew, schedules or finances is Admin.
 | `POST`   | `/api/shipments`                         | Auth  | Create a shipment. ADMIN can assign a vessel directly (auto-routes + dispatches it); a CLIENT's booking always starts unassigned, `customer_user_id` from the JWT, not the request body |
 | `PUT`    | `/api/shipments/:id`                     | Admin | Update shipment                                                                                                                                            |
 | `DELETE` | `/api/shipments/:id`                     | Admin | Delete shipment                                                                                                                                            |
-| `GET`    | `/api/shipments/:trackingNumber/bol`     | Auth  | Download Bill of Lading (PDF)                                                                                                                              |
+| `GET`    | `/api/shipments/:trackingNumber/bol`     | Auth  | Download Bill of Lading (PDF) - ADMIN, or the CLIENT who booked it; anyone else gets the same 404 as a missing shipment                                                                                                                              |
 
 ### Ports & Scheduling
 

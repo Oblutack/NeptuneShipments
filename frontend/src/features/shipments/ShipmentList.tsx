@@ -4,6 +4,7 @@ import {
   useGetVesselsQuery,
   useDeleteShipmentMutation,
   type Shipment,
+  API_BASE_URL,
 } from "../api/apiSlice";
 import {
   Package,
@@ -329,7 +330,7 @@ const handleDownload = async (trackingNum: string) => {
 
   try {
     const response = await fetch(
-      `http://127.0.0.1:8080/api/shipments/${trackingNum}/bol`,
+      `${API_BASE_URL}/shipments/${encodeURIComponent(trackingNum)}/bol`,
       {
         headers: { Authorization: `Bearer ${token}` },
       },

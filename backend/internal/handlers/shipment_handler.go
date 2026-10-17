@@ -226,6 +226,16 @@ func (h *ShipmentHandler) DownloadBOL(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"error": "Shipment not found"})
 	}
 
+	// A Bill of Lading is the shipment's document of title - full customer
+	// and cargo details. Only an admin or the account that booked it may
+	// download it. Everyone else gets the same 404 as a tracking number
+	// that doesn't exist, so this can't be used to probe which ones do.
+	role, userID := currentUserRoleAndID(c)
+	owns := shipment.CustomerUserID != nil && *shipment.CustomerUserID == userID
+	if role != "ADMIN" && !owns {
+		return c.Status(404).JSON(fiber.Map{"error": "Shipment not found"})
+	}
+
 	// 2. Get Vessel Name (Optional check)
 	vesselName := "Unassigned"
 	if shipment.VesselID != nil {

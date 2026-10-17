@@ -292,11 +292,16 @@ type RootState = {
   auth: { token: string | null };
 };
 
+// Inlined at build time (see frontend/Dockerfile's VITE_API_URL build
+// arg) - falls back to local dev's default so this keeps working with no
+// .env changes required for `npm run dev`. Anything that calls the API
+// outside RTK Query (e.g. a file download) must use this too, not its own
+// hardcoded host.
+export const API_BASE_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:8080/api";
+
 const rawBaseQuery = fetchBaseQuery({
-  // Inlined at build time (see frontend/Dockerfile's VITE_API_URL build
-  // arg) - falls back to local dev's default so this keeps working
-  // with no .env changes required for `npm run dev`.
-  baseUrl: import.meta.env.VITE_API_URL || "http://localhost:8080/api",
+  baseUrl: API_BASE_URL,
   prepareHeaders: (headers, { getState }) => {
     const token = (getState() as RootState).auth.token;
 

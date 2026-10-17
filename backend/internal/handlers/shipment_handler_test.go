@@ -5,11 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/Oblutack/NeptuneShipments/backend/internal/models"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/repository"
+	"github.com/Oblutack/NeptuneShipments/backend/internal/services"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/testutil"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
@@ -329,5 +331,95 @@ func TestGetShipmentByTracking_PublicResponseLeaksNothingPrivate(t *testing.T) {
 	}
 	if got["tracking_number"] != shipment.TrackingNumber {
 		t.Errorf("tracking_number = %v, want %q", got["tracking_number"], shipment.TrackingNumber)
+	}
+}
+
+// TestDownloadBOL_OnlyOwnerOrAdmin is a regression test for the Bill of
+// Lading download serving any shipment's BOL - customer and cargo details
+// included - to any logged-in user who knew its tracking number. A
+// stranger gets the same 404 as a tracking number that doesn't exist, so
+// the endpoint can't be used to probe which numbers are real.
+func TestDownloadBOL_OnlyOwnerOrAdmin(t *testing.T) {
+	db := testutil.RequireDB(t)
+	ctx := context.Background()
+
+	portRepo := repository.NewPortRepository(db)
+	vesselRepo := repository.NewVesselRepository(db.GetPool())
+	shipmentRepo := repository.NewShipmentRepository(db)
+	eventRepo := repository.NewShipmentEventRepository(db)
+	routingRepo := repository.NewRoutingRepository(db)
+	routeRepo := repository.NewRouteRepository(db)
+	userRepo := repository.NewUserRepository(db)
+
+	suffix := testutil.UniqueSuffix()
+	mkClient := func(name string) *models.User {
+		u := &models.User{Email: "test-" + name + "-" + suffix + "@example.com", PasswordHash: "x", FullName: name, Role: "CLIENT"}
+		if err := userRepo.Create(ctx, u); err != nil {
+			t.Fatalf("create %s: %v", name, err)
+		}
+		t.Cleanup(func() { db.GetPool().Exec(ctx, `DELETE FROM users WHERE id = $1`, u.ID) })
+		return u
+	}
+	owner, stranger := mkClient("owner"), mkClient("stranger")
+
+	originID, destID, _, _, _, _ := testutil.TwoRealPorts(t, db.GetPool())
+	shipment := &models.Shipment{
+		TrackingNumber: "TEST-BOL-" + suffix, CustomerName: "BOL Test",
+		OriginPortID: originID, DestinationPortID: destID,
+		CustomerUserID: &owner.ID, WeightKG: 500, Status: "PENDING",
+	}
+	if err := shipmentRepo.Create(ctx, shipment); err != nil {
+		t.Fatalf("create shipment: %v", err)
+	}
+	t.Cleanup(func() { shipmentRepo.Delete(ctx, shipment.ID) })
+
+	h := NewShipmentHandler(shipmentRepo, portRepo, routingRepo, routeRepo, vesselRepo, eventRepo, services.NewPDFService())
+
+	asUser := func(userID, role, tracking string) *http.Response {
+		app := fiber.New()
+		app.Get("/bol/:trackingNumber", func(c *fiber.Ctx) error {
+			c.Locals("user", jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{"user_id": userID, "role": role}))
+			return h.DownloadBOL(c)
+		})
+		resp, err := app.Test(httptest.NewRequest("GET", "/bol/"+tracking, nil), -1)
+		if err != nil {
+			t.Fatalf("request failed: %v", err)
+		}
+		return resp
+	}
+
+	if resp := asUser(owner.ID, "CLIENT", shipment.TrackingNumber); resp.StatusCode != fiber.StatusOK {
+		t.Errorf("owner: status = %d, want 200", resp.StatusCode)
+	} else if ct := resp.Header.Get("Content-Type"); ct != "application/pdf" {
+		t.Errorf("owner: Content-Type = %q, want application/pdf", ct)
+	}
+	if resp := asUser("admin-under-test", "ADMIN", shipment.TrackingNumber); resp.StatusCode != fiber.StatusOK {
+		t.Errorf("admin: status = %d, want 200", resp.StatusCode)
+	}
+
+	strangerResp := asUser(stranger.ID, "CLIENT", shipment.TrackingNumber)
+	if strangerResp.StatusCode != fiber.StatusNotFound {
+		t.Errorf("other client: status = %d, want 404", strangerResp.StatusCode)
+	}
+	missingResp := asUser(stranger.ID, "CLIENT", "TEST-DOES-NOT-EXIST-"+suffix)
+	strangerBody, _ := io.ReadAll(strangerResp.Body)
+	missingBody, _ := io.ReadAll(missingResp.Body)
+	if missingResp.StatusCode != fiber.StatusNotFound || !bytes.Equal(strangerBody, missingBody) {
+		t.Errorf("a stranger's response (%d %s) must be indistinguishable from a missing shipment's (%d %s)",
+			strangerResp.StatusCode, strangerBody, missingResp.StatusCode, missingBody)
+	}
+
+	// A CLIENT token with no user id at all must not match an unowned
+	// (admin-created, customer_user_id NULL) shipment by accident.
+	unowned := &models.Shipment{
+		TrackingNumber: "TEST-BOL-UNOWNED-" + suffix, CustomerName: "Unowned",
+		OriginPortID: originID, DestinationPortID: destID, WeightKG: 1, Status: "PENDING",
+	}
+	if err := shipmentRepo.Create(ctx, unowned); err != nil {
+		t.Fatalf("create unowned shipment: %v", err)
+	}
+	t.Cleanup(func() { shipmentRepo.Delete(ctx, unowned.ID) })
+	if resp := asUser("", "CLIENT", unowned.TrackingNumber); resp.StatusCode != fiber.StatusNotFound {
+		t.Errorf("CLIENT with empty user id on an unowned shipment: status = %d, want 404", resp.StatusCode)
 	}
 }
