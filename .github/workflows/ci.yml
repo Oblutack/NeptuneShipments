@@ -66,8 +66,11 @@ jobs:
       - name: Run migrations
         run: migrate -path db/migrations -database "postgres://postgres:postgres@localhost:5432/neptune_test?sslmode=disable" up
 
+      # -p 1: packages share one database, and the simulation Reset test
+      # resets every vessel's fuel - run in parallel it intermittently
+      # breaks the engine's fuel assertions.
       - name: go test
-        run: go test ./...
+        run: go test -p 1 ./...
         env:
           DB_URL: postgres://postgres:postgres@localhost:5432/neptune_test?sslmode=disable
 

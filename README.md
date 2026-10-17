@@ -555,8 +555,12 @@ every push and pull request, not just locally.
 
 ```bash
 cd backend
-go test ./...
+go test -p 1 ./...
 ```
+
+(`-p 1` runs one package at a time - they share a single database, and the
+simulation reset test would otherwise intermittently clobber another
+package's fixtures.)
 
 Most of these are integration tests against a real Postgres database
 (not mocks) - set `DB_URL` (same var the app itself uses; `backend/.env`
