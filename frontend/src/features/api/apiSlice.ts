@@ -23,6 +23,10 @@ export interface Vessel {
   route_progress?: number;
   fuel_level: number;
   fuel_capacity: number;
+  total_fuel_consumed_tons: number;
+  total_distance_nm: number;
+  capacity_teu?: number;
+  capacity_barrels?: number;
 }
 
 export interface Port {

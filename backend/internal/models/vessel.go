@@ -31,4 +31,9 @@ type Vessel struct {
 
 	FuelLevel    float64 `json:"fuel_level" db:"fuel_level"`
 	FuelCapacity float64 `json:"fuel_capacity" db:"fuel_capacity"`
+
+	// Lifetime cumulative totals, incremented each simulator tick - used
+	// to estimate a CII rating (see frontend lib/cii.ts).
+	TotalFuelConsumedTons float64 `json:"total_fuel_consumed_tons" db:"total_fuel_consumed_tons"`
+	TotalDistanceNM       float64 `json:"total_distance_nm" db:"total_distance_nm"`
 }

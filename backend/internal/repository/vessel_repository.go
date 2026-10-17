@@ -207,13 +207,14 @@ func (r *VesselRepository) BulkCreate(ctx context.Context, vessels []models.Vess
 func (r *VesselRepository) GetAll(ctx context.Context) ([]models.Vessel, error) {
 	// --- UPDATED QUERY to include route columns ---
 	query := `
-        SELECT id, name, imo_number, flag_country, type, status, 
+        SELECT id, name, imo_number, flag_country, type, status,
                capacity_teu, capacity_barrels,
-               ST_Y(location::geometry) as lat, 
-               ST_X(location::geometry) as lon, 
+               ST_Y(location::geometry) as lat,
+               ST_X(location::geometry) as lon,
                heading, speed_knots, last_updated, created_at,
                current_route_id, route_progress,
-               fuel_level, fuel_capacity
+               fuel_level, fuel_capacity,
+               total_fuel_consumed_tons, total_distance_nm
         FROM vessels
     `
 	rows, err := r.db.Query(ctx, query)
@@ -233,6 +234,7 @@ func (r *VesselRepository) GetAll(ctx context.Context) ([]models.Vessel, error) 
 			&v.Heading, &v.SpeedKnots, &v.LastUpdated, &v.CreatedAt,
 			&v.CurrentRouteID, &v.RouteProgress,
 			&v.FuelLevel, &v.FuelCapacity,
+			&v.TotalFuelConsumedTons, &v.TotalDistanceNM,
 		)
 		if err != nil {
 			return nil, err
@@ -252,7 +254,8 @@ func (r *VesselRepository) GetByID(ctx context.Context, id string) (*models.Vess
 		       ST_X(location::geometry) as longitude,
 		       heading, speed_knots, last_updated, created_at,
                current_route_id, route_progress,
-               fuel_level, fuel_capacity
+               fuel_level, fuel_capacity,
+               total_fuel_consumed_tons, total_distance_nm
 		FROM vessels
 		WHERE id = $1
 	`
@@ -264,6 +267,7 @@ func (r *VesselRepository) GetByID(ctx context.Context, id string) (*models.Vess
 		&v.Heading, &v.SpeedKnots, &v.LastUpdated, &v.CreatedAt,
 		&v.CurrentRouteID, &v.RouteProgress,
 		&v.FuelLevel, &v.FuelCapacity,
+		&v.TotalFuelConsumedTons, &v.TotalDistanceNM,
 	)
 	if err != nil {
 		return nil, err
@@ -285,8 +289,10 @@ func (r *VesselRepository) UpdatePosition(ctx context.Context, id string, lat, l
 }
 
 // UpdateProgress moves the ship along the pre-defined route
-// progress is a value between 0.0 and 1.0
-func (r *VesselRepository) UpdateProgress(ctx context.Context, vesselID string, progress float64, fuelLevel float64) error {
+// progress is a value between 0.0 and 1.0. fuelBurnedThisTick/
+// distanceThisTickNM are added to the vessel's lifetime cumulative
+// totals, used for the CII emissions estimate.
+func (r *VesselRepository) UpdateProgress(ctx context.Context, vesselID string, progress float64, fuelLevel float64, fuelBurnedThisTick float64, distanceThisTickNM float64) error {
 	// 1. Calculate new point on the line (Interpolate)
 	// 2. Update the vessel's location column AND the progress column
 	query := `
@@ -296,18 +302,20 @@ func (r *VesselRepository) UpdateProgress(ctx context.Context, vesselID string, 
             WHERE v.id = $1
         )
         UPDATE vessels
-        SET 
+        SET
             route_progress = $2,
             fuel_level = $3,
+            total_fuel_consumed_tons = total_fuel_consumed_tons + $4,
+            total_distance_nm = total_distance_nm + $5,
             -- Magic PostGIS function: Find point at X percent along line
             location = (
-                SELECT ST_LineInterpolatePoint(path::geometry, $2)::geography 
+                SELECT ST_LineInterpolatePoint(path::geometry, $2)::geography
                 FROM route_info
             ),
             last_updated = NOW()
         WHERE id = $1
     `
-	_, err := r.db.Exec(ctx, query, vesselID, progress, fuelLevel)
+	_, err := r.db.Exec(ctx, query, vesselID, progress, fuelLevel, fuelBurnedThisTick, distanceThisTickNM)
 	return err
 }
 

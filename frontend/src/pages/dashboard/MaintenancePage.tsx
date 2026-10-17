@@ -23,6 +23,7 @@ import { PageHeader } from "../../components/ui/PageHeader";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { DataTable } from "../../components/ui/DataTable";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
+import { computeCII, CII_RATING_COLOR } from "../../lib/cii";
 
 export const MaintenancePage = () => {
   const { data: vessels, isLoading: loadingVessels } = useGetVesselsQuery(
@@ -146,6 +147,7 @@ const FuelGauge = ({ vessel }: { vessel: Vessel }) => {
   const [refuelVessel, { isLoading: isRefueling }] = useRefuelVesselMutation();
   const fuelPercentage = (vessel.fuel_level / vessel.fuel_capacity) * 100;
   const isLowFuel = fuelPercentage < 20;
+  const cii = computeCII(vessel);
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
@@ -189,7 +191,7 @@ const FuelGauge = ({ vessel }: { vessel: Vessel }) => {
           {/* Fuel Stats & Actions */}
           <div className="lg:col-span-2 space-y-5">
             {/* Stats Grid */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-4 gap-3">
               <div className="bg-slate-950 rounded-lg p-3.5 border border-slate-800">
                 <div className="text-[10px] text-slate-500 uppercase tracking-wide mb-1.5">
                   Current Level
@@ -218,6 +220,28 @@ const FuelGauge = ({ vessel }: { vessel: Vessel }) => {
                   {(vessel.fuel_capacity - vessel.fuel_level).toFixed(0)}
                 </div>
                 <div className="text-xs text-slate-500 mt-0.5">tons</div>
+              </div>
+
+              <div className="bg-slate-950 rounded-lg p-3.5 border border-slate-800">
+                <div className="text-[10px] text-slate-500 uppercase tracking-wide mb-1.5">
+                  CII Rating (est.)
+                </div>
+                {cii ? (
+                  <>
+                    <div
+                      className={`inline-flex items-center justify-center w-7 h-7 rounded text-sm font-bold ${CII_RATING_COLOR[cii.rating]}`}
+                    >
+                      {cii.rating}
+                    </div>
+                    <div className="text-xs text-slate-500 mt-1">
+                      {(cii.ratio * 100).toFixed(0)}% of reference
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-sm text-slate-600 mt-1">
+                    Not enough voyage data
+                  </div>
+                )}
               </div>
             </div>
 

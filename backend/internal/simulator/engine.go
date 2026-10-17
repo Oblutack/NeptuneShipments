@@ -246,8 +246,10 @@ func (e *Engine) moveVessel(ctx context.Context, v models.Vessel) {
 			newProgress = 1.0
 		}
 
-		// Fix 2: Pass newFuel to UpdateProgress (It needs 4 arguments now)
-		err := e.vesselRepo.UpdateProgress(ctx, v.ID, newProgress, newFuel)
+		// distanceThisTickNM: real physics (speed x time), not a route
+		// query - the tick is 5 seconds, so hours = 5/3600.
+		distanceThisTickNM := v.SpeedKnots * (5.0 / 3600.0)
+		err := e.vesselRepo.UpdateProgress(ctx, v.ID, newProgress, newFuel, burnRate, distanceThisTickNM)
 		if err != nil {
 			log.Printf("Sim Error: Failed to update progress: %v", err)
 		}

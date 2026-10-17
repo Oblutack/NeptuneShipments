@@ -7,6 +7,7 @@ import { CargoManifest } from "../../features/fleet/CargoManifest";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { DataTable } from "../../components/ui/DataTable";
+import { computeCII, CII_RATING_COLOR } from "../../lib/cii";
 
 export const FleetPage = () => {
   const { data: vessels, isLoading } = useGetVesselsQuery(undefined, {
@@ -77,6 +78,24 @@ export const FleetPage = () => {
               {pct.toFixed(0)}%
             </span>
           </div>
+        );
+      },
+    },
+    {
+      id: "cii",
+      header: "CII (est.)",
+      cell: ({ row }) => {
+        const result = computeCII(row.original);
+        if (!result) {
+          return <span className="text-xs text-slate-600">—</span>;
+        }
+        return (
+          <span
+            className={`inline-flex items-center justify-center w-6 h-6 rounded text-xs font-bold ${CII_RATING_COLOR[result.rating]}`}
+            title={`Attained ${result.attained.toFixed(1)} vs reference ${result.required.toFixed(1)} gCO2/DWT-nm`}
+          >
+            {result.rating}
+          </span>
         );
       },
     },
