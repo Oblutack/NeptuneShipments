@@ -215,6 +215,7 @@ func (r *VesselRepository) GetAll(ctx context.Context) ([]models.Vessel, error) 
                ST_X(location::geometry) as lon,
                heading, speed_knots, last_updated, created_at,
                current_route_id, route_progress,
+               COALESCE((SELECT r.length_nm FROM routes r WHERE r.id = vessels.current_route_id), 0),
                fuel_level, fuel_capacity,
                total_fuel_consumed_tons, total_distance_nm, next_survey_due
         FROM vessels
@@ -234,7 +235,7 @@ func (r *VesselRepository) GetAll(ctx context.Context) ([]models.Vessel, error) 
 			&v.CapacityTEU, &v.CapacityBarrels,
 			&v.Latitude, &v.Longitude,
 			&v.Heading, &v.SpeedKnots, &v.LastUpdated, &v.CreatedAt,
-			&v.CurrentRouteID, &v.RouteProgress,
+			&v.CurrentRouteID, &v.RouteProgress, &v.RouteLengthNM,
 			&v.FuelLevel, &v.FuelCapacity,
 			&v.TotalFuelConsumedTons, &v.TotalDistanceNM, &v.NextSurveyDue,
 		)
@@ -256,6 +257,7 @@ func (r *VesselRepository) GetByID(ctx context.Context, id string) (*models.Vess
 		       ST_X(location::geometry) as longitude,
 		       heading, speed_knots, last_updated, created_at,
                current_route_id, route_progress,
+               COALESCE((SELECT r.length_nm FROM routes r WHERE r.id = vessels.current_route_id), 0),
                fuel_level, fuel_capacity,
                total_fuel_consumed_tons, total_distance_nm, next_survey_due
 		FROM vessels
@@ -267,7 +269,7 @@ func (r *VesselRepository) GetByID(ctx context.Context, id string) (*models.Vess
 		&v.CapacityTEU, &v.CapacityBarrels,
 		&v.Latitude, &v.Longitude,
 		&v.Heading, &v.SpeedKnots, &v.LastUpdated, &v.CreatedAt,
-		&v.CurrentRouteID, &v.RouteProgress,
+		&v.CurrentRouteID, &v.RouteProgress, &v.RouteLengthNM,
 		&v.FuelLevel, &v.FuelCapacity,
 		&v.TotalFuelConsumedTons, &v.TotalDistanceNM, &v.NextSurveyDue,
 	)
@@ -309,9 +311,12 @@ func (r *VesselRepository) UpdateProgress(ctx context.Context, vesselID string, 
             fuel_level = $3,
             total_fuel_consumed_tons = total_fuel_consumed_tons + $4,
             total_distance_nm = total_distance_nm + $5,
-            -- Magic PostGIS function: Find point at X percent along line
+            -- Point X percent along the line, measured on the spheroid (the
+            -- geography overload) so the fraction matches routes.length_nm.
+            -- The planar geometry version spaces points by degrees, which
+            -- distorts speed badly at high latitudes.
             location = (
-                SELECT ST_LineInterpolatePoint(path::geometry, $2)::geography
+                SELECT ST_LineInterpolatePoint(path, $2)
                 FROM route_info
             ),
             last_updated = NOW()

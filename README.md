@@ -323,7 +323,7 @@ A scoped, customer-facing view alongside the admin dashboard — the same archit
 
 Background physics engine that powers the entire live fleet experience.
 
-- **Vessel Movement** — Route-following with progress-based interpolation along LineString geometries
+- **Vessel Movement** — Route-following along LineString geometries. Progress each tick is the distance sailed (speed × simulated time) over the route's real geodesic length, so a voyage lasts as long as its distance and the vessel's speed say - a 300 nm hop and an 8,000 nm crossing no longer take the same time. `SIM_TIME_SCALE` (default `1000` simulated seconds per real second) sets the pace: at the default, an 8,200 nm tanker voyage at 18 kn takes about 27 real minutes. Shipment ETAs are computed on the same basis, so they match the actual arrival
 - **Fuel Consumption** — Burn rate scales with vessel speed: `0.5 × (speed / 20.0)` tons per tick
 - **Component Degradation** — Probabilistic entropy applied to all ship components each tick
 - **Distress Detection** — Automatic DISTRESS state on fuel depletion or critical component failure
@@ -371,6 +371,8 @@ JWT_SECRET=neptune_production_secret_key
 # from JWT_SECRET, with a warning); required when ENVIRONMENT=production.
 # Generate one with: openssl rand -base64 32
 TOTP_ENCRYPTION_KEY=
+# Optional: simulated seconds per real second (default 1000). Higher = voyages play out faster.
+# SIM_TIME_SCALE=1000
 ENVIRONMENT=development
 ```
 

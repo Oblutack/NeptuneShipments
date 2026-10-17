@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"math"
 	"strings"
 	"testing"
 	"time"
@@ -150,5 +151,50 @@ func TestVesselRepository_BulkCreate_SetsFlagCountry(t *testing.T) {
 	}
 	if got.FlagCountry != "GB" {
 		t.Errorf("FlagCountry = %q, want %q", got.FlagCountry, "GB")
+	}
+}
+
+// UpdateProgress places the vessel a given FRACTION of the way along its
+// route. That fraction has to be of the route's real (geodesic) length, the
+// same measure routes.length_nm and the simulator's distance maths use.
+// Measured in degrees instead, a ship appears to speed up and slow down
+// with latitude: on this path the planar midpoint is at latitude 60, the
+// true geodesic midpoint near 44.6.
+func TestVesselRepository_UpdateProgress_UsesGeodesicFraction(t *testing.T) {
+	db := testDB(t)
+	ctx := context.Background()
+	pool := db.GetPool()
+	repo := NewVesselRepository(pool)
+	suffix := testutil.UniqueSuffix()
+
+	originID, destID := twoRealPortIDs(t, db)
+	geoJSON := []byte(`{"type":"LineString","coordinates":[[0,0],[0,60],[60,60]]}`)
+	routeID, err := NewRouteRepository(db).Create(ctx, "Test Geodesic Route "+suffix, originID, destID, geoJSON)
+	if err != nil {
+		t.Fatalf("create route: %v", err)
+	}
+	// Registered before the vessel's cleanup so (LIFO) the vessel goes first.
+	t.Cleanup(func() { pool.Exec(ctx, `DELETE FROM routes WHERE id = $1`, routeID) })
+
+	v := newThrowawayVessel(t, repo, "IMOTST"+suffix[len(suffix)-5:])
+	t.Cleanup(func() { repo.Delete(ctx, v.ID) })
+	if _, err := pool.Exec(ctx, `UPDATE vessels SET current_route_id = $1 WHERE id = $2`, routeID, v.ID); err != nil {
+		t.Fatalf("put vessel on route: %v", err)
+	}
+
+	if err := repo.UpdateProgress(ctx, v.ID, 0.5, 100, 0, 0); err != nil {
+		t.Fatalf("UpdateProgress: %v", err)
+	}
+	got, err := repo.GetByID(ctx, v.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.Latitude < 44 || got.Latitude > 45.3 || math.Abs(got.Longitude) > 0.01 {
+		t.Errorf("position at 50%% = (%.2f, %.2f), want about (44.6, 0) - the geodesic midpoint, not the planar one at (60, 0)", got.Latitude, got.Longitude)
+	}
+	// 60 degrees of meridian (~3,606 nm) plus the great-circle leg from
+	// (0,60) to (60,60) (~1,737 nm).
+	if got.RouteLengthNM < 5300 || got.RouteLengthNM > 5400 {
+		t.Errorf("RouteLengthNM = %.0f, want about 5,340 nm", got.RouteLengthNM)
 	}
 }

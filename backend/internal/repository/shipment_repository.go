@@ -254,9 +254,13 @@ func (r *ShipmentRepository) GetByTrackingNumber(ctx context.Context, trackingNu
 	return &s, nil
 }
 
-// UpdateETAForVessel calculates arrival time based on ship speed and route progress
-func (r *ShipmentRepository) UpdateETAForVessel(ctx context.Context, vesselID string, routeID string, progress float64, speedKnots float64) error {
-	// Formula: Remaining Distance / Speed = Time Remaining
+// UpdateETAForVessel calculates arrival time based on ship speed and route progress.
+// timeScale is how many simulated seconds pass per real second (see the
+// simulator), so the ETA is the real wall-clock moment the simulation will
+// reach the destination rather than the moment a real ship would.
+func (r *ShipmentRepository) UpdateETAForVessel(ctx context.Context, vesselID string, routeID string, progress float64, speedKnots float64, timeScale float64) error {
+	// Formula: Remaining Distance / Speed = Simulated Time Remaining,
+	// divided by the time scale to get real time.
 	// 1 Knot = 0.514444 Meters per Second
 	query := `
 		WITH route_metric AS (
@@ -269,11 +273,12 @@ func (r *ShipmentRepository) UpdateETAForVessel(ctx context.Context, vesselID st
 			(SELECT total_meters FROM route_metric) * (1.0 - $2) -- Remaining Meters
 			/ 
 			GREATEST(($3 * 0.514444), 1.0) -- Speed in m/s (avoid divide by zero)
+			/ GREATEST($5::float8, 1.0) -- simulated seconds per real second
 		))
 		WHERE vessel_id = $4 
 		AND (status = 'IN_TRANSIT' OR status = 'PENDING')
 	`
-	_, err := r.db.GetPool().Exec(ctx, query, routeID, progress, speedKnots, vesselID)
+	_, err := r.db.GetPool().Exec(ctx, query, routeID, progress, speedKnots, vesselID, timeScale)
 	return err
 }
 

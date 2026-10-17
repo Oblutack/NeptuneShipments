@@ -184,7 +184,7 @@ func main() {
 		simulation:     simulationHandler,
 	})
 
-	simEngine := simulator.NewEngine(vesselRepo, shipmentRepo, componentRepo, allocationRepo, shipmentEventRepo, hub)
+	simEngine := simulator.NewEngine(vesselRepo, shipmentRepo, componentRepo, allocationRepo, shipmentEventRepo, hub, simulator.TimeScaleFromEnv())
 	simEngine.Start()
 
 	port := os.Getenv("PORT")

@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/Oblutack/NeptuneShipments/backend/internal/models"
@@ -12,6 +15,30 @@ import (
 	"github.com/Oblutack/NeptuneShipments/backend/internal/repository"
 	"github.com/Oblutack/NeptuneShipments/backend/internal/websocket"
 )
+
+// tickInterval is real time between simulation ticks.
+const tickInterval = 5 * time.Second
+
+// DefaultTimeScale is how many simulated seconds pass per real second.
+// At 1000 a tick (5 real seconds) covers about 1.4 simulated hours, so a
+// 10,000 nm voyage at 15 kn (about 28 simulated days) plays out in roughly
+// 40 real minutes.
+const DefaultTimeScale = 1000.0
+
+// TimeScaleFromEnv reads SIM_TIME_SCALE, falling back to DefaultTimeScale
+// if it is unset or not a positive number.
+func TimeScaleFromEnv() float64 {
+	raw := os.Getenv("SIM_TIME_SCALE")
+	if raw == "" {
+		return DefaultTimeScale
+	}
+	scale, err := strconv.ParseFloat(raw, 64)
+	if err != nil || scale <= 0 || math.IsInf(scale, 0) || math.IsNaN(scale) {
+		log.Printf("Warning: SIM_TIME_SCALE=%q isn't a positive number, using %v", raw, DefaultTimeScale)
+		return DefaultTimeScale
+	}
+	return scale
+}
 
 type Engine struct {
 	vesselRepo     *repository.VesselRepository
@@ -21,6 +48,11 @@ type Engine struct {
 	eventRepo      *repository.ShipmentEventRepository
 	hub            *websocket.Hub
 	alertsSent     map[string]bool // Track which vessels have already sent alerts
+
+	// timeScale is simulated seconds per real second; simHoursPerTick is
+	// the simulated time one tick represents.
+	timeScale       float64
+	simHoursPerTick float64
 }
 
 // WebSocketMessage wraps all messages sent via WebSocket
@@ -29,15 +61,17 @@ type WebSocketMessage struct {
 	Payload interface{} `json:"payload"`
 }
 
-func NewEngine(vRepo *repository.VesselRepository, sRepo *repository.ShipmentRepository, componentRepo *repository.ComponentRepository, aRepo *repository.AllocationRepository, eventRepo *repository.ShipmentEventRepository, hub *websocket.Hub) *Engine {
+func NewEngine(vRepo *repository.VesselRepository, sRepo *repository.ShipmentRepository, componentRepo *repository.ComponentRepository, aRepo *repository.AllocationRepository, eventRepo *repository.ShipmentEventRepository, hub *websocket.Hub, timeScale float64) *Engine {
 	return &Engine{
-		vesselRepo:     vRepo,
-		shipmentRepo:   sRepo,
-		componentRepo:  componentRepo,
-		allocationRepo: aRepo,
-		eventRepo:      eventRepo,
-		hub:            hub,
-		alertsSent:     make(map[string]bool), // Initialize alert tracking
+		vesselRepo:      vRepo,
+		shipmentRepo:    sRepo,
+		componentRepo:   componentRepo,
+		allocationRepo:  aRepo,
+		eventRepo:       eventRepo,
+		hub:             hub,
+		alertsSent:      make(map[string]bool), // Initialize alert tracking
+		timeScale:       timeScale,
+		simHoursPerTick: tickInterval.Seconds() * timeScale / 3600.0,
 	}
 }
 
@@ -97,15 +131,14 @@ func (e *Engine) clearAlertForVessel(vesselID string) {
 
 // Start begins the simulation loop in a background goroutine
 func (e *Engine) Start() {
-	// Ticker triggers every 5 seconds
-	ticker := time.NewTicker(5 * time.Second)
+	ticker := time.NewTicker(tickInterval)
 
 	go func() {
 		for range ticker.C {
 			e.tick()
 		}
 	}()
-	log.Println("Simulation Engine Started (Tick: 5s)")
+	log.Printf("Simulation Engine Started (tick: %s, time scale: %vx)", tickInterval, e.timeScale)
 }
 
 // tick is one frame of the simulation
@@ -232,29 +265,35 @@ func (e *Engine) moveVessel(ctx context.Context, v models.Vessel) {
 				)
 
 				// Update shipments to DELIVERED
-				e.shipmentRepo.UpdateETAForVessel(ctx, v.ID, *v.CurrentRouteID, 1.0, 0)
+				e.shipmentRepo.UpdateETAForVessel(ctx, v.ID, *v.CurrentRouteID, 1.0, 0, e.timeScale)
 			}
 			return
 		}
 
 		// Case 2: Moving along the route
-		increment := 0.002 // Speed of progress
-		newProgress := v.RouteProgress + increment
-
-		if newProgress > 1.0 {
-			newProgress = 1.0
+		//
+		// Progress is distance sailed over distance to sail, so a voyage
+		// lasts as long as its length and the vessel's speed say it
+		// should - not a fixed number of ticks, which used to make a
+		// 300 nm hop and an 11,000 nm crossing take the same time.
+		distanceThisTickNM := v.SpeedKnots * e.simHoursPerTick
+		remainingNM := (1.0 - v.RouteProgress) * v.RouteLengthNM
+		newProgress := 1.0
+		if v.RouteLengthNM > 0 && distanceThisTickNM < remainingNM {
+			newProgress = v.RouteProgress + distanceThisTickNM/v.RouteLengthNM
+		} else {
+			// Final leg (or a degenerate zero-length route): only the
+			// distance actually left counts, so totals don't overshoot.
+			distanceThisTickNM = math.Max(remainingNM, 0)
 		}
 
-		// distanceThisTickNM: real physics (speed x time), not a route
-		// query - the tick is 5 seconds, so hours = 5/3600.
-		distanceThisTickNM := v.SpeedKnots * (5.0 / 3600.0)
 		err := e.vesselRepo.UpdateProgress(ctx, v.ID, newProgress, newFuel, burnRate, distanceThisTickNM)
 		if err != nil {
 			log.Printf("Sim Error: Failed to update progress: %v", err)
 		}
 
 		// Update ETA
-		e.shipmentRepo.UpdateETAForVessel(ctx, v.ID, *v.CurrentRouteID, newProgress, v.SpeedKnots)
+		e.shipmentRepo.UpdateETAForVessel(ctx, v.ID, *v.CurrentRouteID, newProgress, v.SpeedKnots, e.timeScale)
 
 		// Component wear needs to happen on every tick a vessel is
 		// actually moving, not just while free-roaming below - almost
@@ -267,7 +306,7 @@ func (e *Engine) moveVessel(ctx context.Context, v models.Vessel) {
 
 	// Strategy B: Free Roam
 	newLat, newLon := navigation.CalculateNextPosition(
-		v.Latitude, v.Longitude, v.SpeedKnots, v.Heading, 5.0,
+		v.Latitude, v.Longitude, v.SpeedKnots, v.Heading, tickInterval.Seconds()*e.timeScale,
 	)
 	// Note: We should probably update fuel here too for Strategy B,
 	// but let's stick to Strategy A for now.
