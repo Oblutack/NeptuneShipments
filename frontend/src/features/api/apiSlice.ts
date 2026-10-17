@@ -197,6 +197,7 @@ export interface CrewMember {
   name: string;
   role: "CAPTAIN" | "CHIEF_ENGINEER" | "FIRST_OFFICER" | "DECKHAND" | "COOK";
   license_number?: string | null;
+  cert_expiry_date?: string | null;
   nationality: string;
   vessel_id?: string | null;
   vessel_name?: string;

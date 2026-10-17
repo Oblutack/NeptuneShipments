@@ -20,7 +20,7 @@ func NewCrewRepository(db *database.Service) *CrewRepository {
 func (r *CrewRepository) GetAll(ctx context.Context) ([]models.CrewMember, error) {
 	query := `
         SELECT 
-            c.id, c.name, c.role, c.license_number, c.nationality, 
+            c.id, c.name, c.role, c.license_number, c.cert_expiry_date, c.nationality, 
             c.vessel_id, c.status, c.created_at, c.updated_at,
             v.name as vessel_name
         FROM crew c
@@ -51,6 +51,7 @@ func (r *CrewRepository) GetAll(ctx context.Context) ([]models.CrewMember, error
 			&c.Name,
 			&c.Role,
 			&c.LicenseNumber,
+			&c.CertExpiryDate,
 			&c.Nationality,
 			&c.VesselID,
 			&c.Status,
@@ -84,7 +85,7 @@ func (r *CrewRepository) GetAll(ctx context.Context) ([]models.CrewMember, error
 func (r *CrewRepository) GetByVesselID(ctx context.Context, vesselID string) ([]models.CrewMember, error) {
 	query := `
         SELECT 
-            c.id, c.name, c.role, c.license_number, c.nationality, 
+            c.id, c.name, c.role, c.license_number, c.cert_expiry_date, c.nationality, 
             c.vessel_id, c.status, c.created_at, c.updated_at,
             v.name as vessel_name
         FROM crew c
@@ -116,6 +117,7 @@ func (r *CrewRepository) GetByVesselID(ctx context.Context, vesselID string) ([]
 			&c.Name,
 			&c.Role,
 			&c.LicenseNumber,
+			&c.CertExpiryDate,
 			&c.Nationality,
 			&c.VesselID,
 			&c.Status,

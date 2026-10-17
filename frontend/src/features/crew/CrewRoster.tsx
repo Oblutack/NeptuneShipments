@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { daysUntil } from "../../lib/dates";
 import {
   User,
   MapPin,
@@ -11,6 +12,7 @@ import {
   Anchor as AnchorIcon,
   ChefHat,
   Users,
+  AlertTriangle,
 } from "lucide-react";
 import type { CrewMember } from "../api/apiSlice";
 
@@ -206,6 +208,9 @@ export const CrewRoster = ({
                               <MapPin size={11} />
                               {member.nationality}
                             </span>
+                            {member.cert_expiry_date && (
+                              <CertExpiryBadge expiryDate={member.cert_expiry_date} />
+                            )}
                           </div>
                         </div>
                       </div>
@@ -267,3 +272,27 @@ function getRoleBadgeColor(role: string): string {
   };
   return colors[role] || "bg-slate-800 text-slate-400";
 }
+
+// STCW certificate expiry indicator - only shown when it's worth
+// flagging (expired or expiring within 60 days), silent otherwise so the
+// roster isn't cluttered with "fine" badges for every crew member.
+const CertExpiryBadge = ({ expiryDate }: { expiryDate: string }) => {
+  const daysLeft = daysUntil(expiryDate);
+
+  if (daysLeft > 60) return null;
+
+  const expired = daysLeft < 0;
+  return (
+    <span
+      className={`flex items-center gap-1 px-1.5 py-0.5 rounded font-medium ${
+        expired
+          ? "bg-red-500/10 text-red-400"
+          : "bg-amber-500/10 text-amber-400"
+      }`}
+      title={`STCW certificate ${expired ? "expired" : "expires"} ${new Date(expiryDate).toLocaleDateString()}`}
+    >
+      <AlertTriangle size={10} />
+      {expired ? "Cert expired" : `Cert expires in ${daysLeft}d`}
+    </span>
+  );
+};
