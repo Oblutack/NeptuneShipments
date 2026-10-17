@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   AreaChart,
   Area,
@@ -7,27 +8,36 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { TrendingUp } from "lucide-react";
+import { TrendingUp, BarChart3 } from "lucide-react";
+import { useGetRevenueTrendQuery } from "../api/apiSlice";
 
-// Mock revenue data for the last 7 days
-const revenueData = [
-  { day: "Mon", revenue: 12400, shipments: 8 },
-  { day: "Tue", revenue: 15800, shipments: 12 },
-  { day: "Wed", revenue: 18200, shipments: 14 },
-  { day: "Thu", revenue: 14500, shipments: 10 },
-  { day: "Fri", revenue: 21300, shipments: 16 },
-  { day: "Sat", revenue: 19700, shipments: 15 },
-  { day: "Sun", revenue: 24500, shipments: 18 },
-];
-
-// Calculate growth percentage
-const totalRevenue = revenueData.reduce((sum, day) => sum + day.revenue, 0);
-const avgDailyRevenue = totalRevenue / revenueData.length;
-const growthRate =
-  ((revenueData[6].revenue - revenueData[0].revenue) / revenueData[0].revenue) *
-  100;
+const formatDay = (dateStr: string) =>
+  new Date(dateStr).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
 
 export const RevenueChart = () => {
+  const [days, setDays] = useState(7);
+  const { data: points } = useGetRevenueTrendQuery(days);
+
+  const revenueData = (points || []).map((p) => ({
+    day: formatDay(p.date),
+    revenue: p.revenue,
+    shipments: p.shipment_count,
+  }));
+
+  const totalRevenue = revenueData.reduce((sum, d) => sum + d.revenue, 0);
+  const avgDailyRevenue = revenueData.length
+    ? totalRevenue / revenueData.length
+    : 0;
+  const firstHalf = revenueData.slice(0, Math.ceil(revenueData.length / 2));
+  const secondHalf = revenueData.slice(Math.ceil(revenueData.length / 2));
+  const firstSum = firstHalf.reduce((s, d) => s + d.revenue, 0);
+  const secondSum = secondHalf.reduce((s, d) => s + d.revenue, 0);
+  const growthRate = firstSum > 0 ? ((secondSum - firstSum) / firstSum) * 100 : null;
+  const hasActivity = totalRevenue > 0;
+
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
       {/* Header */}
@@ -38,14 +48,15 @@ export const RevenueChart = () => {
             <h3 className="text-sm font-semibold text-white">
               Revenue Trend
             </h3>
-            <span className="text-[10px] text-slate-600 font-medium bg-slate-800 px-1.5 py-0.5 rounded">
-              SIMULATED
-            </span>
           </div>
-          <select className="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 px-2.5 py-1.5 rounded-md transition-colors cursor-pointer">
-            <option>Last 7 Days</option>
-            <option>Last 30 Days</option>
-            <option>Last 90 Days</option>
+          <select
+            value={days}
+            onChange={(e) => setDays(Number(e.target.value))}
+            className="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 px-2.5 py-1.5 rounded-md transition-colors cursor-pointer"
+          >
+            <option value={7}>Last 7 Days</option>
+            <option value={30}>Last 30 Days</option>
+            <option value={90}>Last 90 Days</option>
           </select>
         </div>
       </div>
@@ -54,78 +65,82 @@ export const RevenueChart = () => {
         {/* Stats Header */}
         <div className="flex justify-between items-start mb-6">
           <div>
-            <p className="text-xs text-slate-500">Last 7 days</p>
+            <p className="text-xs text-slate-500">Last {days} days</p>
           </div>
           <div className="text-right">
             <div className="text-xl font-semibold text-white tabular-nums">
               ${totalRevenue.toLocaleString()}
             </div>
-            <div className="flex items-center gap-1 text-xs text-emerald-400 mt-1">
-              <TrendingUp size={12} />+{growthRate.toFixed(1)}% week
-            </div>
+            {growthRate !== null && (
+              <div
+                className={`flex items-center gap-1 text-xs mt-1 ${growthRate >= 0 ? "text-emerald-400" : "text-red-400"}`}
+              >
+                <TrendingUp size={12} />
+                {growthRate >= 0 ? "+" : ""}
+                {growthRate.toFixed(1)}% vs first half
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Chart */}
-        <ResponsiveContainer width="100%" height={280}>
-          <AreaChart
-            data={revenueData}
-            margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-          >
-            {/* Grid */}
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="#1e293b"
-              vertical={false}
-            />
-
-            {/* X Axis */}
-            <XAxis
-              dataKey="day"
-              stroke="#64748b"
-              fontSize={12}
-              tickLine={false}
-              axisLine={false}
-            />
-
-            {/* Y Axis */}
-            <YAxis
-              stroke="#64748b"
-              fontSize={12}
-              tickLine={false}
-              axisLine={false}
-              tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
-            />
-
-            {/* Tooltip */}
-            <Tooltip
-              content={<CustomTooltip />}
-              cursor={{
-                stroke: "#3b82f6",
-                strokeWidth: 1,
-                strokeDasharray: "5 5",
-              }}
-            />
-
-            {/* Area Fill */}
-            <Area
-              type="monotone"
-              dataKey="revenue"
-              stroke="#3b82f6"
-              strokeWidth={2}
-              fill="url(#colorRevenue)"
-              animationDuration={1000}
-            />
-
-            {/* Gradient Definition */}
-            <defs>
-              <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-          </AreaChart>
-        </ResponsiveContainer>
+        {!hasActivity ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <BarChart3 className="text-slate-700 mb-3" size={32} />
+            <p className="text-sm text-slate-500">
+              No shipments booked in the last {days} days
+            </p>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={280}>
+            <AreaChart
+              data={revenueData}
+              margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+            >
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke="#1e293b"
+                vertical={false}
+              />
+              <XAxis
+                dataKey="day"
+                stroke="#64748b"
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+                minTickGap={20}
+              />
+              <YAxis
+                stroke="#64748b"
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+              />
+              <Tooltip
+                content={<CustomTooltip />}
+                cursor={{
+                  stroke: "#3b82f6",
+                  strokeWidth: 1,
+                  strokeDasharray: "5 5",
+                }}
+              />
+              <Area
+                type="monotone"
+                dataKey="revenue"
+                stroke="#3b82f6"
+                strokeWidth={2}
+                fill="url(#colorRevenue)"
+                animationDuration={1000}
+              />
+              <defs>
+                <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
 
         {/* Footer Stats */}
         <div className="grid grid-cols-2 gap-4 mt-6 pt-4 border-t border-slate-800">
@@ -141,7 +156,11 @@ export const RevenueChart = () => {
           <div>
             <p className="text-xs text-slate-500 mb-1">Peak Day</p>
             <p className="text-base font-semibold text-white tabular-nums">
-              ${Math.max(...revenueData.map((d) => d.revenue)).toLocaleString()}
+              $
+              {(revenueData.length
+                ? Math.max(...revenueData.map((d) => d.revenue))
+                : 0
+              ).toLocaleString()}
             </p>
           </div>
         </div>

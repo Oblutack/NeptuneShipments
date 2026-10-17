@@ -1,4 +1,7 @@
-import { useGetFinancialStatsQuery } from "../../features/api/apiSlice";
+import {
+  useGetFinancialStatsQuery,
+  useGetRevenueTrendQuery,
+} from "../../features/api/apiSlice";
 import {
   DollarSign,
   Fuel,
@@ -27,6 +30,7 @@ export const FinancePage = () => {
   const { data: stats, isLoading } = useGetFinancialStatsQuery(undefined, {
     pollingInterval: 5000,
   });
+  const { data: revenueTrend } = useGetRevenueTrendQuery(7);
 
   if (isLoading) {
     return (
@@ -41,21 +45,19 @@ export const FinancePage = () => {
     );
   }
 
-  // Mock trend data for charts (7 days) - last point blends in today's real stats
-  const trendData = [
-    { day: "Mon", revenue: 45000, costs: 18000, profit: 27000 },
-    { day: "Tue", revenue: 52000, costs: 21000, profit: 31000 },
-    { day: "Wed", revenue: 48000, costs: 19500, profit: 28500 },
-    { day: "Thu", revenue: 61000, costs: 24000, profit: 37000 },
-    { day: "Fri", revenue: 58000, costs: 23000, profit: 35000 },
-    { day: "Sat", revenue: 67000, costs: 26000, profit: 41000 },
-    {
-      day: "Sun",
-      revenue: stats?.total_revenue || 75000,
-      costs: stats?.total_fuel_cost || 28000,
-      profit: stats?.gross_profit || 47000,
-    },
-  ];
+  // Real per-day revenue from actual shipment bookings - costs are the
+  // real fleet-wide fuel cost allocated pro-rata by each day's revenue
+  // share (see FinanceRepository.GetDailyRevenue).
+  const trendData = (revenueTrend || []).map((p) => ({
+    day: new Date(p.date).toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+    }),
+    revenue: p.revenue,
+    costs: p.cost,
+    profit: p.revenue - p.cost,
+  }));
+  const hasTrendActivity = trendData.some((d) => d.revenue > 0);
 
   const profitMargin = stats?.total_revenue
     ? ((stats.gross_profit / stats.total_revenue) * 100).toFixed(1)
@@ -198,33 +200,42 @@ export const FinancePage = () => {
                 <h3 className="text-sm font-semibold text-white">
                   Revenue vs Operating Costs
                 </h3>
-                <span className="text-[10px] text-slate-600 font-medium bg-slate-800 px-1.5 py-0.5 rounded">
-                  SIMULATED
+                <span
+                  className="text-[10px] text-slate-600 font-medium bg-slate-800 px-1.5 py-0.5 rounded"
+                  title="Revenue is real, from actual shipment bookings. Costs are the real fleet-wide fuel cost, split across days by each day's revenue share."
+                >
+                  COST ALLOCATED
                 </span>
               </div>
             </div>
             <div className="p-5">
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={trendData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                  <XAxis dataKey="day" stroke="#64748b" fontSize={12} />
-                  <YAxis stroke="#64748b" fontSize={12} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#020617",
-                      border: "1px solid #334155",
-                      borderRadius: "6px",
-                      fontSize: "12px",
-                    }}
-                    labelStyle={{ color: "#cbd5e1" }}
-                  />
-                  <Legend
-                    wrapperStyle={{ fontSize: "12px", paddingTop: "10px" }}
-                  />
-                  <Bar dataKey="revenue" fill="#3b82f6" name="Revenue" />
-                  <Bar dataKey="costs" fill="#ef4444" name="Costs" />
-                </BarChart>
-              </ResponsiveContainer>
+              {!hasTrendActivity ? (
+                <div className="flex items-center justify-center py-24 text-sm text-slate-500">
+                  No shipments booked in the last 7 days
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={trendData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                    <XAxis dataKey="day" stroke="#64748b" fontSize={12} />
+                    <YAxis stroke="#64748b" fontSize={12} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#020617",
+                        border: "1px solid #334155",
+                        borderRadius: "6px",
+                        fontSize: "12px",
+                      }}
+                      labelStyle={{ color: "#cbd5e1" }}
+                    />
+                    <Legend
+                      wrapperStyle={{ fontSize: "12px", paddingTop: "10px" }}
+                    />
+                    <Bar dataKey="revenue" fill="#3b82f6" name="Revenue" />
+                    <Bar dataKey="costs" fill="#ef4444" name="Costs" />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </div>
 
@@ -236,39 +247,42 @@ export const FinancePage = () => {
                 <h3 className="text-sm font-semibold text-white">
                   Profit Trend (7 Days)
                 </h3>
-                <span className="text-[10px] text-slate-600 font-medium bg-slate-800 px-1.5 py-0.5 rounded">
-                  SIMULATED
-                </span>
               </div>
             </div>
             <div className="p-5">
-              <ResponsiveContainer width="100%" height={280}>
-                <LineChart data={trendData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                  <XAxis dataKey="day" stroke="#64748b" fontSize={12} />
-                  <YAxis stroke="#64748b" fontSize={12} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#020617",
-                      border: "1px solid #334155",
-                      borderRadius: "6px",
-                      fontSize: "12px",
-                    }}
-                    labelStyle={{ color: "#cbd5e1" }}
-                  />
-                  <Legend
-                    wrapperStyle={{ fontSize: "12px", paddingTop: "10px" }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="profit"
-                    stroke="#3b82f6"
-                    strokeWidth={2}
-                    dot={{ fill: "#3b82f6", r: 3 }}
-                    name="Gross Profit"
-                  />
-                </LineChart>
-              </ResponsiveContainer>
+              {!hasTrendActivity ? (
+                <div className="flex items-center justify-center py-24 text-sm text-slate-500">
+                  No shipments booked in the last 7 days
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={280}>
+                  <LineChart data={trendData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                    <XAxis dataKey="day" stroke="#64748b" fontSize={12} />
+                    <YAxis stroke="#64748b" fontSize={12} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#020617",
+                        border: "1px solid #334155",
+                        borderRadius: "6px",
+                        fontSize: "12px",
+                      }}
+                      labelStyle={{ color: "#cbd5e1" }}
+                    />
+                    <Legend
+                      wrapperStyle={{ fontSize: "12px", paddingTop: "10px" }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="profit"
+                      stroke="#3b82f6"
+                      strokeWidth={2}
+                      dot={{ fill: "#3b82f6", r: 3 }}
+                      name="Gross Profit"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </div>
         </div>

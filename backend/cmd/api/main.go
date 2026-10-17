@@ -249,6 +249,7 @@ func main() {
 	// Finance
 	finance := api.Group("/finance")
 	finance.Get("/stats", financeHandler.GetStats)
+	finance.Get("/revenue-trend", financeHandler.GetRevenueTrend)
 
 	// Shipments
 	// Create/read stay open to any authenticated user (a client booking

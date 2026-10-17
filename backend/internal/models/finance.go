@@ -32,3 +32,15 @@ type FinancialStats struct {
 	FXRateUSDEUR    float64 `json:"fx_rate_usd_eur"`
 	FXRateIsLive    bool    `json:"fx_rate_is_live"`
 }
+
+// DailyRevenuePoint is one day of the revenue trend: real shipment
+// weight booked that day, priced at today's live effective rate (the
+// same rate GetStats uses) - not a per-day historical rate, since the
+// system doesn't keep a rate history. Days with no bookings are
+// included with zero values so the series has no gaps.
+type DailyRevenuePoint struct {
+	Date          string  `json:"date"`
+	Revenue       float64 `json:"revenue"`
+	Cost          float64 `json:"cost"`
+	ShipmentCount int     `json:"shipment_count"`
+}

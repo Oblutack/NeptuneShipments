@@ -231,6 +231,13 @@ export interface FinancialStats {
   fx_rate_is_live: boolean;
 }
 
+export interface DailyRevenuePoint {
+  date: string;
+  revenue: number;
+  cost: number;
+  shipment_count: number;
+}
+
 export interface AuditLogEntry {
   id: string;
   actor_id: string | null;
@@ -566,6 +573,10 @@ export const apiSlice = createApi({
       query: () => "/finance/stats",
       providesTags: ["Shipments", "Vessels"], // Depends on both
     }),
+    getRevenueTrend: builder.query<DailyRevenuePoint[], number | void>({
+      query: (days = 7) => `/finance/revenue-trend?days=${days}`,
+      providesTags: ["Shipments"],
+    }),
     getAuditLog: builder.query<
       { entries: AuditLogEntry[]; count: number },
       void
@@ -643,6 +654,7 @@ export const {
   useGetCrewQuery,
   useGetCrewByVesselQuery,
   useGetFinancialStatsQuery,
+  useGetRevenueTrendQuery,
   useGetAuditLogQuery,
   useUpdateVesselMutation,
   useDeleteVesselMutation,
