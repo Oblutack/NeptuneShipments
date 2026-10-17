@@ -341,9 +341,21 @@ func (r *VesselRepository) SetDocked(ctx context.Context, id string) error {
 	return err
 }
 
-// SetDistress stops the ship due to empty fuel
+// SetDistress puts a vessel into DISTRESS without changing its fuel
+// level - used for distress causes other than running dry, such as a
+// critical mechanical failure, where the vessel may still have plenty
+// of fuel and zeroing it would be wrong.
 func (r *VesselRepository) SetDistress(ctx context.Context, id string) error {
 	query := `UPDATE vessels SET status = 'DISTRESS', speed_knots = 0 WHERE id = $1`
+	_, err := r.db.Exec(ctx, query, id)
+	return err
+}
+
+// SetDistressOutOfFuel is SetDistress for the fuel-exhaustion path
+// specifically: the simulator computes the vessel's fuel as having hit
+// zero this tick, so that's persisted here too, not just the status.
+func (r *VesselRepository) SetDistressOutOfFuel(ctx context.Context, id string) error {
+	query := `UPDATE vessels SET status = 'DISTRESS', speed_knots = 0, fuel_level = 0 WHERE id = $1`
 	_, err := r.db.Exec(ctx, query, id)
 	return err
 }

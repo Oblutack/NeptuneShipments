@@ -197,8 +197,7 @@ func (e *Engine) moveVessel(ctx context.Context, v models.Vessel) {
 		newFuel = 0
 		if v.Status != "DISTRESS" {
 			log.Printf("MAYDAY! Ship %s has run out of fuel!", v.Name)
-			// Fix 1: Use the repository method instead of raw SQL
-			e.vesselRepo.SetDistress(ctx, v.ID)
+			e.vesselRepo.SetDistressOutOfFuel(ctx, v.ID)
 
 			e.broadcastAlert(
 				"CRITICAL",
