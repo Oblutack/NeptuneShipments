@@ -83,12 +83,14 @@ func main() {
 	vesselHandler := handlers.NewVesselHandler(vesselRepo, importerService)
 	portHandler := handlers.NewPortHandler(portRepo, importerService)
 
+	shipmentEventRepo := repository.NewShipmentEventRepository(db)
 	shipmentHandler := handlers.NewShipmentHandler(
 		shipmentRepo,
 		portRepo,
 		routingEngineRepo,
 		routeRepo,
 		vesselRepo,
+		shipmentEventRepo,
 		pdfService,
 	)
 
@@ -179,6 +181,7 @@ func main() {
 	// PUBLIC ROUTES
 	api.Post("/auth/login", loginLimiter, authHandler.Login)
 	api.Get("/shipments/:trackingNumber", shipmentHandler.GetShipmentByTracking)
+	api.Get("/shipments/:trackingNumber/events", shipmentHandler.GetShipmentEvents)
 
 	// Fiber matches GET routes at the same path depth in registration
 	// order, not by specificity - so this has to be registered before
@@ -297,7 +300,7 @@ func main() {
 		Origins: wsOrigins,
 	}))
 
-	simEngine := simulator.NewEngine(vesselRepo, shipmentRepo, componentRepo, allocationRepo, hub)
+	simEngine := simulator.NewEngine(vesselRepo, shipmentRepo, componentRepo, allocationRepo, shipmentEventRepo, hub)
 	simEngine.Start()
 
 	port := os.Getenv("PORT")

@@ -292,23 +292,36 @@ func (r *ShipmentRepository) Update(ctx context.Context, s *models.Shipment) err
 
 // UpdateStatusByVessel updates all shipments on a vessel from one status to another
 // Used when vessel changes state (e.g., ANCHORED -> AT_SEA, transitions PENDING -> IN_TRANSIT)
-func (r *ShipmentRepository) UpdateStatusByVessel(ctx context.Context, vesselID string, fromStatus string, toStatus string) error {
+// UpdateStatusByVessel returns the IDs of the shipments it actually
+// changed, so the caller (the simulator) can log a track-and-trace event
+// for each one without a second query.
+func (r *ShipmentRepository) UpdateStatusByVessel(ctx context.Context, vesselID string, fromStatus string, toStatus string) ([]string, error) {
 	query := `
-		UPDATE shipments 
+		UPDATE shipments
 		SET status = $1, updated_at = NOW()
-		WHERE vessel_id = $2 
+		WHERE vessel_id = $2
 		AND status = $3
+		RETURNING id
 	`
 
-	result, err := r.db.GetPool().Exec(ctx, query, toStatus, vesselID, fromStatus)
+	rows, err := r.db.GetPool().Query(ctx, query, toStatus, vesselID, fromStatus)
 	if err != nil {
-		return fmt.Errorf("failed to update shipment statuses for vessel: %w", err)
+		return nil, fmt.Errorf("failed to update shipment statuses for vessel: %w", err)
+	}
+	defer rows.Close()
+
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("failed to scan updated shipment id: %w", err)
+		}
+		ids = append(ids, id)
 	}
 
-	rowsAffected := result.RowsAffected()
-	if rowsAffected > 0 {
-		fmt.Printf("✅ Updated %d shipment(s) from %s to %s for vessel %s\n", rowsAffected, fromStatus, toStatus, vesselID)
+	if len(ids) > 0 {
+		fmt.Printf("✅ Updated %d shipment(s) from %s to %s for vessel %s\n", len(ids), fromStatus, toStatus, vesselID)
 	}
 
-	return nil
+	return ids, nil
 }

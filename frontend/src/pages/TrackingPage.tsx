@@ -12,11 +12,13 @@ import {
 } from "lucide-react";
 import {
   useLazyGetShipmentByTrackingQuery,
+  useLazyGetShipmentEventsQuery,
   useGetVesselByIdQuery,
 } from "../features/api/apiSlice";
 import { GlobalMap } from "../features/map/GlobalMap";
 import { useSearchParams } from "react-router-dom";
 import { StatusBadge } from "../components/ui/StatusBadge";
+import { VoyageTimeline } from "../features/shipments/VoyageTimeline";
 
 export const TrackingPage = () => {
   const [searchParams] = useSearchParams();
@@ -28,6 +30,8 @@ export const TrackingPage = () => {
     { data: shipment, isLoading: loadingShipment, isError },
   ] = useLazyGetShipmentByTrackingQuery();
 
+  const [triggerEvents, { data: eventsData }] = useLazyGetShipmentEventsQuery();
+
   // 2. The Vessel Fetch (Only runs if we found a shipment with a vessel_id)
   const { data: vessel } = useGetVesselByIdQuery(shipment?.vessel_id || "", {
     skip: !shipment?.vessel_id, // Don't run if no shipment found yet
@@ -37,13 +41,15 @@ export const TrackingPage = () => {
     const idFromUrl = searchParams.get("id");
     if (idFromUrl) {
       triggerSearch(idFromUrl);
+      triggerEvents(idFromUrl);
     }
-  }, [searchParams, triggerSearch]);
+  }, [searchParams, triggerSearch, triggerEvents]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (trackId.trim()) {
       triggerSearch(trackId.trim());
+      triggerEvents(trackId.trim());
     }
   };
 
@@ -204,6 +210,12 @@ export const TrackingPage = () => {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {shipment && eventsData && (
+        <div className="w-full max-w-6xl mx-auto mt-4">
+          <VoyageTimeline events={eventsData.events} />
         </div>
       )}
     </div>

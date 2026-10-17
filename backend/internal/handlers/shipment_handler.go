@@ -15,6 +15,7 @@ type ShipmentHandler struct {
 	routingRepo *repository.RoutingRepository
 	routeRepo   *repository.RouteRepository
 	vesselRepo  *repository.VesselRepository
+	eventRepo   *repository.ShipmentEventRepository
 	pdfService  *services.PDFService
 }
 
@@ -24,6 +25,7 @@ func NewShipmentHandler(
 	routingRepo *repository.RoutingRepository,
 	routeRepo *repository.RouteRepository,
 	vesselRepo *repository.VesselRepository,
+	eventRepo *repository.ShipmentEventRepository,
 	pdfService *services.PDFService,
 ) *ShipmentHandler {
 	return &ShipmentHandler{
@@ -32,6 +34,7 @@ func NewShipmentHandler(
 		routingRepo: routingRepo,
 		routeRepo:   routeRepo,
 		vesselRepo:  vesselRepo,
+		eventRepo:   eventRepo,
 		pdfService:  pdfService,
 	}
 }
@@ -69,6 +72,8 @@ func (h *ShipmentHandler) CreateShipment(c *fiber.Ctx) error {
 	if err := h.repo.Create(c.Context(), &shipment); err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
+	h.eventRepo.Create(c.Context(), shipment.ID, "BOOKED",
+		fmt.Sprintf("Shipment booked (%s)", shipment.TrackingNumber))
 
 	// 3. AUTOMATIC ROUTING LOGIC
 	// Only calculate/assign a route if the vessel actually needs one.
@@ -126,9 +131,18 @@ func (h *ShipmentHandler) CreateShipment(c *fiber.Ctx) error {
 
 		// E. UPDATE SHIPMENT STATUS to IN_TRANSIT (vessel is now moving)
 		h.repo.UpdateStatus(c.Context(), shipment.ID, "IN_TRANSIT")
+		h.eventRepo.Create(c.Context(), shipment.ID, "DEPARTED",
+			fmt.Sprintf("Departed from %s", origin.Name))
 
 		// F. Update ALL pending shipments on this vessel to IN_TRANSIT
-		h.repo.UpdateStatusByVessel(c.Context(), *shipment.VesselID, "PENDING", "IN_TRANSIT")
+		otherIDs, _ := h.repo.UpdateStatusByVessel(c.Context(), *shipment.VesselID, "PENDING", "IN_TRANSIT")
+		for _, id := range otherIDs {
+			if id == shipment.ID {
+				continue // already logged above
+			}
+			h.eventRepo.Create(c.Context(), id, "DEPARTED",
+				fmt.Sprintf("Departed from %s", origin.Name))
+		}
 
 		// Update the local struct so the JSON response is correct immediately
 		shipment.Status = "IN_TRANSIT"
@@ -144,6 +158,24 @@ func (h *ShipmentHandler) GetShipmentByTracking(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"error": "Shipment not found"})
 	}
 	return c.JSON(shipment)
+}
+
+// GetShipmentEvents returns the voyage track-and-trace timeline for a
+// shipment - public, same as GetShipmentByTracking, since this is what a
+// customer tracking their own shipment needs to see.
+func (h *ShipmentHandler) GetShipmentEvents(c *fiber.Ctx) error {
+	trackingNum := c.Params("trackingNumber")
+	shipment, err := h.repo.GetByTrackingNumber(c.Context(), trackingNum)
+	if err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Shipment not found"})
+	}
+
+	events, err := h.eventRepo.GetByShipmentID(c.Context(), shipment.ID)
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to fetch shipment events"})
+	}
+
+	return c.JSON(fiber.Map{"events": events})
 }
 
 func (h *ShipmentHandler) GetAllShipments(c *fiber.Ctx) error {

@@ -18,6 +18,7 @@ type Engine struct {
 	shipmentRepo   *repository.ShipmentRepository
 	componentRepo  *repository.ComponentRepository
 	allocationRepo *repository.AllocationRepository
+	eventRepo      *repository.ShipmentEventRepository
 	hub            *websocket.Hub
 	alertsSent     map[string]bool // Track which vessels have already sent alerts
 }
@@ -28,12 +29,13 @@ type WebSocketMessage struct {
 	Payload interface{} `json:"payload"`
 }
 
-func NewEngine(vRepo *repository.VesselRepository, sRepo *repository.ShipmentRepository, componentRepo *repository.ComponentRepository, aRepo *repository.AllocationRepository, hub *websocket.Hub) *Engine {
+func NewEngine(vRepo *repository.VesselRepository, sRepo *repository.ShipmentRepository, componentRepo *repository.ComponentRepository, aRepo *repository.AllocationRepository, eventRepo *repository.ShipmentEventRepository, hub *websocket.Hub) *Engine {
 	return &Engine{
 		vesselRepo:     vRepo,
 		shipmentRepo:   sRepo,
 		componentRepo:  componentRepo,
 		allocationRepo: aRepo,
+		eventRepo:      eventRepo,
 		hub:            hub,
 		alertsSent:     make(map[string]bool), // Initialize alert tracking
 	}
@@ -176,9 +178,12 @@ func (e *Engine) moveVessel(ctx context.Context, v models.Vessel) {
 	// 0. Safety Check: If vessel is AT_SEA, ensure all PENDING shipments are IN_TRANSIT
 	// This catches any edge cases where shipments didn't transition properly
 	if v.Status == "AT_SEA" && v.CurrentRouteID != nil {
-		err := e.shipmentRepo.UpdateStatusByVessel(ctx, v.ID, "PENDING", "IN_TRANSIT")
+		ids, err := e.shipmentRepo.UpdateStatusByVessel(ctx, v.ID, "PENDING", "IN_TRANSIT")
 		if err != nil {
 			log.Printf("Warning: Failed to update shipment statuses for vessel %s: %v", v.Name, err)
+		}
+		for _, id := range ids {
+			e.eventRepo.Create(ctx, id, "DEPARTED", fmt.Sprintf("Departed aboard %s", v.Name))
 		}
 	}
 
@@ -401,20 +406,35 @@ func (e *Engine) checkBerthActivation(ctx context.Context, v models.Vessel) {
 
 	// 4. Update shipments to DELIVERED
 	updateShipmentsQuery := `
-		UPDATE shipments 
-		SET status = 'DELIVERED', updated_at = NOW() 
+		UPDATE shipments
+		SET status = 'DELIVERED', updated_at = NOW()
 		WHERE vessel_id = $1 AND status = 'IN_TRANSIT'
+		RETURNING id
 	`
-	_, err = tx.Exec(ctx, updateShipmentsQuery, v.ID)
+	var deliveredShipmentIDs []string
+	deliveredRows, err := tx.Query(ctx, updateShipmentsQuery, v.ID)
 	if err != nil {
 		log.Printf("Warning: Failed to update shipments for %s: %v", v.Name, err)
 		// Not critical, continue
+	} else {
+		for deliveredRows.Next() {
+			var id string
+			if err := deliveredRows.Scan(&id); err == nil {
+				deliveredShipmentIDs = append(deliveredShipmentIDs, id)
+			}
+		}
+		deliveredRows.Close()
 	}
 
 	// Commit transaction
 	if err := tx.Commit(ctx); err != nil {
 		log.Printf("Failed to commit docking transaction for %s: %v", v.Name, err)
 		return
+	}
+
+	for _, id := range deliveredShipmentIDs {
+		e.eventRepo.Create(ctx, id, "DELIVERED",
+			fmt.Sprintf("Arrived and delivered at %s, berth %s", nearbyPort.Name, allocation.BerthName))
 	}
 
 	// ✅ Success! Broadcast notification

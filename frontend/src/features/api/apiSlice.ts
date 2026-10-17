@@ -62,6 +62,14 @@ export interface Shipment {
   destination_port_name?: string;
 }
 
+export interface ShipmentEvent {
+  id: string;
+  shipment_id: string;
+  event_type: string;
+  description: string;
+  created_at: string;
+}
+
 export interface Route {
   id: string;
   name: string;
@@ -431,6 +439,12 @@ export const apiSlice = createApi({
     getShipmentByTracking: builder.query<Shipment, string>({
       query: (trackingNumber) => `/shipments/${trackingNumber}`,
     }),
+    getShipmentEvents: builder.query<
+      { events: ShipmentEvent[] },
+      string
+    >({
+      query: (trackingNumber) => `/shipments/${trackingNumber}/events`,
+    }),
 
     // Find specific Vessel by ID
     getVesselById: builder.query<Vessel, string>({
@@ -597,6 +611,7 @@ export const {
   useGetShipmentsQuery,
   useCreateShipmentMutation,
   useLazyGetShipmentByTrackingQuery,
+  useLazyGetShipmentEventsQuery,
   useGetVesselByIdQuery,
   useGetRouteByIdQuery,
   useLoginMutation,
