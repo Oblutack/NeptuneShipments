@@ -82,6 +82,23 @@ export interface PublicShipment {
   created_at: string;
 }
 
+// A persisted alert (the server's history, as opposed to the transient
+// toast notifications in features/notifications). "open" means no operator
+// has acknowledged it; resolved_at is set once the underlying condition has
+// ended (INFO events are born resolved).
+export interface PersistedAlert {
+  id: string;
+  vessel_id: string | null;
+  vessel_name: string;
+  level: "CRITICAL" | "INFO";
+  kind: "OUT_OF_FUEL" | "MECHANICAL_FAILURE" | "ARRIVED" | "RECOVERED";
+  message: string;
+  created_at: string;
+  acknowledged_by: string | null;
+  acknowledged_at: string | null;
+  resolved_at: string | null;
+}
+
 export interface ShipmentEvent {
   id: string;
   shipment_id: string;
@@ -332,7 +349,15 @@ const baseQueryWithReauth: BaseQueryFn<
 export const apiSlice = createApi({
   reducerPath: "api",
   baseQuery: baseQueryWithReauth,
-  tagTypes: ["Vessels", "Ports", "Shipments", "Routes", "Crew", "Allocations"],
+  tagTypes: [
+    "Vessels",
+    "Ports",
+    "Shipments",
+    "Routes",
+    "Crew",
+    "Allocations",
+    "Alerts",
+  ],
   endpoints: (builder) => ({
     getVessels: builder.query<Vessel[], void>({
       query: () => "/vessels",
@@ -528,6 +553,14 @@ export const apiSlice = createApi({
       }),
       invalidatesTags: ["Vessels"],
     }),
+    getAlerts: builder.query<PersistedAlert[], "open" | "all" | void>({
+      query: (status) => `/alerts?status=${status ?? "open"}&limit=100`,
+      providesTags: ["Alerts"],
+    }),
+    acknowledgeAlert: builder.mutation<PersistedAlert, string>({
+      query: (id) => ({ url: `/alerts/${id}/ack`, method: "POST" }),
+      invalidatesTags: ["Alerts"],
+    }),
     getNetworkMesh: builder.query<GeoJSONFeature, void>({
       query: () => "/routes/network",
     }),
@@ -607,7 +640,13 @@ export const apiSlice = createApi({
     }),
     resetSimulation: builder.mutation<{ message: string }, void>({
       query: () => ({ url: "/simulation/reset", method: "POST" }),
-      invalidatesTags: ["Vessels", "Shipments", "Routes", "Allocations"],
+      invalidatesTags: [
+        "Vessels",
+        "Shipments",
+        "Routes",
+        "Allocations",
+        "Alerts",
+      ],
     }),
     getPortSchedule: builder.query<
       ScheduleResponse,
@@ -670,6 +709,8 @@ export const {
   useDisableTOTPMutation,
   useGetTanksQuery,
   useRefuelVesselMutation,
+  useGetAlertsQuery,
+  useAcknowledgeAlertMutation,
   useGetNetworkMeshQuery,
   useGetActiveRoutesQuery,
   useGetShipmentsByVesselQuery,

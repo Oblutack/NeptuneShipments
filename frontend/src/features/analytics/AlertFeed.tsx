@@ -1,61 +1,42 @@
-import { type Vessel } from "../api/apiSlice";
-import { AlertTriangle, Info, Anchor, Ship } from "lucide-react";
+import { formatDistanceToNowStrict } from "date-fns";
+import {
+  useAcknowledgeAlertMutation,
+  useGetAlertsQuery,
+  type PersistedAlert,
+  type Vessel,
+} from "../api/apiSlice";
+import { AlertTriangle, Info, Anchor, Ship, Check, Loader2 } from "lucide-react";
 
 interface AlertFeedProps {
+  // Used only to show a vessel's details on its alerts; alerts about a
+  // vessel that has since been deleted simply show its name.
   vessels: Vessel[] | undefined;
 }
 
-type Alert = {
-  id: string;
-  type: "CRITICAL" | "INFO";
-  vessel: Vessel;
-  message: string;
-  timestamp: string;
+const KIND_LABEL: Record<PersistedAlert["kind"], string> = {
+  OUT_OF_FUEL: "Out of fuel",
+  MECHANICAL_FAILURE: "Mechanical failure",
+  ARRIVED: "Arrival",
+  RECOVERED: "Recovered",
 };
 
+// The server's alert history: unacknowledged alerts, unresolved CRITICAL
+// conditions first. Alerts persist across page loads and server restarts,
+// and acknowledging one is recorded against the operator who did it.
 export const AlertFeed = ({ vessels }: AlertFeedProps) => {
-  // Generate alerts from vessel data
-  const alerts: Alert[] = [];
-
-  if (vessels) {
-    vessels.forEach((vessel) => {
-      if (vessel.status === "DISTRESS") {
-        alerts.push({
-          id: `${vessel.id}-distress`,
-          type: "CRITICAL",
-          vessel,
-          message: `${vessel.name} has run out of fuel and is stranded`,
-          timestamp: new Date().toISOString(),
-        });
-      } else if (vessel.status === "DOCKED") {
-        alerts.push({
-          id: `${vessel.id}-docked`,
-          type: "INFO",
-          vessel,
-          message: `${vessel.name} has arrived and is now docked`,
-          timestamp: new Date().toISOString(),
-        });
-      }
-    });
-  }
-
-  // Sort by severity (CRITICAL first)
-  alerts.sort((a, b) => {
-    if (a.type === "CRITICAL" && b.type !== "CRITICAL") return -1;
-    if (a.type !== "CRITICAL" && b.type === "CRITICAL") return 1;
-    return 0;
-  });
+  const {
+    data: alerts = [],
+    isLoading,
+    isError,
+  } = useGetAlertsQuery("open", { pollingInterval: 30000 });
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
-      {/* Header */}
       <div className="border-b border-slate-800 px-5 py-3.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <AlertTriangle className="text-slate-500" size={16} />
-            <h3 className="text-sm font-semibold text-white">
-              System Alerts
-            </h3>
+            <h3 className="text-sm font-semibold text-white">System Alerts</h3>
           </div>
           <span className="text-xs font-medium text-slate-400 bg-slate-800 px-2.5 py-1 rounded-md">
             {alerts.length} Active
@@ -63,10 +44,17 @@ export const AlertFeed = ({ vessels }: AlertFeedProps) => {
         </div>
       </div>
 
-      {/* Alert List */}
       <div className="p-3">
         <div className="space-y-2 max-h-80 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900">
-          {alerts.length === 0 ? (
+          {isLoading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="animate-spin text-blue-400" size={24} />
+            </div>
+          ) : isError ? (
+            <p className="text-center text-sm text-red-400 py-12">
+              Couldn't load alerts
+            </p>
+          ) : alerts.length === 0 ? (
             <div className="text-center py-12">
               <div className="p-5 bg-slate-800/50 rounded-lg inline-block mb-4">
                 <Info className="text-slate-600" size={40} />
@@ -77,7 +65,13 @@ export const AlertFeed = ({ vessels }: AlertFeedProps) => {
               <p className="text-sm text-slate-500">All systems operational</p>
             </div>
           ) : (
-            alerts.map((alert) => <AlertCard key={alert.id} alert={alert} />)
+            alerts.map((alert) => (
+              <AlertCard
+                key={alert.id}
+                alert={alert}
+                vessel={vessels?.find((v) => v.id === alert.vessel_id)}
+              />
+            ))
           )}
         </div>
       </div>
@@ -85,9 +79,18 @@ export const AlertFeed = ({ vessels }: AlertFeedProps) => {
   );
 };
 
-// Individual Alert Card Component
-const AlertCard = ({ alert }: { alert: Alert }) => {
-  const isCritical = alert.type === "CRITICAL";
+const AlertCard = ({
+  alert,
+  vessel,
+}: {
+  alert: PersistedAlert;
+  vessel: Vessel | undefined;
+}) => {
+  const [acknowledge, { isLoading: isAcknowledging }] =
+    useAcknowledgeAlertMutation();
+  const isCritical = alert.level === "CRITICAL";
+  // A CRITICAL alert is a condition: ongoing until the vessel recovers.
+  const isOngoing = isCritical && !alert.resolved_at;
 
   return (
     <div
@@ -96,17 +99,14 @@ const AlertCard = ({ alert }: { alert: Alert }) => {
       }`}
     >
       <div className="flex items-start gap-3">
-        {/* Icon */}
         {isCritical ? (
           <AlertTriangle className="text-red-400 shrink-0 mt-0.5" size={16} />
         ) : (
           <Anchor className="text-blue-400 shrink-0 mt-0.5" size={16} />
         )}
 
-        {/* Content */}
         <div className="flex-1 min-w-0">
-          {/* Alert Type Badge */}
-          <div className="flex items-center gap-2 mb-1.5">
+          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
             <span
               className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${
                 isCritical
@@ -114,32 +114,56 @@ const AlertCard = ({ alert }: { alert: Alert }) => {
                   : "bg-blue-500/15 text-blue-400"
               }`}
             >
-              {alert.type}
+              {KIND_LABEL[alert.kind] ?? alert.kind}
             </span>
-            <span className="text-[10px] text-slate-500">
-              {new Date(alert.timestamp).toLocaleTimeString()}
+            {isCritical && (
+              <span
+                className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
+                  isOngoing
+                    ? "bg-amber-500/15 text-amber-400"
+                    : "bg-emerald-500/15 text-emerald-400"
+                }`}
+              >
+                {isOngoing ? "Ongoing" : "Resolved"}
+              </span>
+            )}
+            <span
+              className="text-[10px] text-slate-500"
+              title={new Date(alert.created_at).toLocaleString()}
+            >
+              {formatDistanceToNowStrict(new Date(alert.created_at), {
+                addSuffix: true,
+              })}
             </span>
           </div>
 
-          {/* Message */}
           <p className="text-sm text-white mb-1.5">{alert.message}</p>
 
-          {/* Vessel Details */}
           <div className="flex items-center gap-3 text-xs text-slate-500">
             <span className="flex items-center gap-1">
               <Ship size={11} />
-              {alert.vessel.imo_number}
+              {vessel ? vessel.imo_number : alert.vessel_name}
             </span>
-            <span>{alert.vessel.type}</span>
-            <span>{alert.vessel.speed_knots.toFixed(1)} kn</span>
+            {vessel && (
+              <>
+                <span>{vessel.type}</span>
+                <span>{vessel.speed_knots.toFixed(1)} kn</span>
+              </>
+            )}
           </div>
 
-          {/* Critical Action Button */}
-          {isCritical && (
-            <button className="mt-2.5 text-xs bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded-md font-medium transition-colors">
-              Request Assistance
-            </button>
-          )}
+          <button
+            onClick={() => acknowledge(alert.id)}
+            disabled={isAcknowledging}
+            className="mt-2.5 inline-flex items-center gap-1.5 text-xs bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white px-3 py-1.5 rounded-md font-medium transition-colors"
+          >
+            {isAcknowledging ? (
+              <Loader2 className="animate-spin" size={12} />
+            ) : (
+              <Check size={12} />
+            )}
+            {isCritical ? "Acknowledge" : "Dismiss"}
+          </button>
         </div>
       </div>
     </div>

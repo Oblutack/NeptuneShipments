@@ -95,6 +95,7 @@ func main() {
 	allocationRepo := repository.NewAllocationRepository(db)
 	auditRepo := repository.NewAuditRepository(db)
 	simulationRepo := repository.NewSimulationRepository(db)
+	alertRepo := repository.NewAlertRepository(db)
 
 	importerService := services.NewImporterService(
 		portRepo,
@@ -131,6 +132,7 @@ func main() {
 	allocationHandler := handlers.NewAllocationHandler(allocationRepo)
 	auditHandler := handlers.NewAuditHandler(auditRepo)
 	simulationHandler := handlers.NewSimulationHandler(simulationRepo)
+	alertHandler := handlers.NewAlertHandler(alertRepo)
 
 	// Initialize Fiber
 	app := fiber.New()
@@ -182,9 +184,10 @@ func main() {
 		allocation:     allocationHandler,
 		auditLog:       auditHandler,
 		simulation:     simulationHandler,
+		alert:          alertHandler,
 	})
 
-	simEngine := simulator.NewEngine(vesselRepo, shipmentRepo, componentRepo, allocationRepo, shipmentEventRepo, hub, simulator.TimeScaleFromEnv())
+	simEngine := simulator.NewEngine(vesselRepo, shipmentRepo, componentRepo, allocationRepo, shipmentEventRepo, alertRepo, hub, simulator.TimeScaleFromEnv())
 	simEngine.Start()
 
 	port := os.Getenv("PORT")

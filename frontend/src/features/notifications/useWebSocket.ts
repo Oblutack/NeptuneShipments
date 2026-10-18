@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useDispatch } from "react-redux";
 import { addAlert } from "./notificationsSlice";
+import { apiSlice } from "../api/apiSlice";
 
 interface AlertPayload {
   level: "CRITICAL" | "INFO";
@@ -50,6 +51,7 @@ export const useWebSocket = (): void => {
 
           if (message.type === "ALERT") {
             dispatch(addAlert(message.payload as AlertPayload));
+            dispatch(apiSlice.util.invalidateTags(["Alerts"]));
           }
         } catch (error) {
           console.error("Failed to parse WebSocket message:", error);

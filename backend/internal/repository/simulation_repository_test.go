@@ -86,9 +86,27 @@ func TestSimulationRepository_Reset(t *testing.T) {
 	}
 	t.Cleanup(func() { shipmentRepo.Delete(ctx, shipment.ID) })
 
+	// An alert about the state being reset - e.g. a stranded vessel - must
+	// not outlive it as a stale card about a ship that is now docked and full.
+	alertName := "Test Reset Alert Vessel " + suffix
+	if _, err := NewAlertRepository(db).Create(ctx, CreateAlertParams{
+		VesselID: vessel.ID, VesselName: alertName, Level: "CRITICAL", Kind: "OUT_OF_FUEL", Message: "stranded",
+	}); err != nil {
+		t.Fatalf("create alert: %v", err)
+	}
+	t.Cleanup(func() { pool.Exec(ctx, `DELETE FROM alerts WHERE vessel_name = $1`, alertName) })
+
 	simRepo := NewSimulationRepository(db)
 	if err := simRepo.Reset(ctx); err != nil {
 		t.Fatalf("Reset(): %v", err)
+	}
+
+	var alertCount int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM alerts WHERE vessel_name = $1`, alertName).Scan(&alertCount); err != nil {
+		t.Fatalf("count alerts: %v", err)
+	}
+	if alertCount != 0 {
+		t.Errorf("expected Reset() to clear alerts, found %d", alertCount)
 	}
 
 	// Shipment must be gone.

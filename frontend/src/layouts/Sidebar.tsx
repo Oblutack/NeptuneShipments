@@ -15,16 +15,38 @@ import {
 } from "lucide-react";
 import { useDispatch } from "react-redux";
 import { logout } from "../features/auth/authSlice";
+import { useGetAlertsQuery } from "../features/api/apiSlice";
 import { Database } from "lucide-react";
 
 export const Sidebar = () => {
   const dispatch = useDispatch();
 
-  const navSections = [
+  // Unacknowledged CRITICAL alerts - the things that need an operator.
+  // Same query (and cache entry) the Overview's alert feed uses.
+  const { data: openAlerts } = useGetAlertsQuery("open", {
+    pollingInterval: 30000,
+  });
+  const criticalCount =
+    openAlerts?.filter((a) => a.level === "CRITICAL").length ?? 0;
+
+  const navSections: {
+    title: string;
+    items: {
+      icon: typeof LayoutDashboard;
+      label: string;
+      path: string;
+      badge?: number;
+    }[];
+  }[] = [
     {
       title: "OPERATIONS",
       items: [
-        { icon: LayoutDashboard, label: "Overview", path: "/dashboard" },
+        {
+          icon: LayoutDashboard,
+          label: "Overview",
+          path: "/dashboard",
+          badge: criticalCount,
+        },
         { icon: MapIcon, label: "Live Map", path: "/dashboard/map" },
       ],
     },
@@ -110,6 +132,14 @@ export const Sidebar = () => {
                         }
                       />
                       {item.label}
+                      {item.badge ? (
+                        <span
+                          className="ml-auto min-w-[18px] text-center text-[10px] font-semibold bg-red-500/90 text-white rounded-full px-1.5 py-0.5"
+                          aria-label={`${item.badge} open critical alerts`}
+                        >
+                          {item.badge}
+                        </span>
+                      ) : null}
                     </>
                   )}
                 </NavLink>

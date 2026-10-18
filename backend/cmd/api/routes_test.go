@@ -39,6 +39,7 @@ func newRouteTestApp() *fiber.App {
 		allocation:     handlers.NewAllocationHandler(nil),
 		auditLog:       handlers.NewAuditHandler(nil),
 		simulation:     handlers.NewSimulationHandler(nil),
+		alert:          handlers.NewAlertHandler(nil),
 	})
 	return app
 }
@@ -93,6 +94,8 @@ var adminOnly = []struct{ method, path string }{
 	{"GET", "/api/ports/x/schedule"},
 	{"POST", "/api/components/x/maintain"},
 	{"GET", "/api/audit"},
+	{"GET", "/api/alerts"},
+	{"POST", "/api/alerts/x/ack"},
 	{"POST", "/api/simulation/reset"},
 	{"GET", "/api/crew"},
 	{"PUT", "/api/crew/x/assign"},

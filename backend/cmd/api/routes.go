@@ -36,6 +36,7 @@ type routeDeps struct {
 	allocation *handlers.AllocationHandler
 	auditLog   *handlers.AuditHandler
 	simulation *handlers.SimulationHandler
+	alert      *handlers.AlertHandler
 }
 
 // registerRoutes wires every /api and /ws route. Fiber matches routes in
@@ -157,6 +158,10 @@ func registerRoutes(app *fiber.App, d routeDeps) {
 		},
 	})
 	api.Post("/routes/calculate", requireAdmin, calculateLimiter, d.route.CalculateRoute)
+
+	// Alert history and acknowledgement (admin-only)
+	api.Get("/alerts", requireAdmin, d.alert.GetAlerts)
+	api.Post("/alerts/:id/ack", requireAdmin, audit("ACK", "alert"), d.alert.AcknowledgeAlert)
 
 	// Audit log (admin-only, read-only)
 	api.Get("/audit", requireAdmin, d.auditLog.GetAuditLog)

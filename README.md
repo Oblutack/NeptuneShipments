@@ -328,17 +328,16 @@ Background physics engine that powers the entire live fleet experience.
 - **Component Degradation** — Probabilistic entropy applied to all ship components each tick
 - **Distress Detection** — Automatic DISTRESS state on fuel depletion or critical component failure
 - **Arrival Handling** — Auto-dock vessels at destination, update shipment status to DELIVERED
-- **WebSocket Alerts** — Broadcasts CRITICAL and INFO notifications to all connected clients
-- **Deduplication** — Alert tracking prevents duplicate notifications per vessel
+- **Persistent Alerts** — Every alert (out of fuel, mechanical failure, arrival, recovery) is stored in the database and pushed over the WebSocket, so the Overview's System Alerts feed and its sidebar badge survive a page refresh or server restart. A CRITICAL condition is raised once and stays open until the vessel leaves DISTRESS - by any route: refuel, maintenance, a new voyage - at which point it closes by itself; arrivals are recorded every time. Operators acknowledge alerts from the feed, which is recorded against their account in the audit log
 - **Admin Reset** — `/api/simulation/reset` clears active-voyage state and returns every vessel to idle, in one transaction
 
 ---
 
 ## Data Model
 
-14 core entities — Vessel, Port, Route, Shipment, ManifestItem,
+15 core entities — Vessel, Port, Route, Shipment, ManifestItem,
 ShipmentEvent, Terminal, Berth, BerthAllocation, Component, Crew, User,
-AuditLogEntry, FinancialStats — spanning fleet, cargo, scheduling, and
+Alert, AuditLogEntry, FinancialStats — spanning fleet, cargo, scheduling, and
 auth. Full ER diagram and field-level reference:
 **[docs/DATA_MODEL.md](docs/DATA_MODEL.md)**.
 
@@ -531,11 +530,11 @@ table with per-route auth requirements: **[docs/API.md](docs/API.md)**.
 
 ### Responding to Alerts
 
-1. Real-time toast notification appears (e.g., _"Ever Given has run out of fuel!"_)
+1. A real-time toast appears (e.g., _"Ever Given has run out of fuel!"_), the alert joins **System Alerts** on the Overview, and the **Overview** item in the sidebar shows a red count of open critical alerts
 2. Vessel automatically enters DISTRESS state and stops moving
-3. Navigate to the vessel on the map and initiate refueling
-4. Post-refuel, the vessel auto-recovers to ANCHORED status
-5. Create a new shipment to resume the voyage
+3. Refuel it (out of fuel) or perform maintenance (critical failure) from **Dashboard → Maintenance**
+4. After a refuel the vessel resumes its voyage; after maintenance it recovers to ANCHORED. Either way the alert closes automatically
+5. Click **Acknowledge** on the alert to take it off the active list - this records who saw it, and doesn't close a condition that is still ongoing
 
 ### Scheduling a Berth
 

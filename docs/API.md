@@ -82,6 +82,8 @@ exposes the fleet, crew, schedules or finances is Admin.
 | `GET`  | `/api/finance/stats`             | Admin | Financial KPIs, incl. live rate-card (BAF/CAF) and fuel/FX pricing                                       |
 | `GET`  | `/api/finance/revenue-trend`     | Admin | Real per-day revenue for the last N days (`?days=7` default)                                             |
 | `GET`  | `/api/audit`                     | Admin | Audit log of administrative actions                                                                      |
+| `GET`  | `/api/alerts`                    | Admin | Persisted alert history, newest first with unresolved CRITICAL conditions ahead. `?status=open` (default: unacknowledged) or `all`; `?limit=` (default 50, max 200) |
+| `POST` | `/api/alerts/:id/ack`            | Admin | Acknowledge an alert (recorded against the caller; idempotent). 404 for an unknown id                    |
 | `POST` | `/api/simulation/reset`          | Admin | Clear active-voyage state (shipments/routes/berth allocations); vessels return to idle, fully fueled     |
 | `GET`  | `/health`                        | No    | Server health check                                                                                      |
 
@@ -96,4 +98,4 @@ Admin only (a CLIENT token is rejected with 403).
 Message types:
 
 - `FLEET_UPDATE` — Vessel positions, headings, speeds, fuel levels (every 5s)
-- `ALERT` — Critical notifications with level, message, vessel ID, and timestamp
+- `ALERT` — A notification the moment it is raised, with `id`, `kind` (`OUT_OF_FUEL`, `MECHANICAL_FAILURE`, `ARRIVED`, `RECOVERED`), level, message, vessel ID/name and timestamp. The same alert is also stored and available from `GET /api/alerts`

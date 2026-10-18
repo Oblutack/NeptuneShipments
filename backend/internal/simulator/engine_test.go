@@ -30,6 +30,7 @@ func newTestEngineWithScale(db *database.Service, timeScale float64) *Engine {
 		repository.NewComponentRepository(db.GetPool()),
 		repository.NewAllocationRepository(db),
 		repository.NewShipmentEventRepository(db),
+		repository.NewAlertRepository(db),
 		websocket.NewHub(),
 		timeScale,
 	)
@@ -46,6 +47,11 @@ func newThrowawayVessel(t *testing.T, vesselRepo *repository.VesselRepository, s
 		t.Fatalf("create vessel: %v", err)
 	}
 	t.Cleanup(func() { vesselRepo.Delete(context.Background(), v.ID) })
+	// The engine records alerts as it works; they outlive the vessel
+	// (vessel_id is just nulled), so remove them while it still exists.
+	t.Cleanup(func() {
+		vesselRepo.GetPool().Exec(context.Background(), `DELETE FROM alerts WHERE vessel_id = $1`, v.ID)
+	})
 
 	if _, err := vesselRepo.GetPool().Exec(context.Background(),
 		`UPDATE vessels SET fuel_level = $1, fuel_capacity = $2 WHERE id = $3`,
@@ -175,6 +181,7 @@ type voyageFixture struct {
 	vessel     *models.Vessel
 	vesselRepo *repository.VesselRepository
 	engine     *Engine
+	routeID    string
 }
 
 // newVoyage sets up a vessel on a fresh route. Cleanups register the route
@@ -206,7 +213,7 @@ func newVoyage(t *testing.T, db *database.Service, timeScale, speedKnots, degree
 	t.Cleanup(func() {
 		pool.Exec(ctx, `UPDATE vessels SET status = 'DOCKED', current_route_id = NULL WHERE id = $1`, v.ID)
 	})
-	return &voyageFixture{vessel: v, vesselRepo: vesselRepo, engine: newTestEngineWithScale(db, timeScale)}
+	return &voyageFixture{vessel: v, vesselRepo: vesselRepo, engine: newTestEngineWithScale(db, timeScale), routeID: routeID}
 }
 
 // ticksToArrive runs moveVessel until the vessel has covered its whole
@@ -464,5 +471,172 @@ func TestEngine_FinalTickBurnIsProrated(t *testing.T) {
 	if math.Abs(v.TotalFuelConsumedTons-v.RouteLengthNM) > 0.01 {
 		t.Errorf("burned %.3f t over a %.3f nm route at 1 t/nm; want them equal (a full final tick would add ~10 t)",
 			v.TotalFuelConsumedTons, v.RouteLengthNM)
+	}
+}
+
+// vesselAlert is the part of an alert row these tests look at.
+type vesselAlert struct {
+	Level, Kind string
+	Resolved    bool
+}
+
+func alertsFor(t *testing.T, db *database.Service, vesselID string) []vesselAlert {
+	t.Helper()
+	rows, err := db.GetPool().Query(context.Background(),
+		`SELECT level, kind, resolved_at IS NOT NULL FROM alerts WHERE vessel_id = $1 ORDER BY created_at`, vesselID)
+	if err != nil {
+		t.Fatalf("query alerts: %v", err)
+	}
+	defer rows.Close()
+	var out []vesselAlert
+	for rows.Next() {
+		var a vesselAlert
+		if err := rows.Scan(&a.Level, &a.Kind, &a.Resolved); err != nil {
+			t.Fatalf("scan alert: %v", err)
+		}
+		out = append(out, a)
+	}
+	return out
+}
+
+func countKind(alerts []vesselAlert, kind string) int {
+	n := 0
+	for _, a := range alerts {
+		if a.Kind == kind {
+			n++
+		}
+	}
+	return n
+}
+
+// Running dry persists exactly one open alert, however many ticks the
+// vessel then sits stranded for. This used to be a map in memory, which a
+// restart emptied - after which the next tick would announce it all again.
+func TestEngine_OutOfFuelRaisesOnePersistedAlert(t *testing.T) {
+	db := testutil.RequireDB(t)
+	vesselRepo := repository.NewVesselRepository(db.GetPool())
+	v := newThrowawayVessel(t, vesselRepo, testutil.UniqueSuffix(), "AT_SEA", 0.1, 5000, 20)
+	engine := newTestEngine(db)
+
+	for i := 0; i < 4; i++ {
+		engine.tick()
+	}
+
+	alerts := alertsFor(t, db, v.ID)
+	if len(alerts) != 1 || alerts[0].Kind != models.AlertKindOutOfFuel || alerts[0].Level != models.AlertLevelCritical || alerts[0].Resolved {
+		t.Errorf("alerts after 4 ticks = %+v, want exactly one open CRITICAL OUT_OF_FUEL", alerts)
+	}
+
+	// A fresh engine - what a server restart gives you - must not announce it again.
+	newTestEngine(db).tick()
+	if got := len(alertsFor(t, db, v.ID)); got != 1 {
+		t.Errorf("%d alerts after a restart, want still 1", got)
+	}
+}
+
+// A vessel already in DISTRESS with no alert on record (the alert write
+// failed, or the vessel was stranded before alerts were persisted) gets one
+// on the next tick, of the right kind.
+func TestEngine_DistressedVesselWithoutAnAlertGetsOne(t *testing.T) {
+	db := testutil.RequireDB(t)
+	vesselRepo := repository.NewVesselRepository(db.GetPool())
+	engine := newTestEngine(db)
+
+	dry := newThrowawayVessel(t, vesselRepo, testutil.UniqueSuffix(), "DISTRESS", 0, 5000, 0)
+
+	broken := newThrowawayVessel(t, vesselRepo, testutil.UniqueSuffix(), "DISTRESS", 3000, 5000, 0)
+	if _, err := db.GetPool().Exec(context.Background(),
+		`INSERT INTO components (vessel_id, name, type, health_percentage) VALUES ($1, 'Test Engine', 'ENGINE', 5.0)`, broken.ID); err != nil {
+		t.Fatalf("insert critical component: %v", err)
+	}
+
+	engine.tick()
+
+	if a := alertsFor(t, db, dry.ID); len(a) != 1 || a[0].Kind != models.AlertKindOutOfFuel {
+		t.Errorf("fuel-less vessel alerts = %+v, want one OUT_OF_FUEL", a)
+	}
+	if a := alertsFor(t, db, broken.ID); len(a) != 1 || a[0].Kind != models.AlertKindMechanicalFailed {
+		t.Errorf("vessel with fuel but a critical component alerts = %+v, want one MECHANICAL_FAILURE", a)
+	}
+}
+
+// A fault's alert closes when the vessel leaves DISTRESS, whichever way it
+// gets out. A refuel puts it straight back AT_SEA without passing through
+// the engine's own recovery; keying resolution to that recovery step left the
+// alert open forever, which would also have suppressed the next real one.
+func TestEngine_AlertsCloseWhenTheVesselLeavesDistress(t *testing.T) {
+	db := testutil.RequireDB(t)
+	vesselRepo := repository.NewVesselRepository(db.GetPool())
+	ctx := context.Background()
+
+	t.Run("refuelled straight back to sea", func(t *testing.T) {
+		engine := newTestEngine(db)
+		v := newThrowawayVessel(t, vesselRepo, testutil.UniqueSuffix(), "DISTRESS", 0, 5000, 0)
+
+		engine.tick() // stranded: alert raised
+		if a := alertsFor(t, db, v.ID); len(a) != 1 || a[0].Resolved {
+			t.Fatalf("alerts while stranded = %+v, want one open", a)
+		}
+
+		if err := vesselRepo.RefuelVessel(ctx, v.ID); err != nil { // sets AT_SEA directly
+			t.Fatalf("refuel: %v", err)
+		}
+		engine.tick()
+
+		if a := alertsFor(t, db, v.ID); countKind(a, models.AlertKindOutOfFuel) != 1 || !a[0].Resolved {
+			t.Errorf("alerts after a refuel = %+v, want the OUT_OF_FUEL alert resolved", a)
+		}
+	})
+
+	t.Run("recovered by the engine", func(t *testing.T) {
+		engine := newTestEngine(db)
+		v := newThrowawayVessel(t, vesselRepo, testutil.UniqueSuffix(), "DISTRESS", 0, 5000, 0)
+
+		engine.tick() // stranded: alert raised
+		// Fuel arrives but the vessel is left in DISTRESS: the engine's
+		// own recovery has to notice and anchor it.
+		if _, err := db.GetPool().Exec(ctx, `UPDATE vessels SET fuel_level = 4000 WHERE id = $1`, v.ID); err != nil {
+			t.Fatalf("add fuel: %v", err)
+		}
+		engine.tick() // recovers the vessel (ANCHORED) and records it
+		engine.tick() // sees it is out of DISTRESS and closes the fault
+
+		alerts := alertsFor(t, db, v.ID)
+		if countKind(alerts, models.AlertKindOutOfFuel) != 1 || !alerts[0].Resolved {
+			t.Errorf("alerts = %+v, want the OUT_OF_FUEL alert resolved", alerts)
+		}
+		if countKind(alerts, models.AlertKindRecovered) != 1 {
+			t.Errorf("alerts = %+v, want exactly one RECOVERED event", alerts)
+		}
+		if got, _ := vesselRepo.GetByID(ctx, v.ID); got.Status != "ANCHORED" {
+			t.Errorf("status = %q, want ANCHORED", got.Status)
+		}
+	})
+}
+
+// Every arrival is announced, not just the first. The in-memory dedupe keyed
+// on (level, vessel), so a second arrival was dropped until the vessel next
+// recovered from distress.
+func TestEngine_EveryArrivalRaisesAnAlert(t *testing.T) {
+	db := testutil.RequireDB(t)
+	ctx := context.Background()
+	f := newVoyage(t, db, 720, 10, 1)
+
+	for arrival := 1; arrival <= 2; arrival++ {
+		if arrival == 2 { // send it round again: back on its route, already at the end
+			if _, err := db.GetPool().Exec(ctx,
+				`UPDATE vessels SET status = 'AT_SEA', current_route_id = $1, route_progress = 1.0, speed_knots = 10 WHERE id = $2`,
+				f.routeID, f.vessel.ID); err != nil {
+				t.Fatalf("second voyage setup: %v", err)
+			}
+		} else {
+			f.ticksToArrive(t)
+		}
+		v, _ := f.vesselRepo.GetByID(ctx, f.vessel.ID)
+		f.engine.moveVessel(ctx, *v) // the tick that docks it
+
+		if got := countKind(alertsFor(t, db, f.vessel.ID), models.AlertKindArrived); got != arrival {
+			t.Errorf("after arrival %d there are %d ARRIVED alerts, want %d", arrival, got, arrival)
+		}
 	}
 }

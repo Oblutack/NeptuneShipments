@@ -15,9 +15,9 @@ func NewSimulationRepository(db *database.Service) *SimulationRepository {
 	return &SimulationRepository{db: db}
 }
 
-// Reset clears active-voyage state - shipments, routes, and berth
-// allocations - and returns every vessel to an idle, fully-fueled
-// DOCKED state. It deliberately does NOT touch ports, crew, users, or
+// Reset clears active-voyage state - shipments, routes, berth
+// allocations and alerts - and returns every vessel to an idle,
+// fully-fueled DOCKED state. It deliberately does NOT touch ports, crew, users, or
 // the pgRouting ocean network: those are reference/infrastructure data,
 // not simulation state, and wiping them would mean re-running the
 // seeder's CSV import, not a one-click admin action.
@@ -39,6 +39,13 @@ func (r *SimulationRepository) Reset(ctx context.Context) error {
 	// deleted (it isn't - vessels are reset in place, not removed).
 	if _, err := tx.Exec(ctx, `DELETE FROM berth_allocations`); err != nil {
 		return fmt.Errorf("failed to clear berth allocations: %w", err)
+	}
+
+	// Alerts describe the state being reset (a stranded vessel, a recent
+	// arrival); left behind they would be stale cards about ships that are
+	// now docked and full. The audit log keeps the permanent record.
+	if _, err := tx.Exec(ctx, `DELETE FROM alerts`); err != nil {
+		return fmt.Errorf("failed to clear alerts: %w", err)
 	}
 
 	// Cascades to shipment_events automatically (ON DELETE CASCADE).
