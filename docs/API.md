@@ -97,5 +97,6 @@ Admin only (a CLIENT token is rejected with 403).
 
 Message types:
 
-- `FLEET_UPDATE` — Vessel positions, headings, speeds, fuel levels (every 5s)
+- `FLEET_UPDATE` — The full state of every vessel (positions, headings, speeds, fuel levels, route progress), sent on connect and after every simulation tick (5s). Skipped server-side when no client is connected
+- `INVALIDATE` — `{"tags": [...]}`: data sets the last tick changed (`Shipments`, `Routes`, `Allocations`) that a client should refetch. Sent at most once per tick
 - `ALERT` — A notification the moment it is raised, with `id`, `kind` (`OUT_OF_FUEL`, `MECHANICAL_FAILURE`, `ARRIVED`, `RECOVERED`), level, message, vessel ID/name and timestamp. The same alert is also stored and available from `GET /api/alerts`

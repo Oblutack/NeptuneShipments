@@ -7,6 +7,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"sort"
 	"strconv"
 	"time"
 
@@ -66,6 +67,11 @@ type Engine struct {
 	// the simulated time one tick represents.
 	timeScale       float64
 	simHoursPerTick float64
+
+	// changed collects the client-side data sets (RTK Query tags) this
+	// tick altered, so connected clients can be told once at the end of the
+	// tick instead of polling for them. Only touched from the tick loop.
+	changed map[string]struct{}
 }
 
 // WebSocketMessage wraps all messages sent via WebSocket
@@ -85,6 +91,7 @@ func NewEngine(vRepo *repository.VesselRepository, sRepo *repository.ShipmentRep
 		hub:             hub,
 		timeScale:       timeScale,
 		simHoursPerTick: tickInterval.Seconds() * timeScale / 3600.0,
+		changed:         make(map[string]struct{}),
 	}
 }
 
@@ -141,14 +148,69 @@ func (e *Engine) raiseAlert(ctx context.Context, level, kind, message, vesselID,
 		payload.Timestamp = alert.CreatedAt.Format(time.RFC3339)
 	}
 
-	jsonData, err := json.Marshal(WebSocketMessage{Type: "ALERT", Payload: payload})
+	e.broadcast("ALERT", payload)
+
+	log.Printf("📢 Alert Broadcast: [%s] %s", level, message)
+}
+
+// broadcast sends a typed message to every connected client.
+func (e *Engine) broadcast(msgType string, payload interface{}) {
+	jsonData, err := json.Marshal(WebSocketMessage{Type: msgType, Payload: payload})
 	if err != nil {
-		log.Printf("Failed to marshal alert: %v", err)
+		log.Printf("Failed to marshal %s message: %v", msgType, err)
 		return
 	}
 	e.hub.Broadcast(jsonData)
+}
 
-	log.Printf("📢 Alert Broadcast: [%s] %s", level, message)
+// broadcastFleet pushes the current state of every vessel, so a live map
+// or fleet table updates the moment a tick finishes instead of polling for
+// it. Skipped when nobody is listening: it costs a query, and Hub.Broadcast
+// blocks once its buffer fills if nothing is consuming it.
+func (e *Engine) broadcastFleet(ctx context.Context) {
+	if e.hub.ClientCount() == 0 {
+		return
+	}
+	vessels, err := e.vesselRepo.GetAll(ctx)
+	if err != nil {
+		log.Printf("Sim Error: Failed to load fleet for broadcast: %v", err)
+		return
+	}
+	e.broadcast("FLEET_UPDATE", vessels)
+}
+
+// markChanged records that this tick altered the given client-side data
+// sets (RTK Query tags, e.g. "Shipments"). Vessels are not one of them:
+// FLEET_UPDATE carries those directly.
+func (e *Engine) markChanged(tags ...string) {
+	for _, t := range tags {
+		e.changed[t] = struct{}{}
+	}
+}
+
+// takeChangedTags returns, sorted, the tags marked since the last call and
+// clears the set.
+func (e *Engine) takeChangedTags() []string {
+	if len(e.changed) == 0 {
+		return nil
+	}
+	tags := make([]string, 0, len(e.changed))
+	for t := range e.changed {
+		tags = append(tags, t)
+	}
+	sort.Strings(tags)
+	e.changed = make(map[string]struct{})
+	return tags
+}
+
+// broadcastChanges tells clients which of their cached data sets to
+// refetch. Sent at most once per tick however many things changed.
+func (e *Engine) broadcastChanges() {
+	tags := e.takeChangedTags()
+	if tags == nil || e.hub.ClientCount() == 0 {
+		return
+	}
+	e.broadcast("INVALIDATE", map[string][]string{"tags": tags})
 }
 
 // Start begins the simulation loop in a background goroutine
@@ -204,6 +266,10 @@ func (e *Engine) tick() {
 	for _, v := range vessels {
 		e.checkBerthActivation(ctx, v)
 	}
+
+	// 5. Tell connected clients what this tick did.
+	e.broadcastFleet(ctx)
+	e.broadcastChanges()
 }
 
 // ensureDistressAlert makes sure a vessel in DISTRESS has an open alert,
@@ -254,6 +320,9 @@ func (e *Engine) moveVessel(ctx context.Context, v models.Vessel) {
 		}
 		for _, id := range ids {
 			e.eventRepo.Create(ctx, id, "DEPARTED", fmt.Sprintf("Departed aboard %s", v.Name))
+		}
+		if len(ids) > 0 {
+			e.markChanged("Shipments")
 		}
 	}
 
@@ -308,6 +377,7 @@ func (e *Engine) moveVessel(ctx context.Context, v models.Vessel) {
 
 				// Update shipments to DELIVERED
 				e.shipmentRepo.UpdateETAForVessel(ctx, v.ID, *v.CurrentRouteID, 1.0, 0, e.timeScale)
+				e.markChanged("Shipments", "Routes", "Allocations")
 			}
 			return
 		}
@@ -519,6 +589,8 @@ func (e *Engine) checkBerthActivation(ctx context.Context, v models.Vessel) {
 	e.raiseAlert(ctx, models.AlertLevelInfo, models.AlertKindArrived,
 		fmt.Sprintf("%s has arrived at %s and docked at %s", v.Name, nearbyPort.Name, allocation.BerthName),
 		v.ID, v.Name)
+
+	e.markChanged("Shipments", "Allocations")
 
 	log.Printf("✅ Successfully docked %s at berth %s", v.Name, allocation.BerthName)
 }

@@ -1,3 +1,4 @@
+import { FALLBACK_POLL_MS } from "../../lib/polling";
 import {
   useGetVesselsQuery,
   useGetPortStatsQuery,
@@ -9,7 +10,7 @@ export const MapCommandDeck = () => {
   const { data: vessels, isLoading: vesselsLoading } = useGetVesselsQuery(
     undefined,
     {
-      pollingInterval: 3000, // Real-time updates
+      pollingInterval: FALLBACK_POLL_MS, // positions are pushed over the WebSocket
     },
   );
   const { data: portStats, isLoading: portsLoading } = useGetPortStatsQuery();

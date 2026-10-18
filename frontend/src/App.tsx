@@ -1,3 +1,4 @@
+import { FALLBACK_POLL_MS } from "./lib/polling";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -26,7 +27,7 @@ import 'react-toastify/dist/ReactToastify.css';
 // Wrapper for Map Page to handle data fetching
 const MapPage = () => {
   const { data: vessels } = useGetVesselsQuery(undefined, {
-    pollingInterval: 2000,
+    pollingInterval: FALLBACK_POLL_MS, // positions are pushed over the WebSocket
   });
   const { data: ports } = useGetPortsQuery();
 

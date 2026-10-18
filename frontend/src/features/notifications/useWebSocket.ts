@@ -1,29 +1,25 @@
 import { useEffect, useRef } from "react";
 import { useDispatch } from "react-redux";
-import { addAlert } from "./notificationsSlice";
-import { apiSlice } from "../api/apiSlice";
-
-interface AlertPayload {
-  level: "CRITICAL" | "INFO";
-  message: string;
-  vessel_id: string;
-  vessel_name: string;
-  timestamp: string;
-}
-
-interface WebSocketMessage {
-  type: "ALERT" | "FLEET_UPDATE";
-  payload: AlertPayload | unknown;
-}
+import { API_BASE_URL } from "../api/apiSlice";
+import { fleetSocketUrl } from "../../lib/ws";
+import { handleSocketMessage } from "./socketMessages";
+import type { AppDispatch } from "../../app/store";
 
 export const useWebSocket = (): void => {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
   const reconnectAttemptsRef = useRef(0);
 
   useEffect(() => {
+    // Set on cleanup. Closing the socket below fires onclose, which would
+    // otherwise schedule a reconnect - leaving a socket alive after logout
+    // (or after leaving the dashboard) that keeps feeding the store with a
+    // token that is no longer valid.
+    let disposed = false;
+
     const connect = () => {
+      if (disposed) return;
       if (reconnectAttemptsRef.current > 10) {
         console.error("❌ WebSocket: Max reconnection attempts reached");
         return;
@@ -33,12 +29,8 @@ export const useWebSocket = (): void => {
         wsRef.current.close();
       }
 
-      // The browser's native WebSocket API can't set an Authorization
-      // header, so the token goes as a query param - the backend's
-      // /ws/fleet middleware looks for it there specifically.
-      const token = localStorage.getItem("token");
       const ws = new WebSocket(
-        `ws://localhost:8080/ws/fleet?token=${encodeURIComponent(token ?? "")}`,
+        fleetSocketUrl(API_BASE_URL, localStorage.getItem("token")),
       );
 
       ws.onopen = () => {
@@ -46,16 +38,7 @@ export const useWebSocket = (): void => {
       };
 
       ws.onmessage = (event) => {
-        try {
-          const message: WebSocketMessage = JSON.parse(event.data);
-
-          if (message.type === "ALERT") {
-            dispatch(addAlert(message.payload as AlertPayload));
-            dispatch(apiSlice.util.invalidateTags(["Alerts"]));
-          }
-        } catch (error) {
-          console.error("Failed to parse WebSocket message:", error);
-        }
+        if (!disposed) handleSocketMessage(dispatch, event.data);
       };
 
       ws.onerror = (error) => {
@@ -64,6 +47,7 @@ export const useWebSocket = (): void => {
 
       ws.onclose = () => {
         wsRef.current = null;
+        if (disposed) return;
         reconnectAttemptsRef.current += 1;
 
         reconnectTimeoutRef.current = window.setTimeout(() => {
@@ -77,6 +61,7 @@ export const useWebSocket = (): void => {
     connect();
 
     return () => {
+      disposed = true;
       if (reconnectTimeoutRef.current !== null) {
         window.clearTimeout(reconnectTimeoutRef.current);
       }

@@ -2,8 +2,10 @@ package simulator
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math"
+	"reflect"
 	"testing"
 	"time"
 
@@ -24,6 +26,10 @@ func newTestEngine(db *database.Service) *Engine {
 }
 
 func newTestEngineWithScale(db *database.Service, timeScale float64) *Engine {
+	return newTestEngineWithHub(db, timeScale, websocket.NewHub())
+}
+
+func newTestEngineWithHub(db *database.Service, timeScale float64, hub *websocket.Hub) *Engine {
 	return NewEngine(
 		repository.NewVesselRepository(db.GetPool()),
 		repository.NewShipmentRepository(db),
@@ -31,7 +37,7 @@ func newTestEngineWithScale(db *database.Service, timeScale float64) *Engine {
 		repository.NewAllocationRepository(db),
 		repository.NewShipmentEventRepository(db),
 		repository.NewAlertRepository(db),
-		websocket.NewHub(),
+		hub,
 		timeScale,
 	)
 }
@@ -638,5 +644,164 @@ func TestEngine_EveryArrivalRaisesAnAlert(t *testing.T) {
 		if got := countKind(alertsFor(t, db, f.vessel.ID), models.AlertKindArrived); got != arrival {
 			t.Errorf("after arrival %d there are %d ARRIVED alerts, want %d", arrival, got, arrival)
 		}
+	}
+}
+
+// listener is a hub client with no real connection: what a browser's socket
+// would receive lands on its channel.
+type listener struct{ client *websocket.Client }
+
+func newListener(t *testing.T, hub *websocket.Hub) *listener {
+	t.Helper()
+	go hub.Run()
+	c := websocket.NewClient(hub, nil)
+	hub.Register(c)
+	deadline := time.Now().Add(2 * time.Second)
+	for hub.ClientCount() != 1 {
+		if time.Now().After(deadline) {
+			t.Fatal("client never registered with the hub")
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	return &listener{client: c}
+}
+
+// next returns the next message pushed to the client, decoded.
+func (l *listener) next(t *testing.T) (msgType string, payload json.RawMessage) {
+	t.Helper()
+	select {
+	case raw := <-l.client.Send():
+		var m struct {
+			Type    string          `json:"type"`
+			Payload json.RawMessage `json:"payload"`
+		}
+		if err := json.Unmarshal(raw, &m); err != nil {
+			t.Fatalf("pushed message isn't JSON: %v: %s", err, raw)
+		}
+		return m.Type, m.Payload
+	case <-time.After(2 * time.Second):
+		t.Fatal("nothing was pushed to the client within 2s")
+		return "", nil
+	}
+}
+
+func (l *listener) expectSilence(t *testing.T) {
+	t.Helper()
+	select {
+	case raw := <-l.client.Send():
+		t.Fatalf("expected nothing, but the client received: %s", raw)
+	case <-time.After(150 * time.Millisecond):
+	}
+}
+
+// A finished tick pushes the whole fleet to connected clients, which is what
+// lets the map and fleet table stop polling for it.
+func TestEngine_TickPushesTheFleetToConnectedClients(t *testing.T) {
+	db := testutil.RequireDB(t)
+	vesselRepo := repository.NewVesselRepository(db.GetPool())
+	v := newThrowawayVessel(t, vesselRepo, testutil.UniqueSuffix(), "DOCKED", 5000, 5000, 0)
+
+	hub := websocket.NewHub()
+	engine := newTestEngineWithHub(db, DefaultTimeScale, hub)
+	l := newListener(t, hub)
+
+	engine.tick()
+
+	msgType, payload := l.next(t)
+	if msgType != "FLEET_UPDATE" {
+		t.Fatalf("first message after a tick = %q, want FLEET_UPDATE", msgType)
+	}
+	var fleet []models.Vessel
+	if err := json.Unmarshal(payload, &fleet); err != nil {
+		t.Fatalf("payload isn't a list of vessels: %v", err)
+	}
+	found := false
+	for _, f := range fleet {
+		found = found || f.ID == v.ID
+	}
+	if !found {
+		t.Errorf("the pushed fleet (%d vessels) doesn't include the test vessel", len(fleet))
+	}
+}
+
+// With nobody connected the tick must not push anything - and mustn't block:
+// Hub.Broadcast blocks once its buffer is full if no one is draining it, so
+// an unguarded fleet push would wedge the simulator after a few minutes of
+// an empty dashboard.
+func TestEngine_TickDoesNotBlockWithNoClients(t *testing.T) {
+	db := testutil.RequireDB(t)
+	engine := newTestEngine(db) // a hub with no Run loop and no clients
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for i := 0; i < 400; i++ { // well past the hub's 256-message buffer
+			engine.broadcastFleet(context.Background())
+			engine.markChanged("Shipments")
+			engine.broadcastChanges()
+		}
+	}()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("broadcasting with no clients blocked - it must skip when nobody is connected")
+	}
+}
+
+func TestEngine_ChangedTagsAreDedupedSortedAndConsumedOnce(t *testing.T) {
+	e := &Engine{changed: map[string]struct{}{}}
+	if got := e.takeChangedTags(); got != nil {
+		t.Errorf("tags with nothing marked = %v, want nil", got)
+	}
+
+	e.markChanged("Shipments", "Allocations", "Shipments")
+	e.markChanged("Routes")
+	if got, want := e.takeChangedTags(), []string{"Allocations", "Routes", "Shipments"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("tags = %v, want %v (sorted, each once)", got, want)
+	}
+	if got := e.takeChangedTags(); got != nil {
+		t.Errorf("tags a second time = %v, want nil - they must be reported once", got)
+	}
+}
+
+// Whatever changed during a tick is announced once, at the end, so clients
+// refetch only what moved.
+func TestEngine_ChangesAreAnnouncedOncePerTick(t *testing.T) {
+	db := testutil.RequireDB(t)
+	hub := websocket.NewHub()
+	engine := newTestEngineWithHub(db, DefaultTimeScale, hub)
+	l := newListener(t, hub)
+
+	engine.markChanged("Shipments", "Routes", "Shipments")
+	engine.broadcastChanges()
+
+	msgType, payload := l.next(t)
+	var body struct {
+		Tags []string `json:"tags"`
+	}
+	if err := json.Unmarshal(payload, &body); err != nil {
+		t.Fatalf("payload: %v", err)
+	}
+	if msgType != "INVALIDATE" || !reflect.DeepEqual(body.Tags, []string{"Routes", "Shipments"}) {
+		t.Errorf("got %s %v, want INVALIDATE [Routes Shipments]", msgType, body.Tags)
+	}
+
+	engine.broadcastChanges() // nothing new
+	l.expectSilence(t)
+}
+
+// Delivering a shipment is something the client has to hear about: arriving
+// marks Shipments, Routes and Allocations as changed.
+func TestEngine_ArrivalMarksShipmentsRoutesAndAllocationsChanged(t *testing.T) {
+	db := testutil.RequireDB(t)
+	f := newVoyage(t, db, 720, 10, 1)
+	f.ticksToArrive(t)
+	f.engine.takeChangedTags() // discard what the voyage itself marked
+
+	v, _ := f.vesselRepo.GetByID(context.Background(), f.vessel.ID)
+	f.engine.moveVessel(context.Background(), *v) // the tick that docks it
+
+	if got, want := f.engine.takeChangedTags(), []string{"Allocations", "Routes", "Shipments"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("tags marked by an arrival = %v, want %v", got, want)
 	}
 }

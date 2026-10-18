@@ -1,3 +1,4 @@
+import { FALLBACK_POLL_MS } from "../../lib/polling";
 import { useState } from "react";
 import { useGetVesselsQuery, type Vessel } from "../../features/api/apiSlice";
 import { Ship, Loader2 } from "lucide-react";
@@ -11,7 +12,7 @@ import { computeCII, CII_RATING_COLOR } from "../../lib/cii";
 
 export const FleetPage = () => {
   const { data: vessels, isLoading } = useGetVesselsQuery(undefined, {
-    pollingInterval: 2000,
+    pollingInterval: FALLBACK_POLL_MS, // positions are pushed over the WebSocket
   });
   const [selectedShipId, setSelectedShipId] = useState<string | null>(null);
 

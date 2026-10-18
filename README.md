@@ -51,7 +51,7 @@ NeptuneOS integrates critical operational domains — fleet tracking, route opti
 ### Core Value Proposition
 
 - **Autonomous Route Planning** — Graph-based pathfinding calculates optimal ocean-only routes over a seeded ocean network (14 ports, ~15-node graph in the default seed data — small by design for a demo, the pgRouting/PostGIS setup scales to a much larger network without code changes)
-- **Live Fleet Intelligence** — Vessel positions refresh via 2-5s HTTP polling (RTK Query) on a Mapbox GL 3D globe; a WebSocket (`/ws/fleet`, token-authenticated) pushes a snapshot on connect plus live CRITICAL/INFO alerts
+- **Live Fleet Intelligence** — Vessel positions update on a Mapbox GL 3D globe the moment each 5-second simulation tick finishes: the server pushes the whole fleet over a token-authenticated WebSocket (`/ws/fleet`) straight into the client's RTK Query cache, with no HTTP polling (only a slow 30s safety-net refetch while the socket is down). The same socket carries live alerts and tells the client which data sets (shipments, routes, berth allocations) to refetch when a voyage ends
 - **Predictive Maintenance** — Component-level health monitoring with entropy-based degradation modeling, plus real IMO CII emissions ratings and dry-dock survey scheduling
 - **Cargo Lifecycle Management** — Full CRUD for shipments with manifest items (including real IMDG dangerous-goods classification), BOL generation, voyage track-and-trace, and automatic status transitions
 - **Port Berth Scheduling** — Drag-and-drop terminal allocation with conflict detection
@@ -64,8 +64,8 @@ NeptuneOS integrates critical operational domains — fleet tracking, route opti
 ## System Architecture
 
 High-level view of how the pieces fit together — the React frontend talks
-to the Go backend over REST (polling) and a JWT-authenticated WebSocket for
-alerts; the backend's simulation engine is the real driver of fleet state,
+to the Go backend over REST and a JWT-authenticated WebSocket that pushes
+fleet state, alerts and change notices; the backend's simulation engine is the real driver of fleet state,
 reading/writing Postgres directly on every tick; the AIS Ship Tracker is a
 separate, optional service that overlays real ship positions onto the same
 map without sharing a database.
@@ -102,7 +102,7 @@ flowchart TB
 
     Pages --> RTK
     Portal --> RTK
-    RTK -- "HTTP, 2-5s polling" --> Handlers
+    RTK -- "HTTP (REST)" --> Handlers
     WSHook -- "WebSocket, JWT in query" --> Hub
     GlobalMap -.-> AISHook
     AISHook -. "WebSocket, optional" .-> AISWs
@@ -114,7 +114,7 @@ flowchart TB
     SimEngine --> Repos
     SimEngine -. "raw SQL (berth activation)" .-> Core
     SimEngine --> Hub
-    Hub -- "FLEET_UPDATE / ALERT" --> WSHook
+    Hub -- "FLEET_UPDATE / ALERT / INVALIDATE" --> WSHook
 
     AISFeed --> AISStore
     AISStore --> AISWs
