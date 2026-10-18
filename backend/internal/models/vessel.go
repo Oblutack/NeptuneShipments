@@ -32,6 +32,11 @@ type Vessel struct {
 	FuelLevel    float64 `json:"fuel_level" db:"fuel_level"`
 	FuelCapacity float64 `json:"fuel_capacity" db:"fuel_capacity"`
 
+	// Fuel profile: tons burned per day at DesignSpeedKnots. Burn at any
+	// other speed scales with the cube of the speed ratio.
+	DesignSpeedKnots     float64 `json:"design_speed_knots" db:"design_speed_knots"`
+	DesignConsumptionTPD float64 `json:"design_consumption_tpd" db:"design_consumption_tpd"`
+
 	// Lifetime cumulative totals, incremented each simulator tick - used
 	// to estimate a CII rating (see frontend lib/cii.ts).
 	TotalFuelConsumedTons float64 `json:"total_fuel_consumed_tons" db:"total_fuel_consumed_tons"`

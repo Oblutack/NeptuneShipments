@@ -324,7 +324,7 @@ A scoped, customer-facing view alongside the admin dashboard — the same archit
 Background physics engine that powers the entire live fleet experience.
 
 - **Vessel Movement** — Route-following along LineString geometries. Progress each tick is the distance sailed (speed × simulated time) over the route's real geodesic length, so a voyage lasts as long as its distance and the vessel's speed say - a 300 nm hop and an 8,000 nm crossing no longer take the same time. `SIM_TIME_SCALE` (default `1000` simulated seconds per real second) sets the pace: at the default, an 8,200 nm tanker voyage at 18 kn takes about 27 real minutes. Shipment ETAs are computed on the same basis, so they match the actual arrival
-- **Fuel Consumption** — Burn rate scales with vessel speed: `0.5 × (speed / 20.0)` tons per tick
+- **Fuel Consumption** — Each vessel has a fuel profile (`design_consumption_tpd` tons/day at `design_speed_knots`), sized from its capacity. Burn scales with the cube of speed relative to design speed (the real propeller law: half speed burns an eighth as fast), so big ships burn more and slow steaming saves a lot. Free-roaming vessels burn too, and the final tick of a voyage only burns for the distance actually left
 - **Component Degradation** — Probabilistic entropy applied to all ship components each tick
 - **Distress Detection** — Automatic DISTRESS state on fuel depletion or critical component failure
 - **Arrival Handling** — Auto-dock vessels at destination, update shipment status to DELIVERED

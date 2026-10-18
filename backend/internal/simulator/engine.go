@@ -40,6 +40,19 @@ func TimeScaleFromEnv() float64 {
 	return scale
 }
 
+// fuelBurnTons is the fuel a vessel burns over simHours of steaming at its
+// current speed. Burn at design speed is the vessel's design consumption;
+// at other speeds it scales with the cube of the speed ratio (the real
+// propeller law): sailing at half speed burns an eighth as fast, which is
+// why slow steaming saves so much fuel.
+func fuelBurnTons(v models.Vessel, simHours float64) float64 {
+	if v.SpeedKnots <= 0 || v.DesignSpeedKnots <= 0 || v.DesignConsumptionTPD <= 0 {
+		return 0
+	}
+	ratio := v.SpeedKnots / v.DesignSpeedKnots
+	return v.DesignConsumptionTPD / 24.0 * simHours * ratio * ratio * ratio
+}
+
 type Engine struct {
 	vesselRepo     *repository.VesselRepository
 	shipmentRepo   *repository.ShipmentRepository
@@ -220,9 +233,23 @@ func (e *Engine) moveVessel(ctx context.Context, v models.Vessel) {
 		}
 	}
 
-	// 1. Calculate Fuel Burn
-	// Base burn: 0.5 tons per tick. Increases with speed.
-	burnRate := 0.5 * (v.SpeedKnots / 20.0)
+	// 1. Calculate Fuel Burn - depends on the vessel's size (its design
+	// consumption) and the cube of its speed relative to design speed. A
+	// vessel only burns for the part of the tick it actually sails: all of
+	// it, except on the final leg of a route, where it stops at the end.
+	// Charging a full tick there would overstate fuel use (and wrongly
+	// strand a vessel with just enough fuel left to arrive).
+	tickFraction := 1.0
+	if v.CurrentRouteID != nil {
+		fullTickNM := v.SpeedKnots * e.simHoursPerTick
+		remainingNM := math.Max((1.0-v.RouteProgress)*v.RouteLengthNM, 0)
+		if v.RouteProgress >= 1.0 {
+			tickFraction = 0 // already at the end - this tick only docks it
+		} else if fullTickNM > 0 && remainingNM < fullTickNM {
+			tickFraction = remainingNM / fullTickNM
+		}
+	}
+	burnRate := fuelBurnTons(v, e.simHoursPerTick*tickFraction)
 	newFuel := v.FuelLevel - burnRate
 
 	// 2. Check for Empty Tank
@@ -304,13 +331,14 @@ func (e *Engine) moveVessel(ctx context.Context, v models.Vessel) {
 		return
 	}
 
-	// Strategy B: Free Roam
+	// Strategy B: Free Roam - no route to follow, but the vessel still
+	// burns fuel and covers distance like any other.
 	newLat, newLon := navigation.CalculateNextPosition(
 		v.Latitude, v.Longitude, v.SpeedKnots, v.Heading, tickInterval.Seconds()*e.timeScale,
 	)
-	// Note: We should probably update fuel here too for Strategy B,
-	// but let's stick to Strategy A for now.
-	e.vesselRepo.UpdatePosition(ctx, v.ID, newLat, newLon)
+	if err := e.vesselRepo.UpdateFreeRoam(ctx, v.ID, newLat, newLon, newFuel, burnRate, v.SpeedKnots*e.simHoursPerTick); err != nil {
+		log.Printf("Sim Error: Failed to update free-roaming vessel %s: %v", v.Name, err)
+	}
 
 	e.applyMechanicalWear(ctx, v)
 }

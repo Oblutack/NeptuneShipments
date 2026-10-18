@@ -65,8 +65,8 @@ func TestEngine_Tick_FuelDepletionTriggersDistress(t *testing.T) {
 	vesselRepo := repository.NewVesselRepository(db.GetPool())
 	suffix := testutil.UniqueSuffix()
 
-	// burnRate = 0.5 * (speed/20) = 0.5 at speed 20, so 0.1 fuel depletes
-	// to <= 0 on the very next tick.
+	// A default-profile vessel (100 t/day at 18 kn) burns several tons per
+	// tick at 20 kn, so 0.1 fuel depletes to <= 0 on the very next tick.
 	v := newThrowawayVessel(t, vesselRepo, suffix, "AT_SEA", 0.1, 5000, 20)
 
 	engine := newTestEngine(db)
@@ -337,5 +337,132 @@ func TestTimeScaleFromEnv(t *testing.T) {
 		if got := TimeScaleFromEnv(); got != tc.want {
 			t.Errorf("SIM_TIME_SCALE=%q -> %v, want %v", tc.env, got, tc.want)
 		}
+	}
+}
+
+func burnVessel(speed, designSpeed, designTPD float64) models.Vessel {
+	return models.Vessel{SpeedKnots: speed, DesignSpeedKnots: designSpeed, DesignConsumptionTPD: designTPD}
+}
+
+func approx(a, b float64) bool { return math.Abs(a-b) < 1e-9*math.Max(1, math.Abs(b)) }
+
+func TestFuelBurnTons(t *testing.T) {
+	// At design speed, one simulated day burns exactly the design consumption.
+	if got := fuelBurnTons(burnVessel(20, 20, 120), 24); !approx(got, 120) {
+		t.Errorf("a day at design speed burned %v t, want 120", got)
+	}
+	// Burn is proportional to simulated time.
+	if got := fuelBurnTons(burnVessel(20, 20, 120), 1); !approx(got, 5) {
+		t.Errorf("an hour at design speed burned %v t, want 5", got)
+	}
+	// Cube law: half speed burns an eighth as fast, 1.5x speed 3.375x as fast.
+	full := fuelBurnTons(burnVessel(20, 20, 120), 24)
+	if got := fuelBurnTons(burnVessel(10, 20, 120), 24); !approx(got, full/8) {
+		t.Errorf("half speed burned %v t/day, want an eighth of %v", got, full)
+	}
+	if got := fuelBurnTons(burnVessel(30, 20, 120), 24); !approx(got, full*3.375) {
+		t.Errorf("1.5x speed burned %v t/day, want 3.375x %v", got, full)
+	}
+	// A bigger ship burns more at the same speed.
+	if big, small := fuelBurnTons(burnVessel(18, 20, 200), 24), fuelBurnTons(burnVessel(18, 20, 60), 24); big <= small {
+		t.Errorf("big ship burned %v, small ship %v - size must matter", big, small)
+	}
+	// Nothing burns when stopped or when the profile is unusable.
+	for name, v := range map[string]models.Vessel{
+		"stopped":           burnVessel(0, 20, 120),
+		"no design speed":   burnVessel(18, 0, 120),
+		"no consumption":    burnVessel(18, 20, 0),
+		"negative speed":    burnVessel(-5, 20, 120),
+		"zero-value vessel": {},
+	} {
+		if got := fuelBurnTons(v, 24); got != 0 {
+			t.Errorf("%s: burned %v, want 0", name, got)
+		}
+	}
+}
+
+// setProfile gives a fixture vessel an explicit fuel profile.
+func setProfile(t *testing.T, db *database.Service, id string, designSpeed, designTPD float64) {
+	t.Helper()
+	if _, err := db.GetPool().Exec(context.Background(),
+		`UPDATE vessels SET design_speed_knots = $1, design_consumption_tpd = $2 WHERE id = $3`,
+		designSpeed, designTPD, id); err != nil {
+		t.Fatalf("set fuel profile: %v", err)
+	}
+}
+
+// The burn the engine records must be what fuelBurnTons says, per vessel -
+// it used to be a flat 0.5 t/tick for every ship regardless of size.
+func TestEngine_FuelBurnDiffersByVessel(t *testing.T) {
+	db := testutil.RequireDB(t)
+	ctx := context.Background()
+	const scale, speed = 720.0, 18.0 // one simulated hour per tick
+
+	small := newVoyage(t, db, scale, speed, 3)
+	large := newVoyage(t, db, scale, speed, 3)
+	setProfile(t, db, small.vessel.ID, 18, 48)  // 2 t/hour at 18 kn
+	setProfile(t, db, large.vessel.ID, 18, 240) // 10 t/hour at 18 kn
+
+	burned := func(f *voyageFixture) float64 {
+		v, _ := f.vesselRepo.GetByID(ctx, f.vessel.ID)
+		before := v.FuelLevel
+		f.engine.moveVessel(ctx, *v)
+		after, _ := f.vesselRepo.GetByID(ctx, f.vessel.ID)
+		if got := after.TotalFuelConsumedTons; !approx(got, before-after.FuelLevel) {
+			t.Errorf("total_fuel_consumed_tons = %v, but fuel level dropped by %v", got, before-after.FuelLevel)
+		}
+		return before - after.FuelLevel
+	}
+	smallBurn, largeBurn := burned(small), burned(large)
+	if !approx(smallBurn, 2) || !approx(largeBurn, 10) {
+		t.Errorf("burned %v t / %v t in one simulated hour, want 2 t / 10 t", smallBurn, largeBurn)
+	}
+}
+
+// A vessel with no route used to move without burning any fuel at all (a
+// comment in the engine admitted it) - and its fuel was never saved.
+func TestEngine_FreeRoamingVesselBurnsFuelAndCoversDistance(t *testing.T) {
+	db := testutil.RequireDB(t)
+	ctx := context.Background()
+	vesselRepo := repository.NewVesselRepository(db.GetPool())
+	v := newThrowawayVessel(t, vesselRepo, testutil.UniqueSuffix(), "AT_SEA", 1000, 1000, 10)
+	setProfile(t, db, v.ID, 10, 240) // 10 t/hour at 10 kn
+
+	engine := newTestEngineWithScale(db, 720) // one simulated hour per tick
+	loaded, _ := vesselRepo.GetByID(ctx, v.ID)
+	engine.moveVessel(ctx, *loaded)
+
+	got, err := vesselRepo.GetByID(ctx, v.ID)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if !approx(got.FuelLevel, 990) || !approx(got.TotalFuelConsumedTons, 10) {
+		t.Errorf("fuel = %v, consumed = %v; want 990 and 10 after one hour at design speed", got.FuelLevel, got.TotalFuelConsumedTons)
+	}
+	if !approx(got.TotalDistanceNM, 10) {
+		t.Errorf("distance = %v nm, want 10 (10 kn for an hour)", got.TotalDistanceNM)
+	}
+	if got.Latitude == 1 && got.Longitude == 1 {
+		t.Error("vessel didn't move")
+	}
+}
+
+// The last tick of a voyage only sails the distance that's left, so it must
+// only burn that much fuel. Charged a full tick, a short final leg overstated
+// fuel use - which skews the CII rating, and at high time scales a tick is
+// days long, so the error is large.
+func TestEngine_FinalTickBurnIsProrated(t *testing.T) {
+	db := testutil.RequireDB(t)
+	// 10 kn, one simulated hour per tick (10 nm), a ~60.1 nm route: six
+	// full ticks and a final tick of ~0.1 nm.
+	f := newVoyage(t, db, 720, 10, 1)
+	setProfile(t, db, f.vessel.ID, 10, 240) // exactly 10 t per simulated hour at 10 kn
+	f.ticksToArrive(t)
+
+	v, _ := f.vesselRepo.GetByID(context.Background(), f.vessel.ID)
+	// 10 t/hour at 10 kn = 1 t per nm sailed.
+	if math.Abs(v.TotalFuelConsumedTons-v.RouteLengthNM) > 0.01 {
+		t.Errorf("burned %.3f t over a %.3f nm route at 1 t/nm; want them equal (a full final tick would add ~10 t)",
+			v.TotalFuelConsumedTons, v.RouteLengthNM)
 	}
 }

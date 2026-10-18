@@ -216,7 +216,7 @@ func (r *VesselRepository) GetAll(ctx context.Context) ([]models.Vessel, error) 
                heading, speed_knots, last_updated, created_at,
                current_route_id, route_progress,
                COALESCE((SELECT r.length_nm FROM routes r WHERE r.id = vessels.current_route_id), 0),
-               fuel_level, fuel_capacity,
+               fuel_level, fuel_capacity, design_speed_knots, design_consumption_tpd,
                total_fuel_consumed_tons, total_distance_nm, next_survey_due
         FROM vessels
     `
@@ -236,7 +236,7 @@ func (r *VesselRepository) GetAll(ctx context.Context) ([]models.Vessel, error) 
 			&v.Latitude, &v.Longitude,
 			&v.Heading, &v.SpeedKnots, &v.LastUpdated, &v.CreatedAt,
 			&v.CurrentRouteID, &v.RouteProgress, &v.RouteLengthNM,
-			&v.FuelLevel, &v.FuelCapacity,
+			&v.FuelLevel, &v.FuelCapacity, &v.DesignSpeedKnots, &v.DesignConsumptionTPD,
 			&v.TotalFuelConsumedTons, &v.TotalDistanceNM, &v.NextSurveyDue,
 		)
 		if err != nil {
@@ -258,7 +258,7 @@ func (r *VesselRepository) GetByID(ctx context.Context, id string) (*models.Vess
 		       heading, speed_knots, last_updated, created_at,
                current_route_id, route_progress,
                COALESCE((SELECT r.length_nm FROM routes r WHERE r.id = vessels.current_route_id), 0),
-               fuel_level, fuel_capacity,
+               fuel_level, fuel_capacity, design_speed_knots, design_consumption_tpd,
                total_fuel_consumed_tons, total_distance_nm, next_survey_due
 		FROM vessels
 		WHERE id = $1
@@ -270,7 +270,7 @@ func (r *VesselRepository) GetByID(ctx context.Context, id string) (*models.Vess
 		&v.Latitude, &v.Longitude,
 		&v.Heading, &v.SpeedKnots, &v.LastUpdated, &v.CreatedAt,
 		&v.CurrentRouteID, &v.RouteProgress, &v.RouteLengthNM,
-		&v.FuelLevel, &v.FuelCapacity,
+		&v.FuelLevel, &v.FuelCapacity, &v.DesignSpeedKnots, &v.DesignConsumptionTPD,
 		&v.TotalFuelConsumedTons, &v.TotalDistanceNM, &v.NextSurveyDue,
 	)
 	if err != nil {
@@ -279,16 +279,19 @@ func (r *VesselRepository) GetByID(ctx context.Context, id string) (*models.Vess
 	return &v, nil
 }
 
-// UpdatePosition updates just the location of a vessel
-func (r *VesselRepository) UpdatePosition(ctx context.Context, id string, lat, lon float64) error {
+// UpdateFreeRoam moves a vessel that is not following a route and records
+// the fuel it burned and the distance it covered doing so.
+func (r *VesselRepository) UpdateFreeRoam(ctx context.Context, id string, lat, lon, fuelLevel, fuelBurned, distanceNM float64) error {
 	query := `
-		UPDATE vessels 
+		UPDATE vessels
 		SET location = ST_SetSRID(ST_MakePoint($1, $2), 4326),
+		    fuel_level = $3,
+		    total_fuel_consumed_tons = total_fuel_consumed_tons + $4,
+		    total_distance_nm = total_distance_nm + $5,
 		    last_updated = NOW()
-		WHERE id = $3
+		WHERE id = $6
 	`
-	// Use Exec() for updates that don't return data
-	_, err := r.db.Exec(ctx, query, lon, lat, id)
+	_, err := r.db.Exec(ctx, query, lon, lat, fuelLevel, fuelBurned, distanceNM, id)
 	return err
 }
 
